@@ -1,0 +1,75 @@
+openapi: 3.0.3
+info:
+  title: JL Business Growth API
+  version: 0.1.0
+  description: HTTP contract for the JL团队生意成长管理系统.
+paths:
+  /api/health/live:
+    get:
+      operationId: getHealthLive
+      summary: Check whether the API process is live
+      responses:
+        "200":
+          description: API process is live
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/health/ready:
+    get:
+      operationId: getHealthReady
+      summary: Check whether required runtime dependencies are ready
+      responses:
+        "200":
+          description: Dependencies are ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: One or more dependencies are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    HealthData:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ready, unavailable]
+    HealthResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/HealthData"
+        request_id:
+          type: string
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    ErrorResponse:
+      type: object
+      required: [error, request_id]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+        request_id:
+          type: string
