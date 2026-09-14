@@ -1,6 +1,6 @@
 # JL团队生意成长管理系统
 
-JL 团队内部使用的个人生意成长与经营管理系统。正式产品和技术规则在 [docs/00-文档索引.md](docs/00-文档索引.md)。仓库从 Phase 0 工程基线开始；身份、业务功能和生产部署尚未实现。
+JL 团队内部使用的个人生意成长与经营管理系统。正式产品和技术规则在 [docs/00-文档索引.md](docs/00-文档索引.md)。当前仓库已完成 Phase 0 工程基线和 Phase 1 身份、管理员、邀请码实现；Phase 2 业务闭环尚未开始。
 
 ## Technology
 
@@ -30,7 +30,7 @@ make migrate-up
 make dev
 ```
 
-Vite listens on `0.0.0.0:5173`; Go listens only on `127.0.0.1:8080`. LAN browsers open `http://<LAN-IP>:5173`; Vite proxies same-origin `/api` requests.
+Vite listens on `0.0.0.0:5173`; Go listens only on `127.0.0.1:8080`. For LAN testing, set `PUBLIC_BASE_URL=http://<LAN-IP>:5173`, start the dev services, and open `http://<LAN-IP>:5173`; Vite proxies same-origin `/api` requests.
 
 ## Commands
 
@@ -39,6 +39,9 @@ make generate
 make lint
 make test
 make test-e2e
+make test-integration  # requires TEST_DATABASE_URL for jl_business_test
+make migrate-test-up   # refuses databases other than jl_business_test
+make migrate-test-status
 make build
 make check
 ```

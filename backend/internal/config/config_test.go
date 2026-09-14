@@ -29,3 +29,12 @@ func TestProductionRequiresSecureCookieAndSessionSecret(t *testing.T) {
 		t.Fatal("Validate() error = nil, want production validation failure")
 	}
 }
+
+func TestNonProductionRejectsSecureCookie(t *testing.T) {
+	for _, environment := range []string{development, test} {
+		config := Config{AppEnv: environment, DatabaseURL: "postgres://example", MailMode: "file", CookieSecure: true}
+		if err := config.Validate(); err == nil {
+			t.Fatalf("Validate() accepted COOKIE_SECURE=true for %s", environment)
+		}
+	}
+}

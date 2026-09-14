@@ -3,3 +3,195 @@
 //   sqlc v1.29.0
 
 package generated
+
+import (
+	"database/sql/driver"
+	"fmt"
+	"net/netip"
+
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+type AccountRole string
+
+const (
+	AccountRoleUSER       AccountRole = "USER"
+	AccountRoleADMIN      AccountRole = "ADMIN"
+	AccountRoleSUPERADMIN AccountRole = "SUPER_ADMIN"
+)
+
+func (e *AccountRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AccountRole(s)
+	case string:
+		*e = AccountRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AccountRole: %T", src)
+	}
+	return nil
+}
+
+type NullAccountRole struct {
+	AccountRole AccountRole
+	Valid       bool // Valid is true if AccountRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAccountRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.AccountRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AccountRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAccountRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AccountRole), nil
+}
+
+type AccountStatus string
+
+const (
+	AccountStatusACTIVE   AccountStatus = "ACTIVE"
+	AccountStatusDISABLED AccountStatus = "DISABLED"
+)
+
+func (e *AccountStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AccountStatus(s)
+	case string:
+		*e = AccountStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AccountStatus: %T", src)
+	}
+	return nil
+}
+
+type NullAccountStatus struct {
+	AccountStatus AccountStatus
+	Valid         bool // Valid is true if AccountStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAccountStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.AccountStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AccountStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAccountStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AccountStatus), nil
+}
+
+type InvitationStatus string
+
+const (
+	InvitationStatusACTIVE   InvitationStatus = "ACTIVE"
+	InvitationStatusDISABLED InvitationStatus = "DISABLED"
+)
+
+func (e *InvitationStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = InvitationStatus(s)
+	case string:
+		*e = InvitationStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for InvitationStatus: %T", src)
+	}
+	return nil
+}
+
+type NullInvitationStatus struct {
+	InvitationStatus InvitationStatus
+	Valid            bool // Valid is true if InvitationStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullInvitationStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.InvitationStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.InvitationStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullInvitationStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.InvitationStatus), nil
+}
+
+type Account struct {
+	ID           pgtype.UUID
+	Username     string
+	PasswordHash string
+	Role         AccountRole
+	Status       AccountStatus
+	Timezone     string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	LastLoginAt  pgtype.Timestamptz
+}
+
+type BrowserSession struct {
+	ID              pgtype.UUID
+	TokenHash       []byte
+	ActiveAccountID pgtype.UUID
+	CsrfTokenHash   []byte
+	CreatedAt       pgtype.Timestamptz
+	LastSeenAt      pgtype.Timestamptz
+	ExpiresAt       pgtype.Timestamptz
+}
+
+type BrowserSessionAccount struct {
+	BrowserSessionID pgtype.UUID
+	AccountID        pgtype.UUID
+	AuthenticatedAt  pgtype.Timestamptz
+}
+
+type InvitationCode struct {
+	ID        pgtype.UUID
+	Code      string
+	Status    InvitationStatus
+	MaxUses   pgtype.Int4
+	UsedCount int32
+	ExpiresAt pgtype.Timestamptz
+	CreatedBy pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
+type InvitationUse struct {
+	InvitationCodeID pgtype.UUID
+	AccountID        pgtype.UUID
+	UsedAt           pgtype.Timestamptz
+}
+
+type SecurityAuditLog struct {
+	ID               pgtype.UUID
+	ActorAccountID   pgtype.UUID
+	Action           string
+	TargetAccountID  pgtype.UUID
+	TargetID         pgtype.UUID
+	IpAddress        *netip.Addr
+	UserAgentSummary pgtype.Text
+	RequestID        pgtype.Text
+	CreatedAt        pgtype.Timestamptz
+}

@@ -4,7 +4,30 @@
 package api
 
 import (
+	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/labstack/echo/v4"
+	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
+)
+
+const (
+	SessionCookieScopes = "sessionCookie.Scopes"
+)
+
+// Defines values for AccountRole.
+const (
+	AccountRoleADMIN      AccountRole = "ADMIN"
+	AccountRoleSUPERADMIN AccountRole = "SUPER_ADMIN"
+	AccountRoleUSER       AccountRole = "USER"
+)
+
+// Defines values for AccountStatus.
+const (
+	AccountStatusACTIVE   AccountStatus = "ACTIVE"
+	AccountStatusDISABLED AccountStatus = "DISABLED"
 )
 
 // Defines values for HealthDataChecks.
@@ -17,6 +40,128 @@ const (
 const (
 	Ok HealthDataStatus = "ok"
 )
+
+// Defines values for InvitationStatus.
+const (
+	InvitationStatusACTIVE   InvitationStatus = "ACTIVE"
+	InvitationStatusDISABLED InvitationStatus = "DISABLED"
+)
+
+// Defines values for SessionAccountRole.
+const (
+	SessionAccountRoleADMIN      SessionAccountRole = "ADMIN"
+	SessionAccountRoleSUPERADMIN SessionAccountRole = "SUPER_ADMIN"
+	SessionAccountRoleUSER       SessionAccountRole = "USER"
+)
+
+// Defines values for SessionAccountStatus.
+const (
+	SessionAccountStatusACTIVE   SessionAccountStatus = "ACTIVE"
+	SessionAccountStatusDISABLED SessionAccountStatus = "DISABLED"
+)
+
+// Defines values for StatusRequestStatus.
+const (
+	StatusRequestStatusACTIVE   StatusRequestStatus = "ACTIVE"
+	StatusRequestStatusDISABLED StatusRequestStatus = "DISABLED"
+)
+
+// Defines values for UpdateInvitationRequestStatus.
+const (
+	ACTIVE   UpdateInvitationRequestStatus = "ACTIVE"
+	DISABLED UpdateInvitationRequestStatus = "DISABLED"
+)
+
+// Account defines model for Account.
+type Account struct {
+	CreatedAt   time.Time          `json:"created_at"`
+	Id          openapi_types.UUID `json:"id"`
+	LastLoginAt *time.Time         `json:"last_login_at"`
+	Role        AccountRole        `json:"role"`
+	Status      AccountStatus      `json:"status"`
+	Timezone    string             `json:"timezone"`
+	Username    string             `json:"username"`
+}
+
+// AccountRole defines model for Account.Role.
+type AccountRole string
+
+// AccountStatus defines model for Account.Status.
+type AccountStatus string
+
+// AccountResponse defines model for AccountResponse.
+type AccountResponse struct {
+	Data      Account `json:"data"`
+	RequestId string  `json:"request_id"`
+}
+
+// AccountsData defines model for AccountsData.
+type AccountsData struct {
+	Account   Account          `json:"account"`
+	Accounts  []SessionAccount `json:"accounts"`
+	CsrfToken string           `json:"csrf_token"`
+}
+
+// AccountsListData defines model for AccountsListData.
+type AccountsListData struct {
+	Items []Account `json:"items"`
+}
+
+// AccountsListResponse defines model for AccountsListResponse.
+type AccountsListResponse struct {
+	Data      AccountsListData `json:"data"`
+	Meta      PaginationMeta   `json:"meta"`
+	RequestId string           `json:"request_id"`
+}
+
+// AccountsResponse defines model for AccountsResponse.
+type AccountsResponse struct {
+	Data      AccountsData `json:"data"`
+	RequestId string       `json:"request_id"`
+}
+
+// AuthData defines model for AuthData.
+type AuthData struct {
+	Account   Account          `json:"account"`
+	Accounts  []SessionAccount `json:"accounts"`
+	CsrfToken string           `json:"csrf_token"`
+}
+
+// AuthResponse defines model for AuthResponse.
+type AuthResponse struct {
+	Data      AuthData `json:"data"`
+	RequestId string   `json:"request_id"`
+}
+
+// ChangePasswordRequest defines model for ChangePasswordRequest.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+// CreateAdminRequest defines model for CreateAdminRequest.
+type CreateAdminRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// CreateInvitationRequest defines model for CreateInvitationRequest.
+type CreateInvitationRequest struct {
+	Code      *string    `json:"code,omitempty"`
+	ExpiresAt *time.Time `json:"expires_at"`
+	MaxUses   *int       `json:"max_uses"`
+}
+
+// CsrfData defines model for CsrfData.
+type CsrfData struct {
+	CsrfToken string `json:"csrf_token"`
+}
+
+// CsrfResponse defines model for CsrfResponse.
+type CsrfResponse struct {
+	Data      CsrfData `json:"data"`
+	RequestId string   `json:"request_id"`
+}
 
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
@@ -49,8 +194,244 @@ type HealthResponse struct {
 	RequestId string     `json:"request_id"`
 }
 
+// Invitation defines model for Invitation.
+type Invitation struct {
+	Code      string             `json:"code"`
+	CreatedAt time.Time          `json:"created_at"`
+	ExpiresAt *time.Time         `json:"expires_at"`
+	Id        openapi_types.UUID `json:"id"`
+	MaxUses   *int               `json:"max_uses"`
+	Status    InvitationStatus   `json:"status"`
+	UsedCount int                `json:"used_count"`
+}
+
+// InvitationStatus defines model for Invitation.Status.
+type InvitationStatus string
+
+// InvitationListResponse defines model for InvitationListResponse.
+type InvitationListResponse struct {
+	Data struct {
+		Items []Invitation `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// InvitationResponse defines model for InvitationResponse.
+type InvitationResponse struct {
+	Data      Invitation `json:"data"`
+	RequestId string     `json:"request_id"`
+}
+
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// PaginationMeta defines model for PaginationMeta.
+type PaginationMeta struct {
+	Page     int `json:"page"`
+	PageSize int `json:"page_size"`
+	Total    int `json:"total"`
+}
+
+// RegisterRequest defines model for RegisterRequest.
+type RegisterRequest struct {
+	InvitationCode string `json:"invitation_code"`
+	Password       string `json:"password"`
+	Username       string `json:"username"`
+}
+
+// ResetPasswordData defines model for ResetPasswordData.
+type ResetPasswordData struct {
+	TemporaryPassword string `json:"temporary_password"`
+}
+
+// ResetPasswordRequest defines model for ResetPasswordRequest.
+type ResetPasswordRequest struct {
+	TemporaryPassword *string `json:"temporary_password,omitempty"`
+}
+
+// ResetPasswordResponse defines model for ResetPasswordResponse.
+type ResetPasswordResponse struct {
+	Data      ResetPasswordData `json:"data"`
+	RequestId string            `json:"request_id"`
+}
+
+// SessionAccount defines model for SessionAccount.
+type SessionAccount struct {
+	Active      bool                 `json:"active"`
+	CreatedAt   time.Time            `json:"created_at"`
+	Id          openapi_types.UUID   `json:"id"`
+	LastLoginAt *time.Time           `json:"last_login_at"`
+	Role        SessionAccountRole   `json:"role"`
+	Status      SessionAccountStatus `json:"status"`
+	Timezone    string               `json:"timezone"`
+	Username    string               `json:"username"`
+}
+
+// SessionAccountRole defines model for SessionAccount.Role.
+type SessionAccountRole string
+
+// SessionAccountStatus defines model for SessionAccount.Status.
+type SessionAccountStatus string
+
+// StatusRequest defines model for StatusRequest.
+type StatusRequest struct {
+	Status StatusRequestStatus `json:"status"`
+}
+
+// StatusRequestStatus defines model for StatusRequest.Status.
+type StatusRequestStatus string
+
+// TimezoneRequest defines model for TimezoneRequest.
+type TimezoneRequest struct {
+	Timezone string `json:"timezone"`
+}
+
+// UpdateInvitationRequest defines model for UpdateInvitationRequest.
+type UpdateInvitationRequest struct {
+	// ClearExpiresAt Clear expires_at and make the code non-expiring.
+	ClearExpiresAt *bool `json:"clear_expires_at,omitempty"`
+
+	// ClearMaxUses Clear max_uses and make the code unlimited.
+	ClearMaxUses *bool                          `json:"clear_max_uses,omitempty"`
+	ExpiresAt    *time.Time                     `json:"expires_at"`
+	MaxUses      *int                           `json:"max_uses"`
+	Status       *UpdateInvitationRequestStatus `json:"status,omitempty"`
+}
+
+// UpdateInvitationRequestStatus defines model for UpdateInvitationRequest.Status.
+type UpdateInvitationRequestStatus string
+
+// AccountId defines model for AccountId.
+type AccountId = openapi_types.UUID
+
+// InvitationId defines model for InvitationId.
+type InvitationId = openapi_types.UUID
+
+// Page defines model for Page.
+type Page = int
+
+// PageSize defines model for PageSize.
+type PageSize = int
+
+// GetAdminUsersParams defines parameters for GetAdminUsers.
+type GetAdminUsersParams struct {
+	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// PostAdminAdminJSONRequestBody defines body for PostAdminAdmin for application/json ContentType.
+type PostAdminAdminJSONRequestBody = CreateAdminRequest
+
+// PatchAdminAdminJSONRequestBody defines body for PatchAdminAdmin for application/json ContentType.
+type PatchAdminAdminJSONRequestBody = StatusRequest
+
+// PostAdminAdminResetPasswordJSONRequestBody defines body for PostAdminAdminResetPassword for application/json ContentType.
+type PostAdminAdminResetPasswordJSONRequestBody = ResetPasswordRequest
+
+// PostAdminInvitationCodeJSONRequestBody defines body for PostAdminInvitationCode for application/json ContentType.
+type PostAdminInvitationCodeJSONRequestBody = CreateInvitationRequest
+
+// PatchAdminInvitationCodeJSONRequestBody defines body for PatchAdminInvitationCode for application/json ContentType.
+type PatchAdminInvitationCodeJSONRequestBody = UpdateInvitationRequest
+
+// PostAdminUserResetPasswordJSONRequestBody defines body for PostAdminUserResetPassword for application/json ContentType.
+type PostAdminUserResetPasswordJSONRequestBody = ResetPasswordRequest
+
+// PatchAdminUserStatusJSONRequestBody defines body for PatchAdminUserStatus for application/json ContentType.
+type PatchAdminUserStatusJSONRequestBody = StatusRequest
+
+// PostAuthAccountsAddJSONRequestBody defines body for PostAuthAccountsAdd for application/json ContentType.
+type PostAuthAccountsAddJSONRequestBody = LoginRequest
+
+// PostAuthChangePasswordJSONRequestBody defines body for PostAuthChangePassword for application/json ContentType.
+type PostAuthChangePasswordJSONRequestBody = ChangePasswordRequest
+
+// PostAuthLoginJSONRequestBody defines body for PostAuthLogin for application/json ContentType.
+type PostAuthLoginJSONRequestBody = LoginRequest
+
+// PatchAuthTimezoneJSONRequestBody defines body for PatchAuthTimezone for application/json ContentType.
+type PatchAuthTimezoneJSONRequestBody = TimezoneRequest
+
+// PostAuthRegisterJSONRequestBody defines body for PostAuthRegister for application/json ContentType.
+type PostAuthRegisterJSONRequestBody = RegisterRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// List ordinary administrators
+	// (GET /api/admin/admins)
+	GetAdminAdmins(ctx echo.Context) error
+	// Create an ordinary administrator
+	// (POST /api/admin/admins)
+	PostAdminAdmin(ctx echo.Context) error
+	// Delete an ordinary administrator
+	// (DELETE /api/admin/admins/{account_id})
+	DeleteAdminAdmin(ctx echo.Context, accountId AccountId) error
+	// Enable or disable an ordinary administrator
+	// (PATCH /api/admin/admins/{account_id})
+	PatchAdminAdmin(ctx echo.Context, accountId AccountId) error
+	// Reset an ordinary administrator password
+	// (POST /api/admin/admins/{account_id}/reset-password)
+	PostAdminAdminResetPassword(ctx echo.Context, accountId AccountId) error
+	// List invitation codes
+	// (GET /api/admin/invitation-codes)
+	GetAdminInvitationCodes(ctx echo.Context) error
+	// Create an invitation code
+	// (POST /api/admin/invitation-codes)
+	PostAdminInvitationCode(ctx echo.Context) error
+	// Disable an invitation code
+	// (DELETE /api/admin/invitation-codes/{invitation_id})
+	DeleteAdminInvitationCode(ctx echo.Context, invitationId InvitationId) error
+	// Update invitation status or limits
+	// (PATCH /api/admin/invitation-codes/{invitation_id})
+	PatchAdminInvitationCode(ctx echo.Context, invitationId InvitationId) error
+	// List normal users without business data
+	// (GET /api/admin/users)
+	GetAdminUsers(ctx echo.Context, params GetAdminUsersParams) error
+	// Delete a normal user and its online access
+	// (DELETE /api/admin/users/{account_id})
+	DeleteAdminUser(ctx echo.Context, accountId AccountId) error
+	// Reset a normal user password
+	// (POST /api/admin/users/{account_id}/reset-password)
+	PostAdminUserResetPassword(ctx echo.Context, accountId AccountId) error
+	// Enable or disable a normal user
+	// (PATCH /api/admin/users/{account_id}/status)
+	PatchAdminUserStatus(ctx echo.Context, accountId AccountId) error
+	// List normal accounts linked to this browser session
+	// (GET /api/auth/accounts)
+	GetAuthAccounts(ctx echo.Context) error
+	// Authenticate and add another normal account to this browser session
+	// (POST /api/auth/accounts/add)
+	PostAuthAccountsAdd(ctx echo.Context) error
+	// Remove a linked normal account from this browser session
+	// (DELETE /api/auth/accounts/{account_id})
+	DeleteAuthAccount(ctx echo.Context, accountId AccountId) error
+	// Switch the active normal account without re-entering its password
+	// (POST /api/auth/accounts/{account_id}/switch)
+	PostAuthAccountsSwitch(ctx echo.Context, accountId AccountId) error
+	// Change the active account password
+	// (POST /api/auth/change-password)
+	PostAuthChangePassword(ctx echo.Context) error
+	// Return the CSRF token for the current browser session
+	// (GET /api/auth/csrf)
+	GetAuthCsrf(ctx echo.Context) error
+	// Sign in an account
+	// (POST /api/auth/login)
+	PostAuthLogin(ctx echo.Context) error
+	// End the current browser session
+	// (POST /api/auth/logout)
+	PostAuthLogout(ctx echo.Context) error
+	// Return the active account
+	// (GET /api/auth/me)
+	GetAuthMe(ctx echo.Context) error
+	// Change the active account timezone
+	// (PATCH /api/auth/me/timezone)
+	PatchAuthTimezone(ctx echo.Context) error
+	// Register a normal user with an invitation code
+	// (POST /api/auth/register)
+	PostAuthRegister(ctx echo.Context) error
 	// Check whether the API process is live
 	// (GET /api/health/live)
 	GetHealthLive(ctx echo.Context) error
@@ -62,6 +443,352 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GetAdminAdmins converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAdminAdmins(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetAdminAdmins(ctx)
+	return err
+}
+
+// PostAdminAdmin converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAdminAdmin(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAdminAdmin(ctx)
+	return err
+}
+
+// DeleteAdminAdmin converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteAdminAdmin(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account_id" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "account_id", ctx.Param("account_id"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteAdminAdmin(ctx, accountId)
+	return err
+}
+
+// PatchAdminAdmin converts echo context to params.
+func (w *ServerInterfaceWrapper) PatchAdminAdmin(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account_id" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "account_id", ctx.Param("account_id"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PatchAdminAdmin(ctx, accountId)
+	return err
+}
+
+// PostAdminAdminResetPassword converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAdminAdminResetPassword(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account_id" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "account_id", ctx.Param("account_id"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAdminAdminResetPassword(ctx, accountId)
+	return err
+}
+
+// GetAdminInvitationCodes converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAdminInvitationCodes(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetAdminInvitationCodes(ctx)
+	return err
+}
+
+// PostAdminInvitationCode converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAdminInvitationCode(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAdminInvitationCode(ctx)
+	return err
+}
+
+// DeleteAdminInvitationCode converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteAdminInvitationCode(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "invitation_id" -------------
+	var invitationId InvitationId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "invitation_id", ctx.Param("invitation_id"), &invitationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter invitation_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteAdminInvitationCode(ctx, invitationId)
+	return err
+}
+
+// PatchAdminInvitationCode converts echo context to params.
+func (w *ServerInterfaceWrapper) PatchAdminInvitationCode(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "invitation_id" -------------
+	var invitationId InvitationId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "invitation_id", ctx.Param("invitation_id"), &invitationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter invitation_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PatchAdminInvitationCode(ctx, invitationId)
+	return err
+}
+
+// GetAdminUsers converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAdminUsers(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAdminUsersParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page_size", ctx.QueryParams(), &params.PageSize)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page_size: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetAdminUsers(ctx, params)
+	return err
+}
+
+// DeleteAdminUser converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteAdminUser(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account_id" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "account_id", ctx.Param("account_id"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteAdminUser(ctx, accountId)
+	return err
+}
+
+// PostAdminUserResetPassword converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAdminUserResetPassword(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account_id" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "account_id", ctx.Param("account_id"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAdminUserResetPassword(ctx, accountId)
+	return err
+}
+
+// PatchAdminUserStatus converts echo context to params.
+func (w *ServerInterfaceWrapper) PatchAdminUserStatus(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account_id" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "account_id", ctx.Param("account_id"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PatchAdminUserStatus(ctx, accountId)
+	return err
+}
+
+// GetAuthAccounts converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAuthAccounts(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetAuthAccounts(ctx)
+	return err
+}
+
+// PostAuthAccountsAdd converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAuthAccountsAdd(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAuthAccountsAdd(ctx)
+	return err
+}
+
+// DeleteAuthAccount converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteAuthAccount(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account_id" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "account_id", ctx.Param("account_id"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteAuthAccount(ctx, accountId)
+	return err
+}
+
+// PostAuthAccountsSwitch converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAuthAccountsSwitch(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account_id" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "account_id", ctx.Param("account_id"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAuthAccountsSwitch(ctx, accountId)
+	return err
+}
+
+// PostAuthChangePassword converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAuthChangePassword(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAuthChangePassword(ctx)
+	return err
+}
+
+// GetAuthCsrf converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAuthCsrf(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetAuthCsrf(ctx)
+	return err
+}
+
+// PostAuthLogin converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAuthLogin(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAuthLogin(ctx)
+	return err
+}
+
+// PostAuthLogout converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAuthLogout(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAuthLogout(ctx)
+	return err
+}
+
+// GetAuthMe converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAuthMe(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetAuthMe(ctx)
+	return err
+}
+
+// PatchAuthTimezone converts echo context to params.
+func (w *ServerInterfaceWrapper) PatchAuthTimezone(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PatchAuthTimezone(ctx)
+	return err
+}
+
+// PostAuthRegister converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAuthRegister(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAuthRegister(ctx)
+	return err
 }
 
 // GetHealthLive converts echo context to params.
@@ -110,6 +837,30 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/api/admin/admins", wrapper.GetAdminAdmins)
+	router.POST(baseURL+"/api/admin/admins", wrapper.PostAdminAdmin)
+	router.DELETE(baseURL+"/api/admin/admins/:account_id", wrapper.DeleteAdminAdmin)
+	router.PATCH(baseURL+"/api/admin/admins/:account_id", wrapper.PatchAdminAdmin)
+	router.POST(baseURL+"/api/admin/admins/:account_id/reset-password", wrapper.PostAdminAdminResetPassword)
+	router.GET(baseURL+"/api/admin/invitation-codes", wrapper.GetAdminInvitationCodes)
+	router.POST(baseURL+"/api/admin/invitation-codes", wrapper.PostAdminInvitationCode)
+	router.DELETE(baseURL+"/api/admin/invitation-codes/:invitation_id", wrapper.DeleteAdminInvitationCode)
+	router.PATCH(baseURL+"/api/admin/invitation-codes/:invitation_id", wrapper.PatchAdminInvitationCode)
+	router.GET(baseURL+"/api/admin/users", wrapper.GetAdminUsers)
+	router.DELETE(baseURL+"/api/admin/users/:account_id", wrapper.DeleteAdminUser)
+	router.POST(baseURL+"/api/admin/users/:account_id/reset-password", wrapper.PostAdminUserResetPassword)
+	router.PATCH(baseURL+"/api/admin/users/:account_id/status", wrapper.PatchAdminUserStatus)
+	router.GET(baseURL+"/api/auth/accounts", wrapper.GetAuthAccounts)
+	router.POST(baseURL+"/api/auth/accounts/add", wrapper.PostAuthAccountsAdd)
+	router.DELETE(baseURL+"/api/auth/accounts/:account_id", wrapper.DeleteAuthAccount)
+	router.POST(baseURL+"/api/auth/accounts/:account_id/switch", wrapper.PostAuthAccountsSwitch)
+	router.POST(baseURL+"/api/auth/change-password", wrapper.PostAuthChangePassword)
+	router.GET(baseURL+"/api/auth/csrf", wrapper.GetAuthCsrf)
+	router.POST(baseURL+"/api/auth/login", wrapper.PostAuthLogin)
+	router.POST(baseURL+"/api/auth/logout", wrapper.PostAuthLogout)
+	router.GET(baseURL+"/api/auth/me", wrapper.GetAuthMe)
+	router.PATCH(baseURL+"/api/auth/me/timezone", wrapper.PatchAuthTimezone)
+	router.POST(baseURL+"/api/auth/register", wrapper.PostAuthRegister)
 	router.GET(baseURL+"/api/health/live", wrapper.GetHealthLive)
 	router.GET(baseURL+"/api/health/ready", wrapper.GetHealthReady)
 

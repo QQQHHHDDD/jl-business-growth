@@ -85,6 +85,9 @@ func (c Config) Validate() error {
 	if c.MailMode != "file" && c.MailMode != "smtp" {
 		return errors.New("MAIL_MODE must be file or smtp")
 	}
+	if (c.AppEnv == development || c.AppEnv == test) && c.CookieSecure {
+		return errors.New("COOKIE_SECURE must be false in development and test")
+	}
 	if c.AppEnv == production {
 		if !c.CookieSecure {
 			return errors.New("COOKIE_SECURE must be true in production")

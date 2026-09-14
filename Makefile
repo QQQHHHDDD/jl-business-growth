@@ -6,8 +6,8 @@ BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 
 .PHONY: dev generate generate-openapi generate-sqlc generate-frontend lint lint-backend lint-frontend \
-	test test-backend test-frontend test-e2e build build-backend build-frontend \
-	migrate-up migrate-status check
+	test test-backend test-integration test-frontend test-e2e build build-backend build-frontend \
+	migrate-up migrate-status migrate-test-up migrate-test-status check-test-database check
 
 dev:
 	./scripts/dev.sh
@@ -37,10 +37,17 @@ test: test-backend test-frontend
 test-backend:
 	cd $(BACKEND_DIR) && $(GO) test ./...
 
+test-integration:
+	$(MAKE) check-test-database
+	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^TestPhase1APIIntegration$$'
+
 test-frontend:
 	$(NPM) --prefix $(FRONTEND_DIR) run test
 
 test-e2e:
+	@if [ "$${APP_ENV:-development}" = "test" ]; then $(MAKE) check-test-database; fi
+	@test "$${APP_ENV:-development}" != "test" || test -n "$${E2E_SUPERADMIN_USERNAME}" || (echo 'APP_ENV=test requires E2E_SUPERADMIN_USERNAME'; exit 1)
+	@test "$${APP_ENV:-development}" != "test" || test -n "$${E2E_SUPERADMIN_PASSWORD}" || (echo 'APP_ENV=test requires E2E_SUPERADMIN_PASSWORD'; exit 1)
 	$(NPM) --prefix $(FRONTEND_DIR) run test:e2e
 
 build: build-backend build-frontend
@@ -59,5 +66,16 @@ migrate-up:
 migrate-status:
 	@test -n "$$DATABASE_URL" || (echo 'DATABASE_URL must be set'; exit 1)
 	cd $(BACKEND_DIR) && $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations postgres "$$DATABASE_URL" status
+
+migrate-test-up:
+	$(MAKE) check-test-database
+	cd $(BACKEND_DIR) && $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations postgres "$$TEST_DATABASE_URL" up
+
+migrate-test-status:
+	$(MAKE) check-test-database
+	cd $(BACKEND_DIR) && $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations postgres "$$TEST_DATABASE_URL" status
+
+check-test-database:
+	cd $(BACKEND_DIR) && $(GO) run ./cmd/check-test-database-url
 
 check: generate lint test build

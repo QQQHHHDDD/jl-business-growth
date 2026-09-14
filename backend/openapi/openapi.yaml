@@ -1,12 +1,19 @@
 openapi: 3.0.3
 info:
   title: JL Business Growth API
-  version: 0.1.0
+  version: 0.2.0
   description: HTTP contract for the JL团队生意成长管理系统.
+servers:
+  - url: /
+tags:
+  - name: health
+  - name: auth
+  - name: admin
 paths:
   /api/health/live:
     get:
       operationId: getHealthLive
+      tags: [health]
       summary: Check whether the API process is live
       responses:
         "200":
@@ -18,6 +25,7 @@ paths:
   /api/health/ready:
     get:
       operationId: getHealthReady
+      tags: [health]
       summary: Check whether required runtime dependencies are ready
       responses:
         "200":
@@ -32,7 +40,474 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/auth/register:
+    post:
+      operationId: postAuthRegister
+      tags: [auth]
+      summary: Register a normal user with an invitation code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered and signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/login:
+    post:
+      operationId: postAuthLogin
+      tags: [auth]
+      summary: Sign in an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Account signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/logout:
+    post:
+      operationId: postAuthLogout
+      tags: [auth]
+      summary: End the current browser session
+      security: [{ sessionCookie: [] }]
+      responses:
+        "204":
+          description: Session ended
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/csrf:
+    get:
+      operationId: getAuthCsrf
+      tags: [auth]
+      summary: Return the CSRF token for the current browser session
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: CSRF token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CsrfResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/me:
+    get:
+      operationId: getAuthMe
+      tags: [auth]
+      summary: Return the active account
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Active account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/change-password:
+    post:
+      operationId: postAuthChangePassword
+      tags: [auth]
+      summary: Change the active account password
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password changed and sessions invalidated
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/me/timezone:
+    patch:
+      operationId: patchAuthTimezone
+      tags: [auth]
+      summary: Change the active account timezone
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TimezoneRequest"
+      responses:
+        "200":
+          description: Updated active account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/accounts:
+    get:
+      operationId: getAuthAccounts
+      tags: [auth]
+      summary: List normal accounts linked to this browser session
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Linked accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountsResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/accounts/add:
+    post:
+      operationId: postAuthAccountsAdd
+      tags: [auth]
+      summary: Authenticate and add another normal account to this browser session
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Account added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountsResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/accounts/{account_id}/switch:
+    post:
+      operationId: postAuthAccountsSwitch
+      tags: [auth]
+      summary: Switch the active normal account without re-entering its password
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      responses:
+        "200":
+          description: Active account switched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/auth/accounts/{account_id}:
+    delete:
+      operationId: deleteAuthAccount
+      tags: [auth]
+      summary: Remove a linked normal account from this browser session
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      responses:
+        "204":
+          description: Account unlinked
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/users:
+    get:
+      operationId: getAdminUsers
+      tags: [admin]
+      summary: List normal users without business data
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountsListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/users/{account_id}/status:
+    patch:
+      operationId: patchAdminUserStatus
+      tags: [admin]
+      summary: Enable or disable a normal user
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/users/{account_id}/reset-password:
+    post:
+      operationId: postAdminUserResetPassword
+      tags: [admin]
+      summary: Reset a normal user password
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "200":
+          description: Temporary password result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetPasswordResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/users/{account_id}:
+    delete:
+      operationId: deleteAdminUser
+      tags: [admin]
+      summary: Delete a normal user and its online access
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      responses:
+        "204":
+          description: User deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/invitation-codes:
+    get:
+      operationId: getAdminInvitationCodes
+      tags: [admin]
+      summary: List invitation codes
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Invitation list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: postAdminInvitationCode
+      tags: [admin]
+      summary: Create an invitation code
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvitationRequest"
+      responses:
+        "201":
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/invitation-codes/{invitation_id}:
+    patch:
+      operationId: patchAdminInvitationCode
+      tags: [admin]
+      summary: Update invitation status or limits
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/InvitationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInvitationRequest"
+      responses:
+        "200":
+          description: Updated invitation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: deleteAdminInvitationCode
+      tags: [admin]
+      summary: Disable an invitation code
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/InvitationId"
+      responses:
+        "204":
+          description: Invitation disabled
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/admins:
+    get:
+      operationId: getAdminAdmins
+      tags: [admin]
+      summary: List ordinary administrators
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Administrator list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountsListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: postAdminAdmin
+      tags: [admin]
+      summary: Create an ordinary administrator
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdminRequest"
+      responses:
+        "201":
+          description: Administrator created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/admins/{account_id}:
+    patch:
+      operationId: patchAdminAdmin
+      tags: [admin]
+      summary: Enable or disable an ordinary administrator
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
+      responses:
+        "200":
+          description: Updated administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: deleteAdminAdmin
+      tags: [admin]
+      summary: Delete an ordinary administrator
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      responses:
+        "204":
+          description: Administrator deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/admins/{account_id}/reset-password:
+    post:
+      operationId: postAdminAdminResetPassword
+      tags: [admin]
+      summary: Reset an ordinary administrator password
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "200":
+          description: Temporary password result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetPasswordResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-bos_session
+  parameters:
+    AccountId:
+      name: account_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: invitation_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    ErrorResponse:
+      description: Request failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthData:
       type: object
@@ -71,5 +546,296 @@ components:
       properties:
         error:
           $ref: "#/components/schemas/ErrorBody"
+        request_id:
+          type: string
+    Account:
+      type: object
+      required: [id, username, role, status, timezone, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        role:
+          type: string
+          enum: [USER, ADMIN, SUPER_ADMIN]
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+        timezone:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+    SessionAccount:
+      allOf:
+        - $ref: "#/components/schemas/Account"
+        - type: object
+          required: [active]
+          properties:
+            active:
+              type: boolean
+    RegisterRequest:
+      type: object
+      required: [username, password, invitation_code]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 32
+        password:
+          type: string
+          minLength: 10
+          maxLength: 128
+        invitation_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 32
+        password:
+          type: string
+          minLength: 10
+          maxLength: 128
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+          minLength: 10
+          maxLength: 128
+    TimezoneRequest:
+      type: object
+      required: [timezone]
+      properties:
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+    StatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+    ResetPasswordRequest:
+      type: object
+      properties:
+        temporary_password:
+          type: string
+          minLength: 10
+          maxLength: 128
+    CreateAdminRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 32
+        password:
+          type: string
+          minLength: 10
+          maxLength: 128
+    CreateInvitationRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 8
+          maxLength: 64
+        max_uses:
+          type: integer
+          minimum: 1
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+    UpdateInvitationRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+        max_uses:
+          type: integer
+          minimum: 1
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        clear_max_uses:
+          type: boolean
+          default: false
+          description: Clear max_uses and make the code unlimited.
+        clear_expires_at:
+          type: boolean
+          default: false
+          description: Clear expires_at and make the code non-expiring.
+    AuthData:
+      type: object
+      required: [account, csrf_token, accounts]
+      properties:
+        account:
+          $ref: "#/components/schemas/Account"
+        csrf_token:
+          type: string
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionAccount"
+    AuthResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/AuthData"
+        request_id:
+          type: string
+    CsrfData:
+      type: object
+      required: [csrf_token]
+      properties:
+        csrf_token:
+          type: string
+    CsrfResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/CsrfData"
+        request_id:
+          type: string
+    AccountsData:
+      type: object
+      required: [account, accounts, csrf_token]
+      properties:
+        account:
+          $ref: "#/components/schemas/Account"
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionAccount"
+        csrf_token:
+          type: string
+    AccountsResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/AccountsData"
+        request_id:
+          type: string
+    AccountResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/Account"
+        request_id:
+          type: string
+    PaginationMeta:
+      type: object
+      required: [page, page_size, total]
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    AccountsListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Account"
+    AccountsListResponse:
+      type: object
+      required: [data, meta, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/AccountsListData"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+        request_id:
+          type: string
+    ResetPasswordData:
+      type: object
+      required: [temporary_password]
+      properties:
+        temporary_password:
+          type: string
+    ResetPasswordResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/ResetPasswordData"
+        request_id:
+          type: string
+    Invitation:
+      type: object
+      required: [id, code, status, used_count, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+        max_uses:
+          type: integer
+          nullable: true
+        used_count:
+          type: integer
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    InvitationListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Invitation"
+        request_id:
+          type: string
+    InvitationResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/Invitation"
         request_id:
           type: string
