@@ -43,6 +43,10 @@ export type IncomeSimulationInput = components["schemas"]["IncomeSimulationInput
 export type IncomeSimulationResult = components["schemas"]["IncomeSimulationResult"];
 export type IncomeSimulation = components["schemas"]["IncomeSimulation"];
 export type IncomeSimulationRequest = components["schemas"]["IncomeSimulationRequest"];
+export type ImportJob = components["schemas"]["ImportJob"];
+export type ImportType = components["schemas"]["ImportType"];
+export type ExportType = components["parameters"]["ExportType"];
+export type ExportFormat = components["parameters"]["ExportFormat"];
 
 export class ApiError extends Error {
   status: number;
@@ -89,6 +93,16 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     );
   }
   return body as T;
+}
+
+async function requestBlob(path: string): Promise<Blob> {
+  const response = await fetch(path, { credentials: "include" });
+  if (!response.ok) {
+    let body: ErrorResponse | undefined;
+    try { body = await response.json(); } catch { /* response may be a proxy error */ }
+    throw new ApiError(response.status, body?.error?.code ?? "INTERNAL_ERROR", body?.error?.message ?? "下载失败，请稍后重试");
+  }
+  return response.blob();
 }
 
 function jsonBody(value: JSONValue): RequestInit {
@@ -170,6 +184,10 @@ export function unlinkAccount(csrfToken: string, accountId: string): Promise<voi
     `/api/auth/accounts/${encodeURIComponent(accountId)}`,
     withCsrf(csrfToken, undefined, "DELETE"),
   );
+}
+
+export function deleteCurrentAccount(csrfToken: string): Promise<void> {
+  return request<void>("/api/auth/account", withCsrf(csrfToken, undefined, "DELETE"));
 }
 
 export function listUsers(page = 1, pageSize = 20): Promise<AccountsListResponse> {
@@ -374,6 +392,19 @@ export function listFiles(): Promise<components["schemas"]["FileListResponse"]> 
 export function uploadFile(csrfToken: string, file: File, category: "DREAM_IMAGE" | "KNOWLEDGE_DOCUMENT" | "KNOWLEDGE_IMAGE"): Promise<components["schemas"]["FileResponse"]> { const form = new FormData(); form.set("category", category); form.set("file", file); return request("/api/files", { method: "POST", headers: { "X-CSRF-Token": csrfToken }, body: form }); }
 export function deleteFile(csrfToken: string, id: string): Promise<void> { return request(`/api/files/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE")); }
 export function searchRecords(query: string, page = 1, pageSize = 20): Promise<components["schemas"]["SearchResponse"]> { return request(`/api/search?q=${encodeURIComponent(query)}&page=${page}&page_size=${pageSize}`); }
+
+export function downloadImportTemplate(type: ImportType): Promise<Blob> { return requestBlob(`/api/imports/templates/${encodeURIComponent(type)}`); }
+export function createImport(csrfToken: string, type: ImportType, file: File): Promise<components["schemas"]["ImportJobResponse"]> {
+  const form = new FormData();
+  form.set("type", type);
+  form.set("file", file);
+  return request("/api/imports", { method: "POST", headers: { "X-CSRF-Token": csrfToken }, body: form });
+}
+export function getImport(id: string): Promise<components["schemas"]["ImportJobResponse"]> { return request(`/api/imports/${encodeURIComponent(id)}`); }
+export function validateImport(csrfToken: string, id: string): Promise<components["schemas"]["ImportJobResponse"]> { return request(`/api/imports/${encodeURIComponent(id)}/validate`, withCsrf(csrfToken)); }
+export function commitImport(csrfToken: string, id: string): Promise<components["schemas"]["ImportJobResponse"]> { return request(`/api/imports/${encodeURIComponent(id)}/commit`, withCsrf(csrfToken)); }
+export function deleteImport(csrfToken: string, id: string): Promise<void> { return request(`/api/imports/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE")); }
+export function exportData(type: ExportType, format: ExportFormat): Promise<Blob> { return requestBlob(`/api/exports/${encodeURIComponent(type)}?format=${encodeURIComponent(format)}`); }
 
 export function listFinanceCategories(): Promise<components["schemas"]["FinanceCategoryListResponse"]> { return request("/api/finance/categories"); }
 export function createFinanceCategory(csrfToken: string, input: FinanceCategoryRequest): Promise<components["schemas"]["FinanceCategoryResponse"]> { return request("/api/finance/categories", withCsrf(csrfToken, input as unknown as JSONValue)); }

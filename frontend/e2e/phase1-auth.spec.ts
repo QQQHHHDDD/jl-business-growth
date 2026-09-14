@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 const superadminUsername = process.env.E2E_SUPERADMIN_USERNAME;
 const superadminPassword = process.env.E2E_SUPERADMIN_PASSWORD;
 
-test("covers the Phase 1 administrator flow and Phase 2-5 core loops", async ({ page }) => {
+test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({ page }) => {
   test.skip(process.env.APP_ENV !== "test" || !superadminUsername || !superadminPassword, "run against APP_ENV=test with E2E_SUPERADMIN_USERNAME and E2E_SUPERADMIN_PASSWORD");
 
   const userPassword = "phase1-user-password";
@@ -124,6 +125,23 @@ test("covers the Phase 1 administrator flow and Phase 2-5 core loops", async ({ 
   await expect(page.getByText("¥1125.00")).toBeVisible();
   await page.getByRole("button", { name: "保存方案" }).click();
   await expect(page.getByRole("status")).toContainText("收入模拟方案已保存");
+
+  await page.goto("/app/data");
+  await expect(page.getByRole("heading", { name: "导入 / 导出", exact: true })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "下载模板" }).click();
+  const templateDownload = await downloadPromise;
+  const templatePath = await templateDownload.path();
+  expect(templatePath).toBeTruthy();
+  await page.getByLabel("选择 XLSX 文件").setInputFiles({
+    name: "phase6-worklog.xlsx",
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: readFileSync(templatePath!),
+  });
+  await page.getByRole("button", { name: "上传并校验" }).click();
+  await expect(page.getByText("VALIDATED", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "确认导入" }).click();
+  await expect(page.getByRole("status")).toContainText("数据已导入");
 
   await page.getByRole("button", { name: "退出登录" }).click();
   await expect(page).toHaveURL(/\/login$/);

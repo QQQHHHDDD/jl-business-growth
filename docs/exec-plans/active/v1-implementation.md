@@ -1,6 +1,6 @@
 # V1 Implementation Plan
 
-- Status: Phase 4 and Phase 5 complete; committed
+- Status: Phase 6 complete; Phase 0-6 committed
 - Updated: 2026-09-14
 - Source: `docs/00-文档索引.md` and current design documents `01` through `08`
 
@@ -9,7 +9,7 @@
 | Item | State | Action |
 |---|---|---|
 | OS / architecture | Ubuntu 22.04.5 LTS / x86_64 / 32 CPUs | Supported platform |
-| Git | Initialized; `43af68f` contains the Phase 0 baseline, `d39d52a` contains the Phase 1 password recovery fix, `dcbf05d` contains the Phase 2 daily core loop, and `0380886` contains the Phase 3 calendar, reviews, and analytics implementation | Keep each verified phase in its own semantic commit |
+| Git | Initialized; `43af68f` contains the Phase 0 baseline, `dcbf05d` contains the Phase 2 daily core loop, `3b98779` contains the Phase 3 implementation, `6dda242` contains the Phase 4/5 implementation, `bbc99c7` contains frontend warning optimization, and `726872f` contains Phase 6 | Keep each verified phase in its own semantic commit |
 | Go | 1.26.1 | Below required Go 1.27+; upgrade before final Go validation |
 | Node / npm | Not on system PATH; local Node 24 toolchain exists | Use local toolchain for current project validation |
 | PostgreSQL | PostgreSQL 14 is installed; current local cluster is down (`pg_isready` reports no response) | User must start the existing service before migration/status checks; no sudo action was run |
@@ -100,6 +100,17 @@ Implement calendar/reviews; team/learning/files/search; finance/income simulatio
 - [x] Run Phase 5 database-backed integration and full E2E acceptance on the host
 - [x] Include the Phase 5 implementation in the atomic Phase 4/5 commit
 
+### Phase 6: Import, export, and data governance
+
+- [x] Add versioned import job storage, official XLSX templates, upload, validation preview, confirmation, and temporary-file expiry
+- [x] Import worklogs, turnovers, finance transactions, and team members with user isolation and business validation
+- [x] Add CSV/XLSX structured exports, Markdown/JSON knowledge exports, and complete account ZIP export
+- [x] Add current-account deletion with session invalidation, database cascade, physical file cleanup, and orphan cleanup retry path
+- [x] Add idempotent Go job subcommands and systemd timer templates for cleanup and team snapshots
+- [x] Add Nginx, database/file backup, release build, and production deployment script templates without credentials
+- [x] Run Phase 6 database-backed integration and full E2E acceptance on the host
+- [x] Create the dedicated Phase 6 commit after all acceptance gates pass
+
 ## Migration Order
 
 `00001_extensions.sql` (`pgcrypto`, `pg_trgm`), then Phase 1 account/session/invitation schema, followed by each phase's schema. Published migrations are immutable.
@@ -124,6 +135,7 @@ None known in the source tree or required host acceptance. Database credentials 
 - The current implementation uses the locally available Go 1.27.0 toolchain for validation; the host default Go remains unchanged.
 - Frontend dependency audit is clean after upgrading Vitest to 4.1.11; `esbuild@0.25.12` is explicitly pinned in `allowScripts` for its required build binary install script.
 - Frontend build now lazy-loads the calendar/goals/team pages and separates stable runtime dependencies; the largest emitted JavaScript chunk is below 500 kB.
+- Phase 6 local implementation adds an official template-oriented XLSX reader/writer using the standard library; arbitrary user-created Excel layouts remain unsupported by design.
 
 ## Host Validation Commands
 
@@ -202,3 +214,6 @@ The PostgreSQL commands are required for Goose migration, sqlc schema validation
 - Phase 4/5 local implementation: migrations 00005-00006, OpenAPI/sqlc generation, Go vet/tests/race tests, frontend lint/Vitest/build, and `git diff --check` passed.
 - Phase 4/5 host acceptance completed: migrations are at version 6, Phase 1-5 API integration tests passed, and desktop baseline, Phase 1-5 flow, and mobile shell Playwright tests passed (3 tests).
 - Final Phase 4/5 regression: `make check`, backend `go test -race ./...` from `backend`, and `git diff --check` passed.
+- Phase 6 host acceptance completed: development and isolated test databases migrated to version 7, Phase 1-6 API integration tests passed, and desktop baseline, Phase 1-6 flow, and mobile shell Playwright tests passed (3 tests).
+- Final Phase 6 regression: the multipart import content-type guard and deterministic XLSX filename E2E fix passed; local `make check`, frontend Playwright test discovery, and `git diff --check` passed.
+- Phase 6 is committed with message `feat: implement phase 6 import export and data governance`; the project specification defines no Phase 7.

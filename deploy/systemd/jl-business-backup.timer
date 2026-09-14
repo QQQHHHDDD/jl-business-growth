@@ -1,0 +1,10 @@
+[Unit]
+Description=Run daily JL Business Growth backup
+
+[Timer]
+OnCalendar=*-*-* 03:45:00
+Persistent=true
+Unit=jl-business-backup.service
+
+[Install]
+WantedBy=timers.target

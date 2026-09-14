@@ -1,0 +1,16 @@
+[Unit]
+Description=Back up JL Business Growth database and files
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=jl-business
+Group=jl-business
+WorkingDirectory=/opt/jl-business-growth/current
+EnvironmentFile=/etc/jl-business-growth/jl-business-growth.env
+ExecStart=/opt/jl-business-growth/current/scripts/backup-db.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/jl-business-growth

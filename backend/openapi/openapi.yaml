@@ -227,6 +227,17 @@ paths:
           description: Account unlinked
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /api/auth/account:
+    delete:
+      operationId: deleteCurrentAccount
+      tags: [auth]
+      summary: Permanently delete the current account and its business data
+      security: [{ sessionCookie: [] }]
+      responses:
+        "204":
+          description: Account deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
   /api/admin/users:
     get:
       operationId: getAdminUsers
@@ -1705,6 +1716,118 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/IncomeSimulationResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/imports/templates/{import_type}:
+    get:
+      operationId: getImportTemplate
+      tags: [import-export]
+      summary: Download an official XLSX import template
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ImportType"
+      responses:
+        "200":
+          description: XLSX template
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/imports:
+    post:
+      operationId: createImport
+      tags: [import-export]
+      summary: Upload and validate an official XLSX import file
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [type, file]
+              properties:
+                type:
+                  $ref: "#/components/schemas/ImportType"
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Import job created and validated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportJobResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/imports/{import_id}:
+    get:
+      operationId: getImport
+      tags: [import-export]
+      summary: Get an import preview and validation result
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ImportId"
+      responses:
+        "200":
+          description: Import job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportJobResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    delete:
+      operationId: deleteImport
+      tags: [import-export]
+      summary: Discard an import job and its temporary file
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ImportId"
+      responses:
+        "204": { description: Import job discarded }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/imports/{import_id}/validate:
+    post:
+      operationId: validateImport
+      tags: [import-export]
+      summary: Revalidate an import job before confirmation
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ImportId"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportJobResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/imports/{import_id}/commit:
+    post:
+      operationId: commitImport
+      tags: [import-export]
+      summary: Confirm and transactionally import validated rows
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ImportId"
+      responses:
+        "200":
+          description: Committed import job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportJobResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/exports/{export_type}:
+    get:
+      operationId: exportData
+      tags: [import-export]
+      summary: Export current-user structured data or a complete account ZIP
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ExportType"
+        - $ref: "#/components/parameters/ExportFormat"
+      responses:
+        "200":
+          description: Export file
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        default: { $ref: "#/components/responses/ErrorResponse" }
 components:
   securitySchemes:
     sessionCookie:
@@ -1893,6 +2016,32 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+    ImportId:
+      name: import_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ImportType:
+      name: import_type
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [WORKLOG, FINANCE, TEAM, TURNOVER]
+    ExportType:
+      name: export_type
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [WORKLOG, TURNOVER, FINANCE, TEAM, KNOWLEDGE, ACCOUNT]
+    ExportFormat:
+      name: format
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [csv, xlsx, json, markdown, zip]
   responses:
     ErrorResponse:
       description: Request failed
@@ -1940,6 +2089,48 @@ components:
           $ref: "#/components/schemas/ErrorBody"
         request_id:
           type: string
+    ImportJob:
+      type: object
+      required: [id, type, status, row_count, valid_count, invalid_count, validation_summary, expires_at, created_at, rows]
+      properties:
+        id: { type: string, format: uuid }
+        type:
+          type: string
+          enum: [WORKLOG, FINANCE, TEAM, TURNOVER]
+        status:
+          type: string
+          enum: [UPLOADED, VALIDATED, COMMITTED, FAILED, EXPIRED]
+        row_count: { type: integer, minimum: 0 }
+        valid_count: { type: integer, minimum: 0 }
+        invalid_count: { type: integer, minimum: 0 }
+        validation_summary:
+          type: object
+          additionalProperties: true
+        expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/ImportPreviewRow" }
+    ImportPreviewRow:
+      type: object
+      required: [row_number, values, errors]
+      properties:
+        row_number: { type: integer, minimum: 2 }
+        values:
+          type: object
+          additionalProperties: { type: string }
+        errors:
+          type: array
+          items: { type: string }
+    ImportJobResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/ImportJob" }
+        request_id: { type: string }
+    ImportType:
+      type: string
+      enum: [WORKLOG, FINANCE, TEAM, TURNOVER]
     Account:
       type: object
       required: [id, username, role, status, timezone, created_at]

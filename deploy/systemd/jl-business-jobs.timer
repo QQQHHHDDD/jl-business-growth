@@ -1,0 +1,10 @@
+[Unit]
+Description=Run JL Business Growth scheduled jobs
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+Unit=jl-business-jobs.service
+
+[Install]
+WantedBy=timers.target

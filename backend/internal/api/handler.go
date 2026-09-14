@@ -21,6 +21,7 @@ import (
 	"jl-business-growth/backend/internal/daily"
 	fileassets "jl-business-growth/backend/internal/files"
 	"jl-business-growth/backend/internal/finance"
+	"jl-business-growth/backend/internal/importexport"
 	"jl-business-growth/backend/internal/invitation"
 	"jl-business-growth/backend/internal/knowledge"
 	"jl-business-growth/backend/internal/mail"
@@ -43,12 +44,13 @@ type Handler struct {
 	files      *fileassets.Service
 	search     *search.Service
 	finance    *finance.Service
+	imports    *importexport.Service
 	config     config.Config
 }
 
 func NewHandler(authService *auth.Service, adminService *admin.Service, invitationService *invitation.Service, cfg config.Config) *Handler {
 	pool := authService.Pool()
-	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(pool), calendar: calendar.NewService(pool, mail.NewSender(cfg)), reviews: reviews.NewService(pool), analytics: analytics.NewService(pool), team: team.NewService(pool), knowledge: knowledge.NewService(pool), files: fileassets.NewService(pool, cfg), search: search.NewService(pool), finance: finance.NewService(pool), config: cfg}
+	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(pool), calendar: calendar.NewService(pool, mail.NewSender(cfg)), reviews: reviews.NewService(pool), analytics: analytics.NewService(pool), team: team.NewService(pool), knowledge: knowledge.NewService(pool), files: fileassets.NewService(pool, cfg), search: search.NewService(pool), finance: finance.NewService(pool), imports: importexport.NewService(pool, cfg), config: cfg}
 }
 
 func (h *Handler) PostAuthRegister(ctx echo.Context) error {

@@ -1,0 +1,17 @@
+[Unit]
+Description=JL Business Growth scheduled jobs
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=jl-business
+Group=jl-business
+WorkingDirectory=/opt/jl-business-growth/current
+EnvironmentFile=/etc/jl-business-growth/jl-business-growth.env
+ExecStart=/opt/jl-business-growth/current/jl-business-jobs cleanup
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp

@@ -6,7 +6,7 @@ BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 
 .PHONY: dev generate generate-openapi generate-sqlc generate-frontend lint lint-backend lint-frontend \
-	test test-backend test-integration test-frontend test-e2e build build-backend build-frontend reset-superadmin-password \
+	test test-backend test-integration test-frontend test-e2e build build-backend build-jobs build-frontend reset-superadmin-password \
 	migrate-up migrate-status migrate-test-up migrate-test-status check-test-database check
 
 dev:
@@ -42,7 +42,7 @@ test-backend:
 
 test-integration:
 	$(MAKE) check-test-database
-	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^TestPhase[12345]APIIntegration$$'
+	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^TestPhase[123456]APIIntegration$$'
 
 test-frontend:
 	$(NPM) --prefix $(FRONTEND_DIR) run test
@@ -53,11 +53,15 @@ test-e2e:
 	@test "$${APP_ENV:-development}" != "test" || test -n "$${E2E_SUPERADMIN_PASSWORD}" || (echo 'APP_ENV=test requires E2E_SUPERADMIN_PASSWORD'; exit 1)
 	$(NPM) --prefix $(FRONTEND_DIR) run test:e2e
 
-build: build-backend build-frontend
+build: build-backend build-jobs build-frontend
 
 build-backend:
 	mkdir -p $(BACKEND_DIR)/bin
 	cd $(BACKEND_DIR) && $(GO) build -o bin/jl-business-api ./cmd/jl-business-api
+
+build-jobs:
+	mkdir -p $(BACKEND_DIR)/bin
+	cd $(BACKEND_DIR) && $(GO) build -o bin/jl-business-jobs ./cmd/jl-business-jobs
 
 build-frontend:
 	$(NPM) --prefix $(FRONTEND_DIR) run build

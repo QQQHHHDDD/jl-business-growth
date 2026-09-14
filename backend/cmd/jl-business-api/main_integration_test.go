@@ -700,6 +700,136 @@ func TestPhase5APIIntegration(t *testing.T) {
 	deleteTestJSON(t, userClient, server.URL, "/api/income-simulations/"+duplicate.Data.Id.String(), userAuth.Data.CsrfToken, http.StatusNoContent)
 }
 
+func TestPhase6APIIntegration(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
+	}
+	parsedURL, err := url.Parse(databaseURL)
+	if err != nil {
+		t.Fatalf("parse TEST_DATABASE_URL: %v", err)
+	}
+	if strings.TrimPrefix(parsedURL.Path, "/") != "jl_business_test" {
+		t.Fatalf("refusing to run integration test against %q; TEST_DATABASE_URL must target jl_business_test", parsedURL.Path)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatalf("create test database pool: %v", err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
+		t.Fatalf("ping test database: %v", err)
+	}
+	var tableExists bool
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.import_jobs') IS NOT NULL`).Scan(&tableExists); err != nil {
+		t.Fatalf("check Phase 6 migration: %v", err)
+	}
+	if !tableExists {
+		t.Fatal("Phase 6 migration is not applied; run make migrate-test-up first")
+	}
+	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
+		t.Fatalf("reset isolated test database: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO finance_categories (user_id, type, name) VALUES (NULL, 'INCOME', '其他收入'), (NULL, 'EXPENSE', '其他支出'), (NULL, 'EXPENSE', '生活'), (NULL, 'EXPENSE', '交通'), (NULL, 'EXPENSE', '学习')`); err != nil {
+		t.Fatalf("restore finance system categories after reset: %v", err)
+	}
+	fileRoot := t.TempDir()
+	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	authService := auth.NewService(pool, cfg)
+	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
+		t.Fatalf("bootstrap test super administrator: %v", err)
+	}
+	server := httptest.NewServer(newServer(pool, cfg, authService))
+	defer server.Close()
+	adminClient := newTestClient(t)
+	login := postTestJSON(t, adminClient, server.URL, cfg.PublicBaseURL, "/api/auth/login", map[string]string{"username": cfg.SuperadminUsername, "password": cfg.SuperadminPassword}, "", http.StatusOK)
+	var adminAuth api.AuthResponse
+	decodeTestJSON(t, login, &adminAuth)
+	inviteBody := postTestJSON(t, adminClient, server.URL, cfg.PublicBaseURL, "/api/admin/invitation-codes", map[string]interface{}{"max_uses": 1}, adminAuth.Data.CsrfToken, http.StatusCreated)
+	var invite api.InvitationResponse
+	decodeTestJSON(t, inviteBody, &invite)
+	userClient := newTestClient(t)
+	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase6-user", "password": "phase6-user-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
+	var userAuth api.AuthResponse
+	decodeTestJSON(t, registered, &userAuth)
+
+	templateRequest, err := http.NewRequest(http.MethodGet, endpointURL(server.URL, "/api/imports/templates/WORKLOG"), nil)
+	if err != nil {
+		t.Fatalf("create template request: %v", err)
+	}
+	templateRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
+	templateData := doTestRequest(t, userClient, templateRequest, http.StatusOK)
+	var uploadBody bytes.Buffer
+	writer := multipart.NewWriter(&uploadBody)
+	if err := writer.WriteField("type", "WORKLOG"); err != nil {
+		t.Fatalf("write import type: %v", err)
+	}
+	part, err := writer.CreateFormFile("file", "phase6-worklog.xlsx")
+	if err != nil {
+		t.Fatalf("create import file: %v", err)
+	}
+	if _, err := part.Write(templateData); err != nil {
+		t.Fatalf("write import workbook: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close import form: %v", err)
+	}
+	request, err := http.NewRequest(http.MethodPost, endpointURL(server.URL, "/api/imports"), &uploadBody)
+	if err != nil {
+		t.Fatalf("create import request: %v", err)
+	}
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	request.Header.Set("Origin", cfg.PublicBaseURL)
+	request.Header.Set("X-CSRF-Token", userAuth.Data.CsrfToken)
+	request.Header.Set("X-Forwarded-For", testClientIP(userClient))
+	importResponse := doTestRequest(t, userClient, request, http.StatusCreated)
+	var job api.ImportJobResponse
+	decodeTestJSON(t, importResponse, &job)
+	if job.Data.Status != api.ImportJobStatus("VALIDATED") || job.Data.InvalidCount != 0 {
+		t.Fatalf("import job = %+v", job.Data)
+	}
+	var worklogCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM daily_worklogs WHERE user_id=(SELECT id FROM accounts WHERE username='phase6-user')`).Scan(&worklogCount); err != nil {
+		t.Fatalf("count pre-commit worklogs: %v", err)
+	}
+	if worklogCount != 0 {
+		t.Fatalf("worklogs written before confirmation: %d", worklogCount)
+	}
+	committed := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+job.Data.Id.String()+"/commit", nil, userAuth.Data.CsrfToken, http.StatusOK)
+	decodeTestJSON(t, committed, &job)
+	if job.Data.Status != api.ImportJobStatus("COMMITTED") {
+		t.Fatalf("committed import job = %+v", job.Data)
+	}
+
+	var fileBody bytes.Buffer
+	fileWriter := multipart.NewWriter(&fileBody)
+	_ = fileWriter.WriteField("category", "KNOWLEDGE_DOCUMENT")
+	filePart, err := fileWriter.CreatePart(textproto.MIMEHeader{"Content-Disposition": {`form-data; name="file"; filename="phase6.txt"`}, "Content-Type": {"text/plain"}})
+	if err != nil {
+		t.Fatalf("create account file: %v", err)
+	}
+	_, _ = filePart.Write([]byte("phase 6 account deletion file"))
+	_ = fileWriter.Close()
+	fileRequest, err := http.NewRequest(http.MethodPost, endpointURL(server.URL, "/api/files"), &fileBody)
+	if err != nil {
+		t.Fatalf("create account file request: %v", err)
+	}
+	fileRequest.Header.Set("Content-Type", fileWriter.FormDataContentType())
+	fileRequest.Header.Set("Origin", cfg.PublicBaseURL)
+	fileRequest.Header.Set("X-CSRF-Token", userAuth.Data.CsrfToken)
+	fileRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
+	doTestRequest(t, userClient, fileRequest, http.StatusCreated)
+	deleteTestJSON(t, userClient, server.URL, "/api/auth/account", userAuth.Data.CsrfToken, http.StatusNoContent)
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM accounts WHERE username='phase6-user'`).Scan(&worklogCount); err != nil {
+		t.Fatalf("check deleted account: %v", err)
+	}
+	if worklogCount != 0 {
+		t.Fatal("account still exists after deletion")
+	}
+}
+
 var (
 	testClientIPs      sync.Map
 	testClientSequence uint32

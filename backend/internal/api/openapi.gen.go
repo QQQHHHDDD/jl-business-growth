@@ -212,6 +212,31 @@ const (
 	Ok HealthDataStatus = "ok"
 )
 
+// Defines values for ImportJobStatus.
+const (
+	COMMITTED ImportJobStatus = "COMMITTED"
+	EXPIRED   ImportJobStatus = "EXPIRED"
+	FAILED    ImportJobStatus = "FAILED"
+	UPLOADED  ImportJobStatus = "UPLOADED"
+	VALIDATED ImportJobStatus = "VALIDATED"
+)
+
+// Defines values for ImportJobType.
+const (
+	ImportJobTypeFINANCE  ImportJobType = "FINANCE"
+	ImportJobTypeTEAM     ImportJobType = "TEAM"
+	ImportJobTypeTURNOVER ImportJobType = "TURNOVER"
+	ImportJobTypeWORKLOG  ImportJobType = "WORKLOG"
+)
+
+// Defines values for ImportType.
+const (
+	ImportTypeFINANCE  ImportType = "FINANCE"
+	ImportTypeTEAM     ImportType = "TEAM"
+	ImportTypeTURNOVER ImportType = "TURNOVER"
+	ImportTypeWORKLOG  ImportType = "WORKLOG"
+)
+
 // Defines values for IncomeSimulationInputAnnualGrowthStatus.
 const (
 	GROWTH       IncomeSimulationInputAnnualGrowthStatus = "GROWTH"
@@ -365,6 +390,25 @@ const (
 	AnalyticsGranularityWeek  AnalyticsGranularity = "week"
 )
 
+// Defines values for ExportFormat.
+const (
+	ExportFormatCsv      ExportFormat = "csv"
+	ExportFormatJson     ExportFormat = "json"
+	ExportFormatMarkdown ExportFormat = "markdown"
+	ExportFormatXlsx     ExportFormat = "xlsx"
+	ExportFormatZip      ExportFormat = "zip"
+)
+
+// Defines values for ExportType.
+const (
+	ExportTypeACCOUNT   ExportType = "ACCOUNT"
+	ExportTypeFINANCE   ExportType = "FINANCE"
+	ExportTypeKNOWLEDGE ExportType = "KNOWLEDGE"
+	ExportTypeTEAM      ExportType = "TEAM"
+	ExportTypeTURNOVER  ExportType = "TURNOVER"
+	ExportTypeWORKLOG   ExportType = "WORKLOG"
+)
+
 // Defines values for GetGoalAnalyticsParamsGranularity.
 const (
 	GetGoalAnalyticsParamsGranularityDay   GetGoalAnalyticsParamsGranularity = "day"
@@ -386,6 +430,25 @@ const (
 	Week  GetWorklogAnalyticsParamsGranularity = "week"
 )
 
+// Defines values for ExportDataParamsFormat.
+const (
+	ExportDataParamsFormatCsv      ExportDataParamsFormat = "csv"
+	ExportDataParamsFormatJson     ExportDataParamsFormat = "json"
+	ExportDataParamsFormatMarkdown ExportDataParamsFormat = "markdown"
+	ExportDataParamsFormatXlsx     ExportDataParamsFormat = "xlsx"
+	ExportDataParamsFormatZip      ExportDataParamsFormat = "zip"
+)
+
+// Defines values for ExportDataParamsExportType.
+const (
+	ExportDataParamsExportTypeACCOUNT   ExportDataParamsExportType = "ACCOUNT"
+	ExportDataParamsExportTypeFINANCE   ExportDataParamsExportType = "FINANCE"
+	ExportDataParamsExportTypeKNOWLEDGE ExportDataParamsExportType = "KNOWLEDGE"
+	ExportDataParamsExportTypeTEAM      ExportDataParamsExportType = "TEAM"
+	ExportDataParamsExportTypeTURNOVER  ExportDataParamsExportType = "TURNOVER"
+	ExportDataParamsExportTypeWORKLOG   ExportDataParamsExportType = "WORKLOG"
+)
+
 // Defines values for UploadFileMultipartBodyCategory.
 const (
 	UploadFileMultipartBodyCategoryDREAMIMAGE        UploadFileMultipartBodyCategory = "DREAM_IMAGE"
@@ -397,6 +460,14 @@ const (
 const (
 	Attachment GetFileContentParamsDisposition = "attachment"
 	Inline     GetFileContentParamsDisposition = "inline"
+)
+
+// Defines values for GetImportTemplateParamsImportType.
+const (
+	FINANCE  GetImportTemplateParamsImportType = "FINANCE"
+	TEAM     GetImportTemplateParamsImportType = "TEAM"
+	TURNOVER GetImportTemplateParamsImportType = "TURNOVER"
+	WORKLOG  GetImportTemplateParamsImportType = "WORKLOG"
 )
 
 // Defines values for GetReviewParamsReviewType.
@@ -959,6 +1030,42 @@ type HealthResponse struct {
 	Data      HealthData `json:"data"`
 	RequestId string     `json:"request_id"`
 }
+
+// ImportJob defines model for ImportJob.
+type ImportJob struct {
+	CreatedAt         time.Time              `json:"created_at"`
+	ExpiresAt         time.Time              `json:"expires_at"`
+	Id                openapi_types.UUID     `json:"id"`
+	InvalidCount      int                    `json:"invalid_count"`
+	RowCount          int                    `json:"row_count"`
+	Rows              []ImportPreviewRow     `json:"rows"`
+	Status            ImportJobStatus        `json:"status"`
+	Type              ImportJobType          `json:"type"`
+	ValidCount        int                    `json:"valid_count"`
+	ValidationSummary map[string]interface{} `json:"validation_summary"`
+}
+
+// ImportJobStatus defines model for ImportJob.Status.
+type ImportJobStatus string
+
+// ImportJobType defines model for ImportJob.Type.
+type ImportJobType string
+
+// ImportJobResponse defines model for ImportJobResponse.
+type ImportJobResponse struct {
+	Data      ImportJob `json:"data"`
+	RequestId string    `json:"request_id"`
+}
+
+// ImportPreviewRow defines model for ImportPreviewRow.
+type ImportPreviewRow struct {
+	Errors    []string          `json:"errors"`
+	RowNumber int               `json:"row_number"`
+	Values    map[string]string `json:"values"`
+}
+
+// ImportType defines model for ImportType.
+type ImportType string
 
 // IncomeCalculationResponse defines model for IncomeCalculationResponse.
 type IncomeCalculationResponse struct {
@@ -1563,11 +1670,20 @@ type DateTo = openapi_types.Date
 // DreamId defines model for DreamId.
 type DreamId = openapi_types.UUID
 
+// ExportFormat defines model for ExportFormat.
+type ExportFormat string
+
+// ExportType defines model for ExportType.
+type ExportType string
+
 // FileId defines model for FileId.
 type FileId = openapi_types.UUID
 
 // GoalId defines model for GoalId.
 type GoalId = openapi_types.UUID
+
+// ImportId defines model for ImportId.
+type ImportId = openapi_types.UUID
 
 // InvitationId defines model for InvitationId.
 type InvitationId = openapi_types.UUID
@@ -1655,6 +1771,17 @@ type GetDashboardParams struct {
 	Date BusinessDate `form:"date" json:"date"`
 }
 
+// ExportDataParams defines parameters for ExportData.
+type ExportDataParams struct {
+	Format ExportDataParamsFormat `form:"format" json:"format"`
+}
+
+// ExportDataParamsFormat defines parameters for ExportData.
+type ExportDataParamsFormat string
+
+// ExportDataParamsExportType defines parameters for ExportData.
+type ExportDataParamsExportType string
+
 // UploadFileMultipartBody defines parameters for UploadFile.
 type UploadFileMultipartBody struct {
 	Category *UploadFileMultipartBodyCategory `json:"category,omitempty"`
@@ -1677,6 +1804,15 @@ type ListFinanceTransactionsParams struct {
 	From *DateFrom `form:"from,omitempty" json:"from,omitempty"`
 	To   *DateTo   `form:"to,omitempty" json:"to,omitempty"`
 }
+
+// CreateImportMultipartBody defines parameters for CreateImport.
+type CreateImportMultipartBody struct {
+	File openapi_types.File `json:"file"`
+	Type ImportType         `json:"type"`
+}
+
+// GetImportTemplateParamsImportType defines parameters for GetImportTemplate.
+type GetImportTemplateParamsImportType string
 
 // CompareIncomeSimulationsJSONBody defines parameters for CompareIncomeSimulations.
 type CompareIncomeSimulationsJSONBody struct {
@@ -1797,6 +1933,9 @@ type CreateGoalJSONRequestBody = GoalRequest
 // UpdateGoalJSONRequestBody defines body for UpdateGoal for application/json ContentType.
 type UpdateGoalJSONRequestBody = GoalRequest
 
+// CreateImportMultipartRequestBody defines body for CreateImport for multipart/form-data ContentType.
+type CreateImportMultipartRequestBody CreateImportMultipartBody
+
 // CreateIncomeSimulationJSONRequestBody defines body for CreateIncomeSimulation for application/json ContentType.
 type CreateIncomeSimulationJSONRequestBody = IncomeSimulationRequest
 
@@ -1892,6 +2031,9 @@ type ServerInterface interface {
 	// Aggregate worklogs by day, week, or month
 	// (GET /api/analytics/worklogs)
 	GetWorklogAnalytics(ctx echo.Context, params GetWorklogAnalyticsParams) error
+	// Permanently delete the current account and its business data
+	// (DELETE /api/auth/account)
+	DeleteCurrentAccount(ctx echo.Context) error
 	// List normal accounts linked to this browser session
 	// (GET /api/auth/accounts)
 	GetAuthAccounts(ctx echo.Context) error
@@ -1958,6 +2100,9 @@ type ServerInterface interface {
 	// Replace a dream
 	// (PUT /api/dreams/{dream_id})
 	UpdateDream(ctx echo.Context, dreamId DreamId) error
+	// Export current-user structured data or a complete account ZIP
+	// (GET /api/exports/{export_type})
+	ExportData(ctx echo.Context, exportType ExportDataParamsExportType, params ExportDataParams) error
 	// List uploaded files
 	// (GET /api/files)
 	ListFiles(ctx echo.Context) error
@@ -2024,6 +2169,24 @@ type ServerInterface interface {
 	// Check whether required runtime dependencies are ready
 	// (GET /api/health/ready)
 	GetHealthReady(ctx echo.Context) error
+	// Upload and validate an official XLSX import file
+	// (POST /api/imports)
+	CreateImport(ctx echo.Context) error
+	// Download an official XLSX import template
+	// (GET /api/imports/templates/{import_type})
+	GetImportTemplate(ctx echo.Context, importType GetImportTemplateParamsImportType) error
+	// Discard an import job and its temporary file
+	// (DELETE /api/imports/{import_id})
+	DeleteImport(ctx echo.Context, importId ImportId) error
+	// Get an import preview and validation result
+	// (GET /api/imports/{import_id})
+	GetImport(ctx echo.Context, importId ImportId) error
+	// Confirm and transactionally import validated rows
+	// (POST /api/imports/{import_id}/commit)
+	CommitImport(ctx echo.Context, importId ImportId) error
+	// Revalidate an import job before confirmation
+	// (POST /api/imports/{import_id}/validate)
+	ValidateImport(ctx echo.Context, importId ImportId) error
 	// List saved income simulations
 	// (GET /api/income-simulations)
 	ListIncomeSimulations(ctx echo.Context) error
@@ -2462,6 +2625,17 @@ func (w *ServerInterfaceWrapper) GetWorklogAnalytics(ctx echo.Context) error {
 	return err
 }
 
+// DeleteCurrentAccount converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCurrentAccount(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCurrentAccount(ctx)
+	return err
+}
+
 // GetAuthAccounts converts echo context to params.
 func (w *ServerInterfaceWrapper) GetAuthAccounts(ctx echo.Context) error {
 	var err error
@@ -2781,6 +2955,33 @@ func (w *ServerInterfaceWrapper) UpdateDream(ctx echo.Context) error {
 	return err
 }
 
+// ExportData converts echo context to params.
+func (w *ServerInterfaceWrapper) ExportData(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "export_type" -------------
+	var exportType ExportDataParamsExportType
+
+	err = runtime.BindStyledParameterWithOptions("simple", "export_type", ctx.Param("export_type"), &exportType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter export_type: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ExportDataParams
+	// ------------- Required query parameter "format" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "format", ctx.QueryParams(), &params.Format)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter format: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ExportData(ctx, exportType, params)
+	return err
+}
+
 // ListFiles converts echo context to params.
 func (w *ServerInterfaceWrapper) ListFiles(ctx echo.Context) error {
 	var err error
@@ -3097,6 +3298,107 @@ func (w *ServerInterfaceWrapper) GetHealthReady(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetHealthReady(ctx)
+	return err
+}
+
+// CreateImport converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateImport(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateImport(ctx)
+	return err
+}
+
+// GetImportTemplate converts echo context to params.
+func (w *ServerInterfaceWrapper) GetImportTemplate(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "import_type" -------------
+	var importType GetImportTemplateParamsImportType
+
+	err = runtime.BindStyledParameterWithOptions("simple", "import_type", ctx.Param("import_type"), &importType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_type: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetImportTemplate(ctx, importType)
+	return err
+}
+
+// DeleteImport converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteImport(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "import_id" -------------
+	var importId ImportId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "import_id", ctx.Param("import_id"), &importId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteImport(ctx, importId)
+	return err
+}
+
+// GetImport converts echo context to params.
+func (w *ServerInterfaceWrapper) GetImport(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "import_id" -------------
+	var importId ImportId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "import_id", ctx.Param("import_id"), &importId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetImport(ctx, importId)
+	return err
+}
+
+// CommitImport converts echo context to params.
+func (w *ServerInterfaceWrapper) CommitImport(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "import_id" -------------
+	var importId ImportId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "import_id", ctx.Param("import_id"), &importId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CommitImport(ctx, importId)
+	return err
+}
+
+// ValidateImport converts echo context to params.
+func (w *ServerInterfaceWrapper) ValidateImport(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "import_id" -------------
+	var importId ImportId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "import_id", ctx.Param("import_id"), &importId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ValidateImport(ctx, importId)
 	return err
 }
 
@@ -3814,6 +4116,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/api/analytics/goals", wrapper.GetGoalAnalytics)
 	router.GET(baseURL+"/api/analytics/turnover", wrapper.GetTurnoverAnalytics)
 	router.GET(baseURL+"/api/analytics/worklogs", wrapper.GetWorklogAnalytics)
+	router.DELETE(baseURL+"/api/auth/account", wrapper.DeleteCurrentAccount)
 	router.GET(baseURL+"/api/auth/accounts", wrapper.GetAuthAccounts)
 	router.POST(baseURL+"/api/auth/accounts/add", wrapper.PostAuthAccountsAdd)
 	router.DELETE(baseURL+"/api/auth/accounts/:account_id", wrapper.DeleteAuthAccount)
@@ -3836,6 +4139,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/api/dreams/:dream_id", wrapper.DeleteDream)
 	router.GET(baseURL+"/api/dreams/:dream_id", wrapper.GetDream)
 	router.PUT(baseURL+"/api/dreams/:dream_id", wrapper.UpdateDream)
+	router.GET(baseURL+"/api/exports/:export_type", wrapper.ExportData)
 	router.GET(baseURL+"/api/files", wrapper.ListFiles)
 	router.POST(baseURL+"/api/files", wrapper.UploadFile)
 	router.DELETE(baseURL+"/api/files/:file_id", wrapper.DeleteFile)
@@ -3858,6 +4162,12 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.PUT(baseURL+"/api/goals/:goal_id", wrapper.UpdateGoal)
 	router.GET(baseURL+"/api/health/live", wrapper.GetHealthLive)
 	router.GET(baseURL+"/api/health/ready", wrapper.GetHealthReady)
+	router.POST(baseURL+"/api/imports", wrapper.CreateImport)
+	router.GET(baseURL+"/api/imports/templates/:import_type", wrapper.GetImportTemplate)
+	router.DELETE(baseURL+"/api/imports/:import_id", wrapper.DeleteImport)
+	router.GET(baseURL+"/api/imports/:import_id", wrapper.GetImport)
+	router.POST(baseURL+"/api/imports/:import_id/commit", wrapper.CommitImport)
+	router.POST(baseURL+"/api/imports/:import_id/validate", wrapper.ValidateImport)
 	router.GET(baseURL+"/api/income-simulations", wrapper.ListIncomeSimulations)
 	router.POST(baseURL+"/api/income-simulations", wrapper.CreateIncomeSimulation)
 	router.POST(baseURL+"/api/income-simulations/compare", wrapper.CompareIncomeSimulations)

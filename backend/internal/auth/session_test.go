@@ -88,11 +88,13 @@ func TestSecurityMiddlewareAllowsMultipartFileUploads(t *testing.T) {
 	e := echo.New()
 	handler := SecurityMiddleware(config.Config{PublicBaseURL: "http://127.0.0.1:5173"})(func(echo.Context) error { return nil })
 
-	request := httptest.NewRequest(http.MethodPost, "/api/files", nil)
-	request.Header.Set("Origin", "http://127.0.0.1:5173")
-	request.Header.Set("Content-Type", "multipart/form-data; boundary=test-boundary")
-	if err := handler(e.NewContext(request, httptest.NewRecorder())); err != nil {
-		t.Fatalf("SecurityMiddleware() rejected multipart file upload: %v", err)
+	for _, path := range []string{"/api/files", "/api/imports"} {
+		request := httptest.NewRequest(http.MethodPost, path, nil)
+		request.Header.Set("Origin", "http://127.0.0.1:5173")
+		request.Header.Set("Content-Type", "multipart/form-data; boundary=test-boundary")
+		if err := handler(e.NewContext(request, httptest.NewRecorder())); err != nil {
+			t.Fatalf("SecurityMiddleware() rejected multipart upload at %s: %v", path, err)
+		}
 	}
 }
 

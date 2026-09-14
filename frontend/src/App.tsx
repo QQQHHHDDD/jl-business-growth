@@ -17,6 +17,7 @@ import { WorklogPage } from "@/features/worklog/worklog-page";
 import { KnowledgePage } from "@/features/knowledge/knowledge-page";
 import { FinancePage } from "@/features/finance/finance-page";
 import { IncomePage } from "@/features/income/income-page";
+import { DataPage } from "@/features/importexport/data-page";
 import { roleHome } from "@/lib/utils";
 
 const CalendarPage = lazy(() => import("@/features/calendar/calendar-page").then((module) => ({ default: module.CalendarPage })));
@@ -130,6 +131,10 @@ function UserIncomeRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? <IncomePage authResponse={meQuery.data} /> : null;
 }
 
+function DataRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <DataPage authResponse={meQuery.data} /> : null;
+}
+
 function SettingsRoute({ meQuery }: { meQuery: MeQuery }) {
   const authResponse = meQuery.data;
   if (!authResponse) return null;
@@ -174,6 +179,7 @@ function AppRoutes({ meQuery, health, onLogout, loggingOut }: { meQuery: MeQuery
             if (path === "/app/search") return <Route key={path} path={path} element={<UserSearchRoute meQuery={meQuery} />} />;
             if (path === "/app/finance") return <Route key={path} path={path} element={<UserFinanceRoute meQuery={meQuery} />} />;
             if (path === "/app/income-simulator") return <Route key={path} path={path} element={<UserIncomeRoute meQuery={meQuery} />} />;
+            if (path === "/app/data") return <Route key={path} path={path} element={<DataRoute meQuery={meQuery} />} />;
             return <Route key={path} path={path} element={<PlaceholderPage title={title} description={description} />} />;
           })}
         </Route>
