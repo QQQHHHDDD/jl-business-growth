@@ -547,6 +547,129 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/calendar/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List expanded calendar event occurrences in a time range */
+        get: operations["listCalendarEvents"];
+        put?: never;
+        /** Create a one-time or recurring calendar event */
+        post: operations["createCalendarEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a calendar event series */
+        get: operations["getCalendarEvent"];
+        /** Update an entire series, one occurrence, or an occurrence and following events */
+        put: operations["updateCalendarEvent"];
+        post?: never;
+        /** Delete a calendar event series and send cancellation notices */
+        delete: operations["deleteCalendarEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List saved daily, weekly, or monthly reviews */
+        get: operations["listReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviews/{review_type}/{period_start}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a review and its live period totals */
+        get: operations["getReview"];
+        /** Create or update one review for its period */
+        put: operations["updateReview"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/worklogs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate worklogs by day, week, or month */
+        get: operations["getWorklogAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/turnover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate turnover by day, week, or month */
+        get: operations["getTurnoverAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate goals by their business start date */
+        get: operations["getGoalAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -926,6 +1049,146 @@ export interface components {
             data: components["schemas"]["DashboardData"];
             request_id: string;
         };
+        CalendarAttendee: {
+            /** Format: email */
+            email: string;
+            display_name?: string | null;
+        };
+        CalendarEvent: {
+            /** Format: uuid */
+            id: string;
+            occurrence_id: string;
+            uid: string;
+            sequence: number;
+            title: string;
+            description?: string | null;
+            location_or_link?: string | null;
+            timezone: string;
+            all_day: boolean;
+            /** Format: date-time */
+            start_at: string;
+            /** Format: date-time */
+            end_at: string;
+            /** @enum {string} */
+            recurrence_freq: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+            recurrence_interval: number;
+            recurrence_weekdays: number[];
+            /** @enum {string} */
+            recurrence_end_type: "NEVER" | "UNTIL" | "COUNT";
+            /** Format: date-time */
+            recurrence_until?: string | null;
+            recurrence_count?: number | null;
+            /** Format: date-time */
+            original_occurrence_start?: string | null;
+            is_exception?: boolean;
+            attendees: components["schemas"]["CalendarAttendee"][];
+        };
+        CalendarEventRequest: {
+            title: string;
+            description?: string | null;
+            location_or_link?: string | null;
+            timezone: string;
+            /** @default false */
+            all_day: boolean;
+            /** Format: date-time */
+            start_at: string;
+            /** Format: date-time */
+            end_at: string;
+            /**
+             * @default NONE
+             * @enum {string}
+             */
+            recurrence_freq: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+            /** @default 1 */
+            recurrence_interval: number;
+            recurrence_weekdays?: number[];
+            /**
+             * @default NEVER
+             * @enum {string}
+             */
+            recurrence_end_type: "NEVER" | "UNTIL" | "COUNT";
+            /** Format: date-time */
+            recurrence_until?: string | null;
+            recurrence_count?: number | null;
+            attendees?: components["schemas"]["CalendarAttendee"][];
+            /**
+             * @default SERIES
+             * @enum {string}
+             */
+            edit_scope: "SERIES" | "THIS_ONLY" | "THIS_AND_FOLLOWING";
+            /** Format: date-time */
+            occurrence_start?: string | null;
+        };
+        CalendarEventResponse: {
+            data: components["schemas"]["CalendarEvent"];
+            request_id: string;
+        };
+        CalendarEventListResponse: {
+            data: {
+                items: components["schemas"]["CalendarEvent"][];
+            };
+            request_id: string;
+        };
+        ReviewPeriodTotals: {
+            worklog_action_count: number;
+            turnover_pv: number;
+            turnover_net_amount: number;
+        };
+        Review: {
+            /** Format: uuid */
+            id?: string | null;
+            /** @enum {string} */
+            type: "DAILY" | "WEEKLY" | "MONTHLY";
+            /** Format: date */
+            period_start: string;
+            good: string;
+            problems: string;
+            improvements: string;
+            next_focus: string;
+            summary?: string | null;
+            totals: components["schemas"]["ReviewPeriodTotals"];
+        };
+        ReviewRequest: {
+            good?: string;
+            problems?: string;
+            improvements?: string;
+            next_focus?: string;
+            summary?: string | null;
+        };
+        ReviewResponse: {
+            data: components["schemas"]["Review"];
+            request_id: string;
+        };
+        ReviewListResponse: {
+            data: {
+                items: components["schemas"]["Review"][];
+            };
+            request_id: string;
+        };
+        AnalyticsBucket: {
+            period: string;
+            action_count: number;
+            reading_minutes: number;
+            audio_minutes: number;
+            pv: number;
+            net_amount: number;
+            goal_count: number;
+            completed_count: number;
+        };
+        AnalyticsData: {
+            metric: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @enum {string} */
+            granularity: "day" | "week" | "month";
+            buckets: components["schemas"]["AnalyticsBucket"][];
+        };
+        AnalyticsResponse: {
+            data: components["schemas"]["AnalyticsData"];
+            request_id: string;
+        };
     };
     responses: {
         /** @description Request failed */
@@ -950,6 +1213,12 @@ export interface components {
         TurnoverDate: string;
         DreamId: string;
         GoalId: string;
+        CalendarEventId: string;
+        CalendarFrom: string;
+        CalendarTo: string;
+        ReviewType: "DAILY" | "WEEKLY" | "MONTHLY";
+        ReviewPeriodStart: string;
+        AnalyticsGranularity: "day" | "week" | "month";
     };
     requestBodies: never;
     headers: never;
@@ -2062,6 +2331,277 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listCalendarEvents: {
+        parameters: {
+            query: {
+                from: components["parameters"]["CalendarFrom"];
+                to: components["parameters"]["CalendarTo"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar occurrences */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar event created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: components["parameters"]["CalendarEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar event */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: components["parameters"]["CalendarEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar event updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: components["parameters"]["CalendarEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar event deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listReviews: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reviews */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                review_type: components["parameters"]["ReviewType"];
+                period_start: components["parameters"]["ReviewPeriodStart"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                review_type: components["parameters"]["ReviewType"];
+                period_start: components["parameters"]["ReviewPeriodStart"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Review saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getWorklogAnalytics: {
+        parameters: {
+            query: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+                granularity: components["parameters"]["AnalyticsGranularity"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Worklog analytics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getTurnoverAnalytics: {
+        parameters: {
+            query: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+                granularity: components["parameters"]["AnalyticsGranularity"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Turnover analytics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getGoalAnalytics: {
+        parameters: {
+            query: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+                granularity: components["parameters"]["AnalyticsGranularity"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Goal analytics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsResponse"];
+                };
             };
             default: components["responses"]["ErrorResponse"];
         };

@@ -42,7 +42,7 @@ test-backend:
 
 test-integration:
 	$(MAKE) check-test-database
-	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^TestPhase[12]APIIntegration$$'
+	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^TestPhase[123]APIIntegration$$'
 
 test-frontend:
 	$(NPM) --prefix $(FRONTEND_DIR) run test

@@ -14,11 +14,15 @@ import (
 
 	"jl-business-growth/backend/db/generated"
 	"jl-business-growth/backend/internal/admin"
+	"jl-business-growth/backend/internal/analytics"
 	"jl-business-growth/backend/internal/auth"
+	"jl-business-growth/backend/internal/calendar"
 	"jl-business-growth/backend/internal/config"
 	"jl-business-growth/backend/internal/daily"
 	"jl-business-growth/backend/internal/invitation"
+	"jl-business-growth/backend/internal/mail"
 	"jl-business-growth/backend/internal/problem"
+	"jl-business-growth/backend/internal/reviews"
 )
 
 type Handler struct {
@@ -26,11 +30,14 @@ type Handler struct {
 	admin      *admin.Service
 	invitation *invitation.Service
 	daily      *daily.Service
+	calendar   *calendar.Service
+	reviews    *reviews.Service
+	analytics  *analytics.Service
 	config     config.Config
 }
 
 func NewHandler(authService *auth.Service, adminService *admin.Service, invitationService *invitation.Service, cfg config.Config) *Handler {
-	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(authService.Pool()), config: cfg}
+	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(authService.Pool()), calendar: calendar.NewService(authService.Pool(), mail.NewSender(cfg)), reviews: reviews.NewService(authService.Pool()), analytics: analytics.NewService(authService.Pool()), config: cfg}
 }
 
 func (h *Handler) PostAuthRegister(ctx echo.Context) error {
@@ -830,6 +837,184 @@ func (h *Handler) DeleteGoal(ctx echo.Context, goalID GoalId) error {
 	return ctx.NoContent(http.StatusNoContent)
 }
 
+func (h *Handler) ListCalendarEvents(ctx echo.Context, params ListCalendarEventsParams) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	items, err := h.calendar.List(ctx.Request().Context(), userID, params.From, params.To)
+	if err != nil {
+		return err
+	}
+	result := make([]CalendarEvent, 0, len(items))
+	for _, item := range items {
+		result = append(result, calendarDTO(item))
+	}
+	return ctx.JSON(http.StatusOK, CalendarEventListResponse{Data: struct {
+		Items []CalendarEvent `json:"items"`
+	}{Items: result}, RequestId: requestID(ctx)})
+}
+
+func (h *Handler) GetCalendarEvent(ctx echo.Context, eventID CalendarEventId) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	item, err := h.calendar.Get(ctx.Request().Context(), userID, uuid.UUID(eventID))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, CalendarEventResponse{Data: calendarDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) CreateCalendarEvent(ctx echo.Context) error {
+	return h.saveCalendarEvent(ctx, uuid.Nil, http.StatusCreated)
+}
+
+func (h *Handler) UpdateCalendarEvent(ctx echo.Context, eventID CalendarEventId) error {
+	return h.saveCalendarEvent(ctx, uuid.UUID(eventID), http.StatusOK)
+}
+
+func (h *Handler) saveCalendarEvent(ctx echo.Context, eventID uuid.UUID, status int) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	var request CalendarEventRequest
+	if err := ctx.Bind(&request); err != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
+	}
+	item, err := h.calendar.Save(ctx.Request().Context(), account.ID, eventID, calendarInput(request))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(status, CalendarEventResponse{Data: calendarDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) DeleteCalendarEvent(ctx echo.Context, eventID CalendarEventId) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	if err := h.calendar.Delete(ctx.Request().Context(), account.ID, uuid.UUID(eventID)); err != nil {
+		return err
+	}
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ListReviews(ctx echo.Context, params ListReviewsParams) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	from, to := dateRange(params.From, params.To)
+	items, err := h.reviews.List(ctx.Request().Context(), userID, from, to)
+	if err != nil {
+		return err
+	}
+	result := make([]Review, 0, len(items))
+	for _, item := range items {
+		item, err = h.reviews.WithTotals(ctx.Request().Context(), item)
+		if err != nil {
+			return err
+		}
+		result = append(result, reviewDTO(item))
+	}
+	return ctx.JSON(http.StatusOK, ReviewListResponse{Data: struct {
+		Items []Review `json:"items"`
+	}{Items: result}, RequestId: requestID(ctx)})
+}
+
+func (h *Handler) GetReview(ctx echo.Context, reviewType GetReviewParamsReviewType, periodStart ReviewPeriodStart) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	item, err := h.reviews.Get(ctx.Request().Context(), userID, string(reviewType), periodStart.Time)
+	if err != nil {
+		return err
+	}
+	item, err = h.reviews.WithTotals(ctx.Request().Context(), item)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, ReviewResponse{Data: reviewDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) UpdateReview(ctx echo.Context, reviewType UpdateReviewParamsReviewType, periodStart ReviewPeriodStart) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	var request UpdateReviewJSONRequestBody
+	if err := ctx.Bind(&request); err != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
+	}
+	item, err := h.reviews.Save(ctx.Request().Context(), account.ID, reviews.Input{Type: string(reviewType), PeriodStart: periodStart.Time, Good: request.Good, Problems: request.Problems, Improvements: request.Improvements, NextFocus: request.NextFocus, Summary: request.Summary})
+	if err != nil {
+		return err
+	}
+	item, err = h.reviews.WithTotals(ctx.Request().Context(), item)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, ReviewResponse{Data: reviewDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) GetWorklogAnalytics(ctx echo.Context, params GetWorklogAnalyticsParams) error {
+	return h.analyticsResponse(ctx, string(params.Granularity), params.From, params.To, func(from, to time.Time, granularity string, userID uuid.UUID) (analytics.Result, error) {
+		return h.analytics.Worklogs(ctx.Request().Context(), userID, from, to, granularity)
+	})
+}
+
+func (h *Handler) GetTurnoverAnalytics(ctx echo.Context, params GetTurnoverAnalyticsParams) error {
+	return h.analyticsResponse(ctx, string(params.Granularity), params.From, params.To, func(from, to time.Time, granularity string, userID uuid.UUID) (analytics.Result, error) {
+		return h.analytics.Turnover(ctx.Request().Context(), userID, from, to, granularity)
+	})
+}
+
+func (h *Handler) GetGoalAnalytics(ctx echo.Context, params GetGoalAnalyticsParams) error {
+	return h.analyticsResponse(ctx, string(params.Granularity), params.From, params.To, func(from, to time.Time, granularity string, userID uuid.UUID) (analytics.Result, error) {
+		return h.analytics.Goals(ctx.Request().Context(), userID, from, to, granularity)
+	})
+}
+
+func (h *Handler) analyticsResponse(ctx echo.Context, granularity string, fromParam, toParam *openapi_types.Date, query func(time.Time, time.Time, string, uuid.UUID) (analytics.Result, error)) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	from, to := dateRange(fromParam, toParam)
+	from, to = dailyDate(from), dailyDate(to).AddDate(0, 0, 1)
+	result, err := query(from, to, granularity, userID)
+	if err != nil {
+		return err
+	}
+	buckets := make([]AnalyticsBucket, 0, len(result.Buckets))
+	for _, item := range result.Buckets {
+		buckets = append(buckets, AnalyticsBucket{Period: item.Period, ActionCount: int(item.ActionCount), ReadingMinutes: int(item.ReadingMinutes), AudioMinutes: int(item.AudioMinutes), Pv: float32(item.PV), NetAmount: float32(item.NetAmount), GoalCount: int(item.GoalCount), CompletedCount: int(item.CompletedCount)})
+	}
+	return ctx.JSON(http.StatusOK, AnalyticsResponse{Data: AnalyticsData{Metric: result.Metric, Granularity: AnalyticsDataGranularity(result.Granularity), From: apiDate(result.From), To: apiDate(result.To), Buckets: buckets}, RequestId: requestID(ctx)})
+}
+
 func (h *Handler) dailyUser(ctx echo.Context) (uuid.UUID, *auth.Session, error) {
 	session, account, err := auth.SessionFromContext(ctx)
 	if err != nil {
@@ -999,6 +1184,71 @@ func float32Pointer(value *float64) *float32 {
 	converted := float32(*value)
 	return &converted
 }
+
+func calendarInput(value CalendarEventRequest) calendar.Input {
+	freq, endType, scope := "NONE", "NEVER", "SERIES"
+	if value.RecurrenceFreq != nil {
+		freq = string(*value.RecurrenceFreq)
+	}
+	if value.RecurrenceEndType != nil {
+		endType = string(*value.RecurrenceEndType)
+	}
+	if value.EditScope != nil {
+		scope = string(*value.EditScope)
+	}
+	interval := 1
+	if value.RecurrenceInterval != nil {
+		interval = *value.RecurrenceInterval
+	}
+	allDay := false
+	if value.AllDay != nil {
+		allDay = *value.AllDay
+	}
+	weekdays := []int{}
+	if value.RecurrenceWeekdays != nil {
+		weekdays = *value.RecurrenceWeekdays
+	}
+	attendees := []calendar.Attendee{}
+	if value.Attendees != nil {
+		for _, item := range *value.Attendees {
+			attendees = append(attendees, calendar.Attendee{Email: string(item.Email), DisplayName: stringPointerValue(item.DisplayName)})
+		}
+	}
+	return calendar.Input{Title: value.Title, Description: value.Description, Location: value.LocationOrLink, Timezone: value.Timezone, AllDay: allDay, StartAt: value.StartAt, EndAt: value.EndAt, RecurrenceFreq: freq, RecurrenceInterval: interval, RecurrenceWeekdays: weekdays, RecurrenceEndType: endType, RecurrenceUntil: value.RecurrenceUntil, RecurrenceCount: value.RecurrenceCount, Attendees: attendees, EditScope: scope, OccurrenceStart: value.OccurrenceStart}
+}
+
+func calendarDTO(value calendar.Event) CalendarEvent {
+	weekdays := append([]int(nil), value.RecurrenceWeekdays...)
+	attendees := make([]CalendarAttendee, 0, len(value.Attendees))
+	for _, item := range value.Attendees {
+		email := openapi_types.Email(item.Email)
+		name := item.DisplayName
+		var display *string
+		if name != "" {
+			display = &name
+		}
+		attendees = append(attendees, CalendarAttendee{Email: email, DisplayName: display})
+	}
+	isException := value.IsException
+	return CalendarEvent{Id: value.ID, OccurrenceId: calendar.EventOccurrenceID(value), Uid: value.UID, Sequence: value.Sequence, Title: value.Title, Description: value.Description, LocationOrLink: value.Location, Timezone: value.Timezone, AllDay: value.AllDay, StartAt: value.StartAt, EndAt: value.EndAt, RecurrenceFreq: CalendarEventRecurrenceFreq(value.RecurrenceFreq), RecurrenceInterval: value.RecurrenceInterval, RecurrenceWeekdays: weekdays, RecurrenceEndType: CalendarEventRecurrenceEndType(value.RecurrenceEndType), RecurrenceUntil: value.RecurrenceUntil, RecurrenceCount: value.RecurrenceCount, OriginalOccurrenceStart: value.OriginalOccurrenceStart, IsException: &isException, Attendees: attendees}
+}
+
+func reviewDTO(value reviews.Review) Review {
+	var id *openapi_types.UUID
+	if value.ID != uuid.Nil {
+		converted := openapi_types.UUID(value.ID)
+		id = &converted
+	}
+	return Review{Id: id, Type: ReviewType(value.Type), PeriodStart: apiDate(value.PeriodStart), Good: stringPointerValue(value.Good), Problems: stringPointerValue(value.Problems), Improvements: stringPointerValue(value.Improvements), NextFocus: stringPointerValue(value.NextFocus), Summary: value.Summary, Totals: ReviewPeriodTotals{WorklogActionCount: int(value.WorklogActionCount), TurnoverPv: float32(value.TurnoverPV), TurnoverNetAmount: float32(value.TurnoverNetAmount)}}
+}
+
+func stringPointerValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
 func datePointer(value *time.Time) *openapi_types.Date {
 	if value == nil {
 		return nil

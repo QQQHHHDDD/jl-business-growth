@@ -7,9 +7,12 @@ import { ErrorState, LoadingState } from "@/components/ui/state-block";
 import { AdminAdminsPage, AdminHomePage, AdminInvitationsPage, AdminUsersPage } from "@/features/admin/admin-pages";
 import { AuthPage } from "@/features/auth/auth-page";
 import { SettingsPage } from "@/features/auth/settings-page";
+import { AnalyticsPage } from "@/features/analytics/analytics-page";
+import { CalendarPage } from "@/features/calendar/calendar-page";
 import { DashboardPage } from "@/features/dashboard/dashboard-page";
 import { GoalsPage } from "@/features/goals/goals-page";
 import { PlaceholderPage } from "@/features/placeholder/placeholder-page";
+import { ReviewsPage } from "@/features/reviews/reviews-page";
 import { TurnoverPage } from "@/features/turnover/turnover-page";
 import { WorklogPage } from "@/features/worklog/worklog-page";
 import { roleHome } from "@/lib/utils";
@@ -85,6 +88,18 @@ function UserTurnoverRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? <TurnoverPage authResponse={meQuery.data} /> : null;
 }
 
+function UserCalendarRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <CalendarPage authResponse={meQuery.data} /> : null;
+}
+
+function UserReviewsRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <ReviewsPage authResponse={meQuery.data} /> : null;
+}
+
+function UserAnalyticsRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <AnalyticsPage authResponse={meQuery.data} /> : null;
+}
+
 function SettingsRoute({ meQuery }: { meQuery: MeQuery }) {
   const authResponse = meQuery.data;
   if (!authResponse) return null;
@@ -121,6 +136,9 @@ function AppRoutes({ meQuery, health, onLogout, loggingOut }: { meQuery: MeQuery
             if (path === "/app/goals") return <Route key={path} path={path} element={<UserGoalsRoute meQuery={meQuery} />} />;
             if (path === "/app/worklog") return <Route key={path} path={path} element={<UserWorklogRoute meQuery={meQuery} />} />;
             if (path === "/app/turnover") return <Route key={path} path={path} element={<UserTurnoverRoute meQuery={meQuery} />} />;
+            if (path === "/app/calendar") return <Route key={path} path={path} element={<UserCalendarRoute meQuery={meQuery} />} />;
+            if (path === "/app/reviews") return <Route key={path} path={path} element={<UserReviewsRoute meQuery={meQuery} />} />;
+            if (path === "/app/analytics") return <Route key={path} path={path} element={<UserAnalyticsRoute meQuery={meQuery} />} />;
             return <Route key={path} path={path} element={<PlaceholderPage title={title} description={description} />} />;
           })}
         </Route>

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const superadminUsername = process.env.E2E_SUPERADMIN_USERNAME;
 const superadminPassword = process.env.E2E_SUPERADMIN_PASSWORD;
 
-test("covers the Phase 1 administrator flow and Phase 2 daily core loop", async ({ page }) => {
+test("covers the Phase 1 administrator flow and Phase 2-3 daily core loop", async ({ page }) => {
   test.skip(process.env.APP_ENV !== "test" || !superadminUsername || !superadminPassword, "run against APP_ENV=test with E2E_SUPERADMIN_USERNAME and E2E_SUPERADMIN_PASSWORD");
 
   const userPassword = "phase1-user-password";
@@ -67,6 +67,30 @@ test("covers the Phase 1 administrator flow and Phase 2 daily core loop", async 
   await page.goto("/app");
   await expect(page.getByText("今日工作量")).toBeVisible();
   await expect(page.getByText("本月 PV")).toBeVisible();
+
+  await page.goto("/app/calendar");
+  await expect(page.getByRole("heading", { name: "日历" })).toBeVisible();
+  await page.getByRole("button", { name: "新建日程" }).click();
+  await page.getByLabel("日程标题").fill("E2E 日历会面");
+  const eventStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000);
+  const localInput = (value: Date) => { const pad = (part: number) => String(part).padStart(2, "0"); return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`; };
+  await page.getByLabel("开始时间").fill(localInput(eventStart));
+  await page.getByLabel("结束时间").fill(localInput(eventEnd));
+  await page.getByRole("button", { name: "保存日程" }).click();
+  await expect(page.getByRole("status")).toContainText("日程已保存");
+  await expect(page.getByText("E2E 日历会面").first()).toBeVisible();
+
+  await page.goto("/app/reviews");
+  await expect(page.getByRole("heading", { name: "复盘" })).toBeVisible();
+  await page.getByLabel("做得好的地方").fill("完成了日历闭环");
+  await page.getByLabel("下一周期聚焦").fill("保持每天记录");
+  await page.getByRole("button", { name: "保存复盘" }).click();
+  await expect(page.getByRole("status")).toContainText("复盘已保存");
+
+  await page.goto("/app/analytics");
+  await expect(page.getByRole("heading", { name: "数据统计" })).toBeVisible();
+  await expect(page.getByText("聚合结果")).toBeVisible();
 
   await page.getByRole("button", { name: "退出登录" }).click();
   await expect(page).toHaveURL(/\/login$/);

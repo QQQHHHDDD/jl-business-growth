@@ -1,6 +1,6 @@
 # V1 Implementation Plan
 
-- Status: Phase 2 complete; ready for Phase 3 planning
+- Status: Phase 3 complete; ready for Phase 4 planning
 - Updated: 2026-09-14
 - Source: `docs/00-文档索引.md` and current design documents `01` through `08`
 
@@ -9,7 +9,7 @@
 | Item | State | Action |
 |---|---|---|
 | OS / architecture | Ubuntu 22.04.5 LTS / x86_64 / 32 CPUs | Supported platform |
-| Git | Initialized; `43af68f` contains the Phase 0 baseline, `d39d52a` contains the Phase 1 password recovery fix, and `aa30c15` contains the Phase 2 daily core loop | Keep each verified phase in its own semantic commit |
+| Git | Initialized; `43af68f` contains the Phase 0 baseline, `d39d52a` contains the Phase 1 password recovery fix, `dcbf05d` contains the Phase 2 daily core loop, and `0380886` contains the Phase 3 calendar, reviews, and analytics implementation | Keep each verified phase in its own semantic commit |
 | Go | 1.26.1 | Below required Go 1.27+; upgrade before final Go validation |
 | Node / npm | Not on system PATH; local Node 24 toolchain exists | Use local toolchain for current project validation |
 | PostgreSQL | PostgreSQL 14 is installed; current local cluster is down (`pg_isready` reports no response) | User must start the existing service before migration/status checks; no sudo action was run |
@@ -66,6 +66,17 @@ Phase 1 and Phase 2 database-backed acceptance completed against the isolated `j
 ### Phase 3-6
 
 Implement calendar/reviews; team/learning/files/search; finance/income simulation; import/export/data governance, in that order.
+
+### Phase 3: Calendar, invitations, reviews, and analytics
+
+- [x] Add calendar, recurrence, exception, attendee, mail-delivery, and review schema
+- [x] Add calendar/review/analytics OpenAPI contract and user-scoped handlers
+- [x] Add IANA-timezone recurrence expansion, ICS REQUEST/CANCEL generation, file mail, and SMTP adapter
+- [x] Add daily, weekly, and monthly review storage with live period totals
+- [x] Add basic worklog, turnover, and goal aggregation endpoints
+- [x] Add calendar, review, and analytics frontend pages and critical E2E flow
+- [x] Run Phase 3 database-backed integration and full E2E acceptance on the host
+- [x] Create the dedicated Phase 3 commit after all acceptance gates pass
 
 ## Migration Order
 
@@ -163,3 +174,5 @@ The PostgreSQL commands are required for Goose migration, sqlc schema validation
 - Phase 2 frontend acceptance: Playwright baseline, Phase 1 administrator plus Phase 2 daily-core flow, and mobile shell passed (3 tests); the flow covers daily worklog entry, PV conversion, goal progress, dream creation, Dashboard totals, and account flow.
 - Phase 2 local gate: `make generate`, `make lint`, `make test`, `make build`, `make check`, backend race tests, and `git diff --check` passed; generated API/sqlc files are stable.
 - Phase 2 UI regression: shared `Input` fields now generate unique IDs when field names repeat; Vitest covers this label-association case.
+- Phase 3 local implementation: calendar/reviews/analytics services, OpenAPI generation, frontend lint/build/Vitest, backend tests/race tests, and `git diff --check` passed.
+- Phase 3 host acceptance: development and isolated test databases migrated to version 4; Phase 1/2/3 API integration tests passed; Playwright baseline, Phase 1-3 flow, and mobile shell passed (3 tests).

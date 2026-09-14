@@ -372,6 +372,107 @@ func TestPhase2APIIntegration(t *testing.T) {
 	getTestJSON(t, superAdminClient, server.URL, "/api/dreams", http.StatusForbidden)
 }
 
+func TestPhase3APIIntegration(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
+	}
+	parsedURL, err := url.Parse(databaseURL)
+	if err != nil {
+		t.Fatalf("parse TEST_DATABASE_URL: %v", err)
+	}
+	if strings.TrimPrefix(parsedURL.Path, "/") != "jl_business_test" {
+		t.Fatalf("refusing to run integration test against %q; TEST_DATABASE_URL must target jl_business_test", parsedURL.Path)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatalf("create test database pool: %v", err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
+		t.Fatalf("ping test database: %v", err)
+	}
+	var phase3Tables bool
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.calendar_events') IS NOT NULL AND to_regclass('public.calendar_event_exceptions') IS NOT NULL AND to_regclass('public.reviews') IS NOT NULL`).Scan(&phase3Tables); err != nil {
+		t.Fatalf("check Phase 3 migration: %v", err)
+	}
+	if !phase3Tables {
+		t.Fatal("Phase 3 migration is not applied; run make migrate-test-up first")
+	}
+	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
+		t.Fatalf("reset isolated test database: %v", err)
+	}
+	fileRoot := t.TempDir()
+	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	authService := auth.NewService(pool, applicationConfig)
+	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
+		t.Fatalf("bootstrap test super administrator: %v", err)
+	}
+	server := httptest.NewServer(newServer(pool, applicationConfig, authService))
+	defer server.Close()
+	superClient := newTestClient(t)
+	login := postTestJSON(t, superClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{"username": applicationConfig.SuperadminUsername, "password": applicationConfig.SuperadminPassword}, "", http.StatusOK)
+	var adminAuth api.AuthResponse
+	decodeTestJSON(t, login, &adminAuth)
+	inviteBody := map[string]interface{}{"max_uses": 1}
+	invite := postTestJSON(t, superClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", inviteBody, adminAuth.Data.CsrfToken, http.StatusCreated)
+	var invitation api.InvitationResponse
+	decodeTestJSON(t, invite, &invitation)
+	userClient := newTestClient(t)
+	registered := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase3-user", "password": "phase3-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
+	var userAuth api.AuthResponse
+	decodeTestJSON(t, registered, &userAuth)
+	start := time.Now().UTC().Truncate(time.Hour).Add(24 * time.Hour)
+	end := start.Add(time.Hour)
+	eventBody := map[string]interface{}{"title": "Phase 3 meeting", "timezone": "Asia/Shanghai", "start_at": start, "end_at": end, "recurrence_freq": "NONE", "attendees": []map[string]string{{"email": "phase3@example.com"}}}
+	eventResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events", eventBody, userAuth.Data.CsrfToken, http.StatusCreated)
+	var created api.CalendarEventResponse
+	decodeTestJSON(t, eventResponse, &created)
+	if created.Data.Title != "Phase 3 meeting" || created.Data.Uid == "" {
+		t.Fatalf("calendar event = %+v", created.Data)
+	}
+	from, to := start.Add(-time.Hour).Format(time.RFC3339), end.Add(time.Hour).Format(time.RFC3339)
+	listed := getTestJSON(t, userClient, server.URL, "/api/calendar/events?from="+url.QueryEscape(from)+"&to="+url.QueryEscape(to), http.StatusOK)
+	var eventList api.CalendarEventListResponse
+	decodeTestJSON(t, listed, &eventList)
+	if len(eventList.Data.Items) != 1 {
+		t.Fatalf("calendar list length = %d, want 1", len(eventList.Data.Items))
+	}
+	if files, err := os.ReadDir(fileRoot); err != nil || len(files) == 0 {
+		t.Fatalf("mail outbox files = %d, error = %v", len(files), err)
+	} else {
+		content, readErr := os.ReadFile(fileRoot + "/" + files[0].Name())
+		if readErr != nil || !strings.Contains(string(content), "BEGIN:VCALENDAR") || !strings.Contains(string(content), "METHOD:REQUEST") {
+			t.Fatalf("mail outbox content missing ICS request: error = %v, content = %q", readErr, content)
+		}
+	}
+	recurring := map[string]interface{}{"title": "Phase 3 daily series", "timezone": "Asia/Shanghai", "start_at": start, "end_at": end, "recurrence_freq": "DAILY", "recurrence_interval": 1, "recurrence_end_type": "COUNT", "recurrence_count": 3}
+	postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events", recurring, userAuth.Data.CsrfToken, http.StatusCreated)
+	seriesListed := getTestJSON(t, userClient, server.URL, "/api/calendar/events?from="+url.QueryEscape(start.Add(-time.Hour).Format(time.RFC3339))+"&to="+url.QueryEscape(start.Add(4*24*time.Hour).Format(time.RFC3339)), http.StatusOK)
+	decodeTestJSON(t, seriesListed, &eventList)
+	if len(eventList.Data.Items) != 4 {
+		t.Fatalf("recurring calendar list length = %d, want one event plus three daily occurrences", len(eventList.Data.Items))
+	}
+	period := start.Format("2006-01-02")
+	review := putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/reviews/DAILY/"+period, map[string]string{"good": "完成首次日历闭环", "next_focus": "保持节奏"}, userAuth.Data.CsrfToken, http.StatusOK)
+	var reviewResponse api.ReviewResponse
+	decodeTestJSON(t, review, &reviewResponse)
+	if reviewResponse.Data.Good != "完成首次日历闭环" {
+		t.Fatalf("review = %+v", reviewResponse.Data)
+	}
+	analyticsResponse := getTestJSON(t, userClient, server.URL, "/api/analytics/turnover?from="+period+"&to="+period+"&granularity=day", http.StatusOK)
+	var analyticsResult api.AnalyticsResponse
+	decodeTestJSON(t, analyticsResponse, &analyticsResult)
+	if analyticsResult.Data.Metric != "turnover" {
+		t.Fatalf("analytics metric = %q", analyticsResult.Data.Metric)
+	}
+	getTestJSON(t, superClient, server.URL, "/api/calendar/events?from="+url.QueryEscape(from)+"&to="+url.QueryEscape(to), http.StatusForbidden)
+	getTestJSON(t, superClient, server.URL, "/api/reviews", http.StatusForbidden)
+	getTestJSON(t, superClient, server.URL, "/api/analytics/worklogs?granularity=day", http.StatusForbidden)
+}
+
 var (
 	testClientIPs      sync.Map
 	testClientSequence uint32
@@ -398,6 +499,10 @@ func testClientIP(client *http.Client) string {
 
 func postTestJSON(t *testing.T, client *http.Client, serverURL, origin, path string, body interface{}, csrfToken string, expectedStatus int) []byte {
 	return mutateTestJSON(t, client, http.MethodPost, serverURL, origin, path, body, csrfToken, expectedStatus)
+}
+
+func putTestJSON(t *testing.T, client *http.Client, serverURL, origin, path string, body interface{}, csrfToken string, expectedStatus int) []byte {
+	return mutateTestJSON(t, client, http.MethodPut, serverURL, origin, path, body, csrfToken, expectedStatus)
 }
 
 func patchTestJSON(t *testing.T, client *http.Client, serverURL, origin, path string, body interface{}, csrfToken string, expectedStatus int) []byte {

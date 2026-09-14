@@ -97,6 +97,136 @@ func (ns NullAccountStatus) Value() (driver.Value, error) {
 	return string(ns.AccountStatus), nil
 }
 
+type CalendarExceptionType string
+
+const (
+	CalendarExceptionTypeMODIFIED  CalendarExceptionType = "MODIFIED"
+	CalendarExceptionTypeCANCELLED CalendarExceptionType = "CANCELLED"
+)
+
+func (e *CalendarExceptionType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CalendarExceptionType(s)
+	case string:
+		*e = CalendarExceptionType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CalendarExceptionType: %T", src)
+	}
+	return nil
+}
+
+type NullCalendarExceptionType struct {
+	CalendarExceptionType CalendarExceptionType
+	Valid                 bool // Valid is true if CalendarExceptionType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCalendarExceptionType) Scan(value interface{}) error {
+	if value == nil {
+		ns.CalendarExceptionType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CalendarExceptionType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCalendarExceptionType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CalendarExceptionType), nil
+}
+
+type CalendarRecurrenceEndType string
+
+const (
+	CalendarRecurrenceEndTypeNEVER CalendarRecurrenceEndType = "NEVER"
+	CalendarRecurrenceEndTypeUNTIL CalendarRecurrenceEndType = "UNTIL"
+	CalendarRecurrenceEndTypeCOUNT CalendarRecurrenceEndType = "COUNT"
+)
+
+func (e *CalendarRecurrenceEndType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CalendarRecurrenceEndType(s)
+	case string:
+		*e = CalendarRecurrenceEndType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CalendarRecurrenceEndType: %T", src)
+	}
+	return nil
+}
+
+type NullCalendarRecurrenceEndType struct {
+	CalendarRecurrenceEndType CalendarRecurrenceEndType
+	Valid                     bool // Valid is true if CalendarRecurrenceEndType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCalendarRecurrenceEndType) Scan(value interface{}) error {
+	if value == nil {
+		ns.CalendarRecurrenceEndType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CalendarRecurrenceEndType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCalendarRecurrenceEndType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CalendarRecurrenceEndType), nil
+}
+
+type CalendarRecurrenceFreq string
+
+const (
+	CalendarRecurrenceFreqNONE    CalendarRecurrenceFreq = "NONE"
+	CalendarRecurrenceFreqDAILY   CalendarRecurrenceFreq = "DAILY"
+	CalendarRecurrenceFreqWEEKLY  CalendarRecurrenceFreq = "WEEKLY"
+	CalendarRecurrenceFreqMONTHLY CalendarRecurrenceFreq = "MONTHLY"
+	CalendarRecurrenceFreqYEARLY  CalendarRecurrenceFreq = "YEARLY"
+)
+
+func (e *CalendarRecurrenceFreq) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CalendarRecurrenceFreq(s)
+	case string:
+		*e = CalendarRecurrenceFreq(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CalendarRecurrenceFreq: %T", src)
+	}
+	return nil
+}
+
+type NullCalendarRecurrenceFreq struct {
+	CalendarRecurrenceFreq CalendarRecurrenceFreq
+	Valid                  bool // Valid is true if CalendarRecurrenceFreq is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCalendarRecurrenceFreq) Scan(value interface{}) error {
+	if value == nil {
+		ns.CalendarRecurrenceFreq, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CalendarRecurrenceFreq.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCalendarRecurrenceFreq) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CalendarRecurrenceFreq), nil
+}
+
 type GoalStatus string
 
 const (
@@ -313,6 +443,134 @@ func (ns NullLearningSessionSource) Value() (driver.Value, error) {
 	return string(ns.LearningSessionSource), nil
 }
 
+type MailDeliveryMethod string
+
+const (
+	MailDeliveryMethodREQUEST MailDeliveryMethod = "REQUEST"
+	MailDeliveryMethodCANCEL  MailDeliveryMethod = "CANCEL"
+)
+
+func (e *MailDeliveryMethod) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MailDeliveryMethod(s)
+	case string:
+		*e = MailDeliveryMethod(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MailDeliveryMethod: %T", src)
+	}
+	return nil
+}
+
+type NullMailDeliveryMethod struct {
+	MailDeliveryMethod MailDeliveryMethod
+	Valid              bool // Valid is true if MailDeliveryMethod is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMailDeliveryMethod) Scan(value interface{}) error {
+	if value == nil {
+		ns.MailDeliveryMethod, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MailDeliveryMethod.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMailDeliveryMethod) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MailDeliveryMethod), nil
+}
+
+type MailDeliveryStatus string
+
+const (
+	MailDeliveryStatusPENDING MailDeliveryStatus = "PENDING"
+	MailDeliveryStatusSENT    MailDeliveryStatus = "SENT"
+	MailDeliveryStatusFAILED  MailDeliveryStatus = "FAILED"
+)
+
+func (e *MailDeliveryStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MailDeliveryStatus(s)
+	case string:
+		*e = MailDeliveryStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MailDeliveryStatus: %T", src)
+	}
+	return nil
+}
+
+type NullMailDeliveryStatus struct {
+	MailDeliveryStatus MailDeliveryStatus
+	Valid              bool // Valid is true if MailDeliveryStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMailDeliveryStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.MailDeliveryStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MailDeliveryStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMailDeliveryStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MailDeliveryStatus), nil
+}
+
+type ReviewType string
+
+const (
+	ReviewTypeDAILY   ReviewType = "DAILY"
+	ReviewTypeWEEKLY  ReviewType = "WEEKLY"
+	ReviewTypeMONTHLY ReviewType = "MONTHLY"
+)
+
+func (e *ReviewType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReviewType(s)
+	case string:
+		*e = ReviewType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReviewType: %T", src)
+	}
+	return nil
+}
+
+type NullReviewType struct {
+	ReviewType ReviewType
+	Valid      bool // Valid is true if ReviewType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReviewType) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReviewType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReviewType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReviewType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReviewType), nil
+}
+
 type Account struct {
 	ID           pgtype.UUID
 	Username     string
@@ -339,6 +597,45 @@ type BrowserSessionAccount struct {
 	BrowserSessionID pgtype.UUID
 	AccountID        pgtype.UUID
 	AuthenticatedAt  pgtype.Timestamptz
+}
+
+type CalendarAttendee struct {
+	EventID     pgtype.UUID
+	Email       string
+	DisplayName pgtype.Text
+}
+
+type CalendarEvent struct {
+	ID                 pgtype.UUID
+	UserID             pgtype.UUID
+	Uid                string
+	Sequence           int32
+	Title              string
+	Description        pgtype.Text
+	LocationOrLink     pgtype.Text
+	Timezone           string
+	AllDay             bool
+	StartAt            pgtype.Timestamptz
+	EndAt              pgtype.Timestamptz
+	RecurrenceFreq     CalendarRecurrenceFreq
+	RecurrenceInterval int32
+	RecurrenceWeekdays []int16
+	RecurrenceEndType  CalendarRecurrenceEndType
+	RecurrenceUntil    pgtype.Timestamptz
+	RecurrenceCount    pgtype.Int4
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+}
+
+type CalendarEventException struct {
+	EventID                 pgtype.UUID
+	OriginalOccurrenceStart pgtype.Timestamptz
+	ExceptionType           CalendarExceptionType
+	OverrideTitle           pgtype.Text
+	OverrideStartAt         pgtype.Timestamptz
+	OverrideEndAt           pgtype.Timestamptz
+	OverrideDescription     pgtype.Text
+	OverrideLocation        pgtype.Text
 }
 
 type DailyTurnover struct {
@@ -430,6 +727,33 @@ type LearningSession struct {
 	ActivityDate pgtype.Date
 	Minutes      int32
 	Source       LearningSessionSource
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type MailDelivery struct {
+	ID                pgtype.UUID
+	CalendarEventID   pgtype.UUID
+	OccurrenceStart   pgtype.Timestamptz
+	AttendeeEmail     string
+	Method            MailDeliveryMethod
+	Status            MailDeliveryStatus
+	ProviderMessageID pgtype.Text
+	ErrorMessage      pgtype.Text
+	SentAt            pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+}
+
+type Review struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	Type         ReviewType
+	PeriodStart  pgtype.Date
+	Good         string
+	Problems     string
+	Improvements string
+	NextFocus    string
+	Summary      pgtype.Text
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 }

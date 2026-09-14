@@ -25,6 +25,11 @@ type Config struct {
 	SuperadminUsername  string
 	SuperadminPassword  string
 	MailMode            string
+	SMTPHost            string
+	SMTPPort            string
+	SMTPUsername        string
+	SMTPPassword        string
+	SMTPFrom            string
 	FileRoot            string
 	MailOutboxRoot      string
 	MaxDocumentUploadMB int
@@ -64,6 +69,11 @@ func Load() (Config, error) {
 		SuperadminUsername:  value(fileValues, "SUPERADMIN_USERNAME", ""),
 		SuperadminPassword:  value(fileValues, "SUPERADMIN_INITIAL_PASSWORD", ""),
 		MailMode:            value(fileValues, "MAIL_MODE", "file"),
+		SMTPHost:            value(fileValues, "SMTP_HOST", ""),
+		SMTPPort:            value(fileValues, "SMTP_PORT", "587"),
+		SMTPUsername:        value(fileValues, "SMTP_USERNAME", ""),
+		SMTPPassword:        value(fileValues, "SMTP_PASSWORD", ""),
+		SMTPFrom:            value(fileValues, "SMTP_FROM", ""),
 		FileRoot:            fileRoot,
 		MailOutboxRoot:      mailOutboxRoot,
 		MaxDocumentUploadMB: documentLimit,
@@ -84,6 +94,9 @@ func (c Config) Validate() error {
 	}
 	if c.MailMode != "file" && c.MailMode != "smtp" {
 		return errors.New("MAIL_MODE must be file or smtp")
+	}
+	if c.MailMode == "smtp" && (c.SMTPHost == "" || c.SMTPPort == "" || c.SMTPFrom == "") {
+		return errors.New("SMTP_HOST, SMTP_PORT, and SMTP_FROM are required when MAIL_MODE=smtp")
 	}
 	if (c.AppEnv == development || c.AppEnv == test) && c.CookieSecure {
 		return errors.New("COOKIE_SECURE must be false in development and test")

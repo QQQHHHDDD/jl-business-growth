@@ -30,6 +30,52 @@ const (
 	AccountStatusDISABLED AccountStatus = "DISABLED"
 )
 
+// Defines values for AnalyticsDataGranularity.
+const (
+	AnalyticsDataGranularityDay   AnalyticsDataGranularity = "day"
+	AnalyticsDataGranularityMonth AnalyticsDataGranularity = "month"
+	AnalyticsDataGranularityWeek  AnalyticsDataGranularity = "week"
+)
+
+// Defines values for CalendarEventRecurrenceEndType.
+const (
+	CalendarEventRecurrenceEndTypeCOUNT CalendarEventRecurrenceEndType = "COUNT"
+	CalendarEventRecurrenceEndTypeNEVER CalendarEventRecurrenceEndType = "NEVER"
+	CalendarEventRecurrenceEndTypeUNTIL CalendarEventRecurrenceEndType = "UNTIL"
+)
+
+// Defines values for CalendarEventRecurrenceFreq.
+const (
+	CalendarEventRecurrenceFreqDAILY   CalendarEventRecurrenceFreq = "DAILY"
+	CalendarEventRecurrenceFreqMONTHLY CalendarEventRecurrenceFreq = "MONTHLY"
+	CalendarEventRecurrenceFreqNONE    CalendarEventRecurrenceFreq = "NONE"
+	CalendarEventRecurrenceFreqWEEKLY  CalendarEventRecurrenceFreq = "WEEKLY"
+	CalendarEventRecurrenceFreqYEARLY  CalendarEventRecurrenceFreq = "YEARLY"
+)
+
+// Defines values for CalendarEventRequestEditScope.
+const (
+	SERIES           CalendarEventRequestEditScope = "SERIES"
+	THISANDFOLLOWING CalendarEventRequestEditScope = "THIS_AND_FOLLOWING"
+	THISONLY         CalendarEventRequestEditScope = "THIS_ONLY"
+)
+
+// Defines values for CalendarEventRequestRecurrenceEndType.
+const (
+	CalendarEventRequestRecurrenceEndTypeCOUNT CalendarEventRequestRecurrenceEndType = "COUNT"
+	CalendarEventRequestRecurrenceEndTypeNEVER CalendarEventRequestRecurrenceEndType = "NEVER"
+	CalendarEventRequestRecurrenceEndTypeUNTIL CalendarEventRequestRecurrenceEndType = "UNTIL"
+)
+
+// Defines values for CalendarEventRequestRecurrenceFreq.
+const (
+	CalendarEventRequestRecurrenceFreqDAILY   CalendarEventRequestRecurrenceFreq = "DAILY"
+	CalendarEventRequestRecurrenceFreqMONTHLY CalendarEventRequestRecurrenceFreq = "MONTHLY"
+	CalendarEventRequestRecurrenceFreqNONE    CalendarEventRequestRecurrenceFreq = "NONE"
+	CalendarEventRequestRecurrenceFreqWEEKLY  CalendarEventRequestRecurrenceFreq = "WEEKLY"
+	CalendarEventRequestRecurrenceFreqYEARLY  CalendarEventRequestRecurrenceFreq = "YEARLY"
+)
+
 // Defines values for GoalStatus.
 const (
 	GoalStatusCANCELLED  GoalStatus = "CANCELLED"
@@ -117,6 +163,13 @@ const (
 	InvitationStatusDISABLED InvitationStatus = "DISABLED"
 )
 
+// Defines values for ReviewType.
+const (
+	ReviewTypeDAILY   ReviewType = "DAILY"
+	ReviewTypeMONTHLY ReviewType = "MONTHLY"
+	ReviewTypeWEEKLY  ReviewType = "WEEKLY"
+)
+
 // Defines values for SessionAccountRole.
 const (
 	SessionAccountRoleADMIN      SessionAccountRole = "ADMIN"
@@ -140,6 +193,48 @@ const (
 const (
 	ACTIVE   UpdateInvitationRequestStatus = "ACTIVE"
 	DISABLED UpdateInvitationRequestStatus = "DISABLED"
+)
+
+// Defines values for AnalyticsGranularity.
+const (
+	AnalyticsGranularityDay   AnalyticsGranularity = "day"
+	AnalyticsGranularityMonth AnalyticsGranularity = "month"
+	AnalyticsGranularityWeek  AnalyticsGranularity = "week"
+)
+
+// Defines values for GetGoalAnalyticsParamsGranularity.
+const (
+	GetGoalAnalyticsParamsGranularityDay   GetGoalAnalyticsParamsGranularity = "day"
+	GetGoalAnalyticsParamsGranularityMonth GetGoalAnalyticsParamsGranularity = "month"
+	GetGoalAnalyticsParamsGranularityWeek  GetGoalAnalyticsParamsGranularity = "week"
+)
+
+// Defines values for GetTurnoverAnalyticsParamsGranularity.
+const (
+	GetTurnoverAnalyticsParamsGranularityDay   GetTurnoverAnalyticsParamsGranularity = "day"
+	GetTurnoverAnalyticsParamsGranularityMonth GetTurnoverAnalyticsParamsGranularity = "month"
+	GetTurnoverAnalyticsParamsGranularityWeek  GetTurnoverAnalyticsParamsGranularity = "week"
+)
+
+// Defines values for GetWorklogAnalyticsParamsGranularity.
+const (
+	Day   GetWorklogAnalyticsParamsGranularity = "day"
+	Month GetWorklogAnalyticsParamsGranularity = "month"
+	Week  GetWorklogAnalyticsParamsGranularity = "week"
+)
+
+// Defines values for GetReviewParamsReviewType.
+const (
+	GetReviewParamsReviewTypeDAILY   GetReviewParamsReviewType = "DAILY"
+	GetReviewParamsReviewTypeMONTHLY GetReviewParamsReviewType = "MONTHLY"
+	GetReviewParamsReviewTypeWEEKLY  GetReviewParamsReviewType = "WEEKLY"
+)
+
+// Defines values for UpdateReviewParamsReviewType.
+const (
+	DAILY   UpdateReviewParamsReviewType = "DAILY"
+	MONTHLY UpdateReviewParamsReviewType = "MONTHLY"
+	WEEKLY  UpdateReviewParamsReviewType = "WEEKLY"
 )
 
 // Account defines model for Account.
@@ -190,6 +285,36 @@ type AccountsResponse struct {
 	RequestId string       `json:"request_id"`
 }
 
+// AnalyticsBucket defines model for AnalyticsBucket.
+type AnalyticsBucket struct {
+	ActionCount    int     `json:"action_count"`
+	AudioMinutes   int     `json:"audio_minutes"`
+	CompletedCount int     `json:"completed_count"`
+	GoalCount      int     `json:"goal_count"`
+	NetAmount      float32 `json:"net_amount"`
+	Period         string  `json:"period"`
+	Pv             float32 `json:"pv"`
+	ReadingMinutes int     `json:"reading_minutes"`
+}
+
+// AnalyticsData defines model for AnalyticsData.
+type AnalyticsData struct {
+	Buckets     []AnalyticsBucket        `json:"buckets"`
+	From        openapi_types.Date       `json:"from"`
+	Granularity AnalyticsDataGranularity `json:"granularity"`
+	Metric      string                   `json:"metric"`
+	To          openapi_types.Date       `json:"to"`
+}
+
+// AnalyticsDataGranularity defines model for AnalyticsData.Granularity.
+type AnalyticsDataGranularity string
+
+// AnalyticsResponse defines model for AnalyticsResponse.
+type AnalyticsResponse struct {
+	Data      AnalyticsData `json:"data"`
+	RequestId string        `json:"request_id"`
+}
+
 // AuthData defines model for AuthData.
 type AuthData struct {
 	Account   Account          `json:"account"`
@@ -201,6 +326,85 @@ type AuthData struct {
 type AuthResponse struct {
 	Data      AuthData `json:"data"`
 	RequestId string   `json:"request_id"`
+}
+
+// CalendarAttendee defines model for CalendarAttendee.
+type CalendarAttendee struct {
+	DisplayName *string             `json:"display_name"`
+	Email       openapi_types.Email `json:"email"`
+}
+
+// CalendarEvent defines model for CalendarEvent.
+type CalendarEvent struct {
+	AllDay                  bool                           `json:"all_day"`
+	Attendees               []CalendarAttendee             `json:"attendees"`
+	Description             *string                        `json:"description"`
+	EndAt                   time.Time                      `json:"end_at"`
+	Id                      openapi_types.UUID             `json:"id"`
+	IsException             *bool                          `json:"is_exception,omitempty"`
+	LocationOrLink          *string                        `json:"location_or_link"`
+	OccurrenceId            string                         `json:"occurrence_id"`
+	OriginalOccurrenceStart *time.Time                     `json:"original_occurrence_start"`
+	RecurrenceCount         *int                           `json:"recurrence_count"`
+	RecurrenceEndType       CalendarEventRecurrenceEndType `json:"recurrence_end_type"`
+	RecurrenceFreq          CalendarEventRecurrenceFreq    `json:"recurrence_freq"`
+	RecurrenceInterval      int                            `json:"recurrence_interval"`
+	RecurrenceUntil         *time.Time                     `json:"recurrence_until"`
+	RecurrenceWeekdays      []int                          `json:"recurrence_weekdays"`
+	Sequence                int                            `json:"sequence"`
+	StartAt                 time.Time                      `json:"start_at"`
+	Timezone                string                         `json:"timezone"`
+	Title                   string                         `json:"title"`
+	Uid                     string                         `json:"uid"`
+}
+
+// CalendarEventRecurrenceEndType defines model for CalendarEvent.RecurrenceEndType.
+type CalendarEventRecurrenceEndType string
+
+// CalendarEventRecurrenceFreq defines model for CalendarEvent.RecurrenceFreq.
+type CalendarEventRecurrenceFreq string
+
+// CalendarEventListResponse defines model for CalendarEventListResponse.
+type CalendarEventListResponse struct {
+	Data struct {
+		Items []CalendarEvent `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// CalendarEventRequest defines model for CalendarEventRequest.
+type CalendarEventRequest struct {
+	AllDay             *bool                                  `json:"all_day,omitempty"`
+	Attendees          *[]CalendarAttendee                    `json:"attendees,omitempty"`
+	Description        *string                                `json:"description"`
+	EditScope          *CalendarEventRequestEditScope         `json:"edit_scope,omitempty"`
+	EndAt              time.Time                              `json:"end_at"`
+	LocationOrLink     *string                                `json:"location_or_link"`
+	OccurrenceStart    *time.Time                             `json:"occurrence_start"`
+	RecurrenceCount    *int                                   `json:"recurrence_count"`
+	RecurrenceEndType  *CalendarEventRequestRecurrenceEndType `json:"recurrence_end_type,omitempty"`
+	RecurrenceFreq     *CalendarEventRequestRecurrenceFreq    `json:"recurrence_freq,omitempty"`
+	RecurrenceInterval *int                                   `json:"recurrence_interval,omitempty"`
+	RecurrenceUntil    *time.Time                             `json:"recurrence_until"`
+	RecurrenceWeekdays *[]int                                 `json:"recurrence_weekdays,omitempty"`
+	StartAt            time.Time                              `json:"start_at"`
+	Timezone           string                                 `json:"timezone"`
+	Title              string                                 `json:"title"`
+}
+
+// CalendarEventRequestEditScope defines model for CalendarEventRequest.EditScope.
+type CalendarEventRequestEditScope string
+
+// CalendarEventRequestRecurrenceEndType defines model for CalendarEventRequest.RecurrenceEndType.
+type CalendarEventRequestRecurrenceEndType string
+
+// CalendarEventRequestRecurrenceFreq defines model for CalendarEventRequest.RecurrenceFreq.
+type CalendarEventRequestRecurrenceFreq string
+
+// CalendarEventResponse defines model for CalendarEventResponse.
+type CalendarEventResponse struct {
+	Data      CalendarEvent `json:"data"`
+	RequestId string        `json:"request_id"`
 }
 
 // ChangePasswordRequest defines model for ChangePasswordRequest.
@@ -460,6 +664,52 @@ type ResetPasswordResponse struct {
 	RequestId string            `json:"request_id"`
 }
 
+// Review defines model for Review.
+type Review struct {
+	Good         string              `json:"good"`
+	Id           *openapi_types.UUID `json:"id"`
+	Improvements string              `json:"improvements"`
+	NextFocus    string              `json:"next_focus"`
+	PeriodStart  openapi_types.Date  `json:"period_start"`
+	Problems     string              `json:"problems"`
+	Summary      *string             `json:"summary"`
+	Totals       ReviewPeriodTotals  `json:"totals"`
+	Type         ReviewType          `json:"type"`
+}
+
+// ReviewType defines model for Review.Type.
+type ReviewType string
+
+// ReviewListResponse defines model for ReviewListResponse.
+type ReviewListResponse struct {
+	Data struct {
+		Items []Review `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// ReviewPeriodTotals defines model for ReviewPeriodTotals.
+type ReviewPeriodTotals struct {
+	TurnoverNetAmount  float32 `json:"turnover_net_amount"`
+	TurnoverPv         float32 `json:"turnover_pv"`
+	WorklogActionCount int     `json:"worklog_action_count"`
+}
+
+// ReviewRequest defines model for ReviewRequest.
+type ReviewRequest struct {
+	Good         *string `json:"good,omitempty"`
+	Improvements *string `json:"improvements,omitempty"`
+	NextFocus    *string `json:"next_focus,omitempty"`
+	Problems     *string `json:"problems,omitempty"`
+	Summary      *string `json:"summary"`
+}
+
+// ReviewResponse defines model for ReviewResponse.
+type ReviewResponse struct {
+	Data      Review `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
 // SessionAccount defines model for SessionAccount.
 type SessionAccount struct {
 	Active      bool                 `json:"active"`
@@ -615,8 +865,20 @@ type WorklogTotals struct {
 // AccountId defines model for AccountId.
 type AccountId = openapi_types.UUID
 
+// AnalyticsGranularity defines model for AnalyticsGranularity.
+type AnalyticsGranularity string
+
 // BusinessDate defines model for BusinessDate.
 type BusinessDate = openapi_types.Date
+
+// CalendarEventId defines model for CalendarEventId.
+type CalendarEventId = openapi_types.UUID
+
+// CalendarFrom defines model for CalendarFrom.
+type CalendarFrom = time.Time
+
+// CalendarTo defines model for CalendarTo.
+type CalendarTo = time.Time
 
 // DateFrom defines model for DateFrom.
 type DateFrom = openapi_types.Date
@@ -639,6 +901,9 @@ type Page = int
 // PageSize defines model for PageSize.
 type PageSize = int
 
+// ReviewPeriodStart defines model for ReviewPeriodStart.
+type ReviewPeriodStart = openapi_types.Date
+
 // TurnoverDate defines model for TurnoverDate.
 type TurnoverDate = openapi_types.Date
 
@@ -651,10 +916,58 @@ type GetAdminUsersParams struct {
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 }
 
+// GetGoalAnalyticsParams defines parameters for GetGoalAnalytics.
+type GetGoalAnalyticsParams struct {
+	From        *DateFrom                         `form:"from,omitempty" json:"from,omitempty"`
+	To          *DateTo                           `form:"to,omitempty" json:"to,omitempty"`
+	Granularity GetGoalAnalyticsParamsGranularity `form:"granularity" json:"granularity"`
+}
+
+// GetGoalAnalyticsParamsGranularity defines parameters for GetGoalAnalytics.
+type GetGoalAnalyticsParamsGranularity string
+
+// GetTurnoverAnalyticsParams defines parameters for GetTurnoverAnalytics.
+type GetTurnoverAnalyticsParams struct {
+	From        *DateFrom                             `form:"from,omitempty" json:"from,omitempty"`
+	To          *DateTo                               `form:"to,omitempty" json:"to,omitempty"`
+	Granularity GetTurnoverAnalyticsParamsGranularity `form:"granularity" json:"granularity"`
+}
+
+// GetTurnoverAnalyticsParamsGranularity defines parameters for GetTurnoverAnalytics.
+type GetTurnoverAnalyticsParamsGranularity string
+
+// GetWorklogAnalyticsParams defines parameters for GetWorklogAnalytics.
+type GetWorklogAnalyticsParams struct {
+	From        *DateFrom                            `form:"from,omitempty" json:"from,omitempty"`
+	To          *DateTo                              `form:"to,omitempty" json:"to,omitempty"`
+	Granularity GetWorklogAnalyticsParamsGranularity `form:"granularity" json:"granularity"`
+}
+
+// GetWorklogAnalyticsParamsGranularity defines parameters for GetWorklogAnalytics.
+type GetWorklogAnalyticsParamsGranularity string
+
+// ListCalendarEventsParams defines parameters for ListCalendarEvents.
+type ListCalendarEventsParams struct {
+	From CalendarFrom `form:"from" json:"from"`
+	To   CalendarTo   `form:"to" json:"to"`
+}
+
 // GetDashboardParams defines parameters for GetDashboard.
 type GetDashboardParams struct {
 	Date BusinessDate `form:"date" json:"date"`
 }
+
+// ListReviewsParams defines parameters for ListReviews.
+type ListReviewsParams struct {
+	From *DateFrom `form:"from,omitempty" json:"from,omitempty"`
+	To   *DateTo   `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// GetReviewParamsReviewType defines parameters for GetReview.
+type GetReviewParamsReviewType string
+
+// UpdateReviewParamsReviewType defines parameters for UpdateReview.
+type UpdateReviewParamsReviewType string
 
 // ListTurnoversParams defines parameters for ListTurnovers.
 type ListTurnoversParams struct {
@@ -704,6 +1017,12 @@ type PatchAuthTimezoneJSONRequestBody = TimezoneRequest
 // PostAuthRegisterJSONRequestBody defines body for PostAuthRegister for application/json ContentType.
 type PostAuthRegisterJSONRequestBody = RegisterRequest
 
+// CreateCalendarEventJSONRequestBody defines body for CreateCalendarEvent for application/json ContentType.
+type CreateCalendarEventJSONRequestBody = CalendarEventRequest
+
+// UpdateCalendarEventJSONRequestBody defines body for UpdateCalendarEvent for application/json ContentType.
+type UpdateCalendarEventJSONRequestBody = CalendarEventRequest
+
 // CreateDreamJSONRequestBody defines body for CreateDream for application/json ContentType.
 type CreateDreamJSONRequestBody = DreamRequest
 
@@ -715,6 +1034,9 @@ type CreateGoalJSONRequestBody = GoalRequest
 
 // UpdateGoalJSONRequestBody defines body for UpdateGoal for application/json ContentType.
 type UpdateGoalJSONRequestBody = GoalRequest
+
+// UpdateReviewJSONRequestBody defines body for UpdateReview for application/json ContentType.
+type UpdateReviewJSONRequestBody = ReviewRequest
 
 // CreateTurnoverJSONRequestBody defines body for CreateTurnover for application/json ContentType.
 type CreateTurnoverJSONRequestBody = TurnoverRequest
@@ -769,6 +1091,15 @@ type ServerInterface interface {
 	// Enable or disable a normal user
 	// (PATCH /api/admin/users/{account_id}/status)
 	PatchAdminUserStatus(ctx echo.Context, accountId AccountId) error
+	// Aggregate goals by their business start date
+	// (GET /api/analytics/goals)
+	GetGoalAnalytics(ctx echo.Context, params GetGoalAnalyticsParams) error
+	// Aggregate turnover by day, week, or month
+	// (GET /api/analytics/turnover)
+	GetTurnoverAnalytics(ctx echo.Context, params GetTurnoverAnalyticsParams) error
+	// Aggregate worklogs by day, week, or month
+	// (GET /api/analytics/worklogs)
+	GetWorklogAnalytics(ctx echo.Context, params GetWorklogAnalyticsParams) error
 	// List normal accounts linked to this browser session
 	// (GET /api/auth/accounts)
 	GetAuthAccounts(ctx echo.Context) error
@@ -802,6 +1133,21 @@ type ServerInterface interface {
 	// Register a normal user with an invitation code
 	// (POST /api/auth/register)
 	PostAuthRegister(ctx echo.Context) error
+	// List expanded calendar event occurrences in a time range
+	// (GET /api/calendar/events)
+	ListCalendarEvents(ctx echo.Context, params ListCalendarEventsParams) error
+	// Create a one-time or recurring calendar event
+	// (POST /api/calendar/events)
+	CreateCalendarEvent(ctx echo.Context) error
+	// Delete a calendar event series and send cancellation notices
+	// (DELETE /api/calendar/events/{event_id})
+	DeleteCalendarEvent(ctx echo.Context, eventId CalendarEventId) error
+	// Get a calendar event series
+	// (GET /api/calendar/events/{event_id})
+	GetCalendarEvent(ctx echo.Context, eventId CalendarEventId) error
+	// Update an entire series, one occurrence, or an occurrence and following events
+	// (PUT /api/calendar/events/{event_id})
+	UpdateCalendarEvent(ctx echo.Context, eventId CalendarEventId) error
 	// Return the user dashboard aggregates for a business date
 	// (GET /api/dashboard)
 	GetDashboard(ctx echo.Context, params GetDashboardParams) error
@@ -841,6 +1187,15 @@ type ServerInterface interface {
 	// Check whether required runtime dependencies are ready
 	// (GET /api/health/ready)
 	GetHealthReady(ctx echo.Context) error
+	// List saved daily, weekly, or monthly reviews
+	// (GET /api/reviews)
+	ListReviews(ctx echo.Context, params ListReviewsParams) error
+	// Get a review and its live period totals
+	// (GET /api/reviews/{review_type}/{period_start})
+	GetReview(ctx echo.Context, reviewType GetReviewParamsReviewType, periodStart ReviewPeriodStart) error
+	// Create or update one review for its period
+	// (PUT /api/reviews/{review_type}/{period_start})
+	UpdateReview(ctx echo.Context, reviewType UpdateReviewParamsReviewType, periodStart ReviewPeriodStart) error
 	// List daily turnovers in a business-date range
 	// (GET /api/turnover)
 	ListTurnovers(ctx echo.Context, params ListTurnoversParams) error
@@ -1093,6 +1448,108 @@ func (w *ServerInterfaceWrapper) PatchAdminUserStatus(ctx echo.Context) error {
 	return err
 }
 
+// GetGoalAnalytics converts echo context to params.
+func (w *ServerInterfaceWrapper) GetGoalAnalytics(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetGoalAnalyticsParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// ------------- Required query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "granularity", ctx.QueryParams(), &params.Granularity)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter granularity: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetGoalAnalytics(ctx, params)
+	return err
+}
+
+// GetTurnoverAnalytics converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTurnoverAnalytics(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTurnoverAnalyticsParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// ------------- Required query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "granularity", ctx.QueryParams(), &params.Granularity)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter granularity: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTurnoverAnalytics(ctx, params)
+	return err
+}
+
+// GetWorklogAnalytics converts echo context to params.
+func (w *ServerInterfaceWrapper) GetWorklogAnalytics(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetWorklogAnalyticsParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// ------------- Required query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "granularity", ctx.QueryParams(), &params.Granularity)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter granularity: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetWorklogAnalytics(ctx, params)
+	return err
+}
+
 // GetAuthAccounts converts echo context to params.
 func (w *ServerInterfaceWrapper) GetAuthAccounts(ctx echo.Context) error {
 	var err error
@@ -1221,6 +1678,98 @@ func (w *ServerInterfaceWrapper) PostAuthRegister(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostAuthRegister(ctx)
+	return err
+}
+
+// ListCalendarEvents converts echo context to params.
+func (w *ServerInterfaceWrapper) ListCalendarEvents(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCalendarEventsParams
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListCalendarEvents(ctx, params)
+	return err
+}
+
+// CreateCalendarEvent converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateCalendarEvent(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateCalendarEvent(ctx)
+	return err
+}
+
+// DeleteCalendarEvent converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCalendarEvent(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "event_id" -------------
+	var eventId CalendarEventId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "event_id", ctx.Param("event_id"), &eventId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter event_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCalendarEvent(ctx, eventId)
+	return err
+}
+
+// GetCalendarEvent converts echo context to params.
+func (w *ServerInterfaceWrapper) GetCalendarEvent(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "event_id" -------------
+	var eventId CalendarEventId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "event_id", ctx.Param("event_id"), &eventId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter event_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetCalendarEvent(ctx, eventId)
+	return err
+}
+
+// UpdateCalendarEvent converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateCalendarEvent(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "event_id" -------------
+	var eventId CalendarEventId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "event_id", ctx.Param("event_id"), &eventId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter event_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateCalendarEvent(ctx, eventId)
 	return err
 }
 
@@ -1411,6 +1960,85 @@ func (w *ServerInterfaceWrapper) GetHealthReady(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetHealthReady(ctx)
+	return err
+}
+
+// ListReviews converts echo context to params.
+func (w *ServerInterfaceWrapper) ListReviews(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListReviewsParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListReviews(ctx, params)
+	return err
+}
+
+// GetReview converts echo context to params.
+func (w *ServerInterfaceWrapper) GetReview(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "review_type" -------------
+	var reviewType GetReviewParamsReviewType
+
+	err = runtime.BindStyledParameterWithOptions("simple", "review_type", ctx.Param("review_type"), &reviewType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter review_type: %s", err))
+	}
+
+	// ------------- Path parameter "period_start" -------------
+	var periodStart ReviewPeriodStart
+
+	err = runtime.BindStyledParameterWithOptions("simple", "period_start", ctx.Param("period_start"), &periodStart, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter period_start: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetReview(ctx, reviewType, periodStart)
+	return err
+}
+
+// UpdateReview converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateReview(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "review_type" -------------
+	var reviewType UpdateReviewParamsReviewType
+
+	err = runtime.BindStyledParameterWithOptions("simple", "review_type", ctx.Param("review_type"), &reviewType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter review_type: %s", err))
+	}
+
+	// ------------- Path parameter "period_start" -------------
+	var periodStart ReviewPeriodStart
+
+	err = runtime.BindStyledParameterWithOptions("simple", "period_start", ctx.Param("period_start"), &periodStart, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter period_start: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateReview(ctx, reviewType, periodStart)
 	return err
 }
 
@@ -1639,6 +2267,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/api/admin/users/:account_id", wrapper.DeleteAdminUser)
 	router.POST(baseURL+"/api/admin/users/:account_id/reset-password", wrapper.PostAdminUserResetPassword)
 	router.PATCH(baseURL+"/api/admin/users/:account_id/status", wrapper.PatchAdminUserStatus)
+	router.GET(baseURL+"/api/analytics/goals", wrapper.GetGoalAnalytics)
+	router.GET(baseURL+"/api/analytics/turnover", wrapper.GetTurnoverAnalytics)
+	router.GET(baseURL+"/api/analytics/worklogs", wrapper.GetWorklogAnalytics)
 	router.GET(baseURL+"/api/auth/accounts", wrapper.GetAuthAccounts)
 	router.POST(baseURL+"/api/auth/accounts/add", wrapper.PostAuthAccountsAdd)
 	router.DELETE(baseURL+"/api/auth/accounts/:account_id", wrapper.DeleteAuthAccount)
@@ -1650,6 +2281,11 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/api/auth/me", wrapper.GetAuthMe)
 	router.PATCH(baseURL+"/api/auth/me/timezone", wrapper.PatchAuthTimezone)
 	router.POST(baseURL+"/api/auth/register", wrapper.PostAuthRegister)
+	router.GET(baseURL+"/api/calendar/events", wrapper.ListCalendarEvents)
+	router.POST(baseURL+"/api/calendar/events", wrapper.CreateCalendarEvent)
+	router.DELETE(baseURL+"/api/calendar/events/:event_id", wrapper.DeleteCalendarEvent)
+	router.GET(baseURL+"/api/calendar/events/:event_id", wrapper.GetCalendarEvent)
+	router.PUT(baseURL+"/api/calendar/events/:event_id", wrapper.UpdateCalendarEvent)
 	router.GET(baseURL+"/api/dashboard", wrapper.GetDashboard)
 	router.GET(baseURL+"/api/dreams", wrapper.ListDreams)
 	router.POST(baseURL+"/api/dreams", wrapper.CreateDream)
@@ -1663,6 +2299,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.PUT(baseURL+"/api/goals/:goal_id", wrapper.UpdateGoal)
 	router.GET(baseURL+"/api/health/live", wrapper.GetHealthLive)
 	router.GET(baseURL+"/api/health/ready", wrapper.GetHealthReady)
+	router.GET(baseURL+"/api/reviews", wrapper.ListReviews)
+	router.GET(baseURL+"/api/reviews/:review_type/:period_start", wrapper.GetReview)
+	router.PUT(baseURL+"/api/reviews/:review_type/:period_start", wrapper.UpdateReview)
 	router.GET(baseURL+"/api/turnover", wrapper.ListTurnovers)
 	router.POST(baseURL+"/api/turnover", wrapper.CreateTurnover)
 	router.DELETE(baseURL+"/api/turnover/:turnover_date", wrapper.DeleteTurnover)

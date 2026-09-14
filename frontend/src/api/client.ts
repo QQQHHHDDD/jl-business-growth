@@ -19,6 +19,11 @@ export type Dream = components["schemas"]["Dream"];
 export type DreamRequest = components["schemas"]["DreamRequest"];
 export type Goal = components["schemas"]["Goal"];
 export type GoalRequest = components["schemas"]["GoalRequest"];
+export type CalendarEvent = components["schemas"]["CalendarEvent"];
+export type CalendarEventRequest = components["schemas"]["CalendarEventRequest"];
+export type Review = components["schemas"]["Review"];
+export type ReviewRequest = components["schemas"]["ReviewRequest"];
+export type AnalyticsResponse = components["schemas"]["AnalyticsResponse"];
 
 export class ApiError extends Error {
   status: number;
@@ -305,6 +310,30 @@ export function listGoals(): Promise<components["schemas"]["GoalListResponse"]> 
 
 export function saveGoal(csrfToken: string, input: GoalRequest, id?: string): Promise<components["schemas"]["GoalResponse"]> {
   return request(id ? `/api/goals/${encodeURIComponent(id)}` : "/api/goals", withCsrf(csrfToken, input, id ? "PUT" : "POST"));
+}
+
+export function listCalendarEvents(from: string, to: string): Promise<components["schemas"]["CalendarEventListResponse"]> {
+  return request(`/api/calendar/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+}
+
+export function saveCalendarEvent(csrfToken: string, input: CalendarEventRequest, id?: string): Promise<components["schemas"]["CalendarEventResponse"]> {
+  return request(id ? `/api/calendar/events/${encodeURIComponent(id)}` : "/api/calendar/events", withCsrf(csrfToken, input, id ? "PUT" : "POST"));
+}
+
+export function deleteCalendarEvent(csrfToken: string, id: string): Promise<void> {
+  return request(`/api/calendar/events/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE"));
+}
+
+export function getReview(type: "DAILY" | "WEEKLY" | "MONTHLY", periodStart: string): Promise<components["schemas"]["ReviewResponse"]> {
+  return request(`/api/reviews/${type}/${encodeURIComponent(periodStart)}`);
+}
+
+export function saveReview(csrfToken: string, type: "DAILY" | "WEEKLY" | "MONTHLY", periodStart: string, input: ReviewRequest): Promise<components["schemas"]["ReviewResponse"]> {
+  return request(`/api/reviews/${type}/${encodeURIComponent(periodStart)}`, withCsrf(csrfToken, input, "PUT"));
+}
+
+export function getAnalytics(metric: "worklogs" | "turnover" | "goals", from: string, to: string, granularity: "day" | "week" | "month"): Promise<AnalyticsResponse> {
+  return request(`/api/analytics/${metric}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&granularity=${granularity}`);
 }
 
 export function deleteGoal(csrfToken: string, id: string): Promise<void> {

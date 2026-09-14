@@ -10,6 +10,7 @@ tags:
   - name: auth
   - name: admin
   - name: daily-core
+  - name: calendar-reviews
 paths:
   /api/health/live:
     get:
@@ -833,6 +834,211 @@ paths:
           description: Goal deleted
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /api/calendar/events:
+    get:
+      operationId: listCalendarEvents
+      tags: [calendar-reviews]
+      summary: List expanded calendar event occurrences in a time range
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CalendarFrom"
+        - $ref: "#/components/parameters/CalendarTo"
+      responses:
+        "200":
+          description: Calendar occurrences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEventListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: createCalendarEvent
+      tags: [calendar-reviews]
+      summary: Create a one-time or recurring calendar event
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarEventRequest"
+      responses:
+        "201":
+          description: Calendar event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEventResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/calendar/events/{event_id}:
+    get:
+      operationId: getCalendarEvent
+      tags: [calendar-reviews]
+      summary: Get a calendar event series
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CalendarEventId"
+      responses:
+        "200":
+          description: Calendar event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEventResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    put:
+      operationId: updateCalendarEvent
+      tags: [calendar-reviews]
+      summary: Update an entire series, one occurrence, or an occurrence and following events
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CalendarEventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarEventRequest"
+      responses:
+        "200":
+          description: Calendar event updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEventResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: deleteCalendarEvent
+      tags: [calendar-reviews]
+      summary: Delete a calendar event series and send cancellation notices
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CalendarEventId"
+      responses:
+        "204":
+          description: Calendar event deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/reviews:
+    get:
+      operationId: listReviews
+      tags: [calendar-reviews]
+      summary: List saved daily, weekly, or monthly reviews
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+      responses:
+        "200":
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/reviews/{review_type}/{period_start}:
+    get:
+      operationId: getReview
+      tags: [calendar-reviews]
+      summary: Get a review and its live period totals
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ReviewType"
+        - $ref: "#/components/parameters/ReviewPeriodStart"
+      responses:
+        "200":
+          description: Review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    put:
+      operationId: updateReview
+      tags: [calendar-reviews]
+      summary: Create or update one review for its period
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ReviewType"
+        - $ref: "#/components/parameters/ReviewPeriodStart"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRequest"
+      responses:
+        "200":
+          description: Review saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/analytics/worklogs:
+    get:
+      operationId: getWorklogAnalytics
+      tags: [calendar-reviews]
+      summary: Aggregate worklogs by day, week, or month
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - $ref: "#/components/parameters/AnalyticsGranularity"
+      responses:
+        "200":
+          description: Worklog analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/analytics/turnover:
+    get:
+      operationId: getTurnoverAnalytics
+      tags: [calendar-reviews]
+      summary: Aggregate turnover by day, week, or month
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - $ref: "#/components/parameters/AnalyticsGranularity"
+      responses:
+        "200":
+          description: Turnover analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/analytics/goals:
+    get:
+      operationId: getGoalAnalytics
+      tags: [calendar-reviews]
+      summary: Aggregate goals by their business start date
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - $ref: "#/components/parameters/AnalyticsGranularity"
+      responses:
+        "200":
+          description: Goal analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
 components:
   securitySchemes:
     sessionCookie:
@@ -916,6 +1122,48 @@ components:
       schema:
         type: string
         format: uuid
+    CalendarEventId:
+      name: event_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CalendarFrom:
+      name: from
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+    CalendarTo:
+      name: to
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+    ReviewType:
+      name: review_type
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [DAILY, WEEKLY, MONTHLY]
+    ReviewPeriodStart:
+      name: period_start
+      in: path
+      required: true
+      schema:
+        type: string
+        format: date
+    AnalyticsGranularity:
+      name: granularity
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [day, week, month]
   responses:
     ErrorResponse:
       description: Request failed
@@ -1718,5 +1966,284 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/DashboardData"
+        request_id:
+          type: string
+    CalendarAttendee:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+          nullable: true
+    CalendarEvent:
+      type: object
+      required: [id, occurrence_id, uid, sequence, title, timezone, all_day, start_at, end_at, recurrence_freq, recurrence_interval, recurrence_end_type, recurrence_weekdays, attendees]
+      properties:
+        id:
+          type: string
+          format: uuid
+        occurrence_id:
+          type: string
+        uid:
+          type: string
+        sequence:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        location_or_link:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+        all_day:
+          type: boolean
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+        recurrence_freq:
+          type: string
+          enum: [NONE, DAILY, WEEKLY, MONTHLY, YEARLY]
+        recurrence_interval:
+          type: integer
+        recurrence_weekdays:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+        recurrence_end_type:
+          type: string
+          enum: [NEVER, UNTIL, COUNT]
+        recurrence_until:
+          type: string
+          format: date-time
+          nullable: true
+        recurrence_count:
+          type: integer
+          nullable: true
+        original_occurrence_start:
+          type: string
+          format: date-time
+          nullable: true
+        is_exception:
+          type: boolean
+        attendees:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarAttendee"
+    CalendarEventRequest:
+      type: object
+      required: [title, timezone, start_at, end_at]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        location_or_link:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        all_day:
+          type: boolean
+          default: false
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+        recurrence_freq:
+          type: string
+          enum: [NONE, DAILY, WEEKLY, MONTHLY, YEARLY]
+          default: NONE
+        recurrence_interval:
+          type: integer
+          minimum: 1
+          default: 1
+        recurrence_weekdays:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+        recurrence_end_type:
+          type: string
+          enum: [NEVER, UNTIL, COUNT]
+          default: NEVER
+        recurrence_until:
+          type: string
+          format: date-time
+          nullable: true
+        recurrence_count:
+          type: integer
+          minimum: 1
+          nullable: true
+        attendees:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarAttendee"
+        edit_scope:
+          type: string
+          enum: [SERIES, THIS_ONLY, THIS_AND_FOLLOWING]
+          default: SERIES
+        occurrence_start:
+          type: string
+          format: date-time
+          nullable: true
+    CalendarEventResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/CalendarEvent"
+        request_id:
+          type: string
+    CalendarEventListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/CalendarEvent"
+        request_id:
+          type: string
+    ReviewPeriodTotals:
+      type: object
+      required: [worklog_action_count, turnover_pv, turnover_net_amount]
+      properties:
+        worklog_action_count:
+          type: integer
+        turnover_pv:
+          type: number
+        turnover_net_amount:
+          type: number
+    Review:
+      type: object
+      required: [type, period_start, good, problems, improvements, next_focus, totals]
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+          enum: [DAILY, WEEKLY, MONTHLY]
+        period_start:
+          type: string
+          format: date
+        good:
+          type: string
+        problems:
+          type: string
+        improvements:
+          type: string
+        next_focus:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        totals:
+          $ref: "#/components/schemas/ReviewPeriodTotals"
+    ReviewRequest:
+      type: object
+      properties:
+        good:
+          type: string
+        problems:
+          type: string
+        improvements:
+          type: string
+        next_focus:
+          type: string
+        summary:
+          type: string
+          nullable: true
+    ReviewResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/Review"
+        request_id:
+          type: string
+    ReviewListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Review"
+        request_id:
+          type: string
+    AnalyticsBucket:
+      type: object
+      required: [period, action_count, reading_minutes, audio_minutes, pv, net_amount, goal_count, completed_count]
+      properties:
+        period:
+          type: string
+        action_count:
+          type: integer
+        reading_minutes:
+          type: integer
+        audio_minutes:
+          type: integer
+        pv:
+          type: number
+        net_amount:
+          type: number
+        goal_count:
+          type: integer
+        completed_count:
+          type: integer
+    AnalyticsData:
+      type: object
+      required: [metric, from, to, granularity, buckets]
+      properties:
+        metric:
+          type: string
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        granularity:
+          type: string
+          enum: [day, week, month]
+        buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsBucket"
+    AnalyticsResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/AnalyticsData"
         request_id:
           type: string
