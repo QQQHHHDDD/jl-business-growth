@@ -180,6 +180,45 @@ func (s *Service) ChangePassword(ctx context.Context, account Account, currentPa
 	return tx.Commit(ctx)
 }
 
+// ResetConfiguredSuperAdminPassword is intentionally limited to non-production
+// environments. It is a recovery path for a local database whose fixed
+// administrator was initialized before the configured password was changed.
+func (s *Service) ResetConfiguredSuperAdminPassword(ctx context.Context) error {
+	if s.cfg.AppEnv == "production" {
+		return errors.New("super administrator password reset is disabled in production")
+	}
+	if err := validateSuperAdminBootstrapConfig(s.cfg.SuperadminUsername, s.cfg.SuperadminPassword); err != nil {
+		return err
+	}
+	account, err := s.queries.GetSuperAdmin(ctx)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errors.New("super administrator does not exist; start the API once to initialize it")
+	}
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(account.Username, s.cfg.SuperadminUsername) {
+		return errors.New("existing super administrator username does not match configured fixed username")
+	}
+	hash, err := HashPassword(s.cfg.SuperadminPassword)
+	if err != nil {
+		return errors.New("SUPERADMIN_INITIAL_PASSWORD is invalid")
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	queries := s.queries.WithTx(tx)
+	if err := queries.UpdatePassword(ctx, generated.UpdatePasswordParams{ID: account.ID, PasswordHash: hash}); err != nil {
+		return err
+	}
+	if err := queries.DeleteAccountSessions(ctx, account.ID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *Service) UpdateTimezone(ctx context.Context, accountID uuid.UUID, timezone string) (Account, error) {
 	if len(timezone) == 0 || len(timezone) > 64 {
 		return Account{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "timezone is invalid")

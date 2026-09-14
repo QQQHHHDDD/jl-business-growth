@@ -42,8 +42,11 @@ make test-e2e
 make test-integration  # requires TEST_DATABASE_URL for jl_business_test
 make migrate-test-up   # refuses databases other than jl_business_test
 make migrate-test-status
+make reset-superadmin-password  # development/test only; sync configured initial password to the existing super admin
 make build
 make check
 ```
 
 Health endpoints: `GET /api/health/live` and `GET /api/health/ready`.
+
+`SUPERADMIN_INITIAL_PASSWORD` is used only when the fixed super administrator is first created. If the development or test database already contains that account and the configured password needs to be recovered, update the local environment file and run `make reset-superadmin-password`. This command refuses production and invalidates the super administrator's existing sessions.

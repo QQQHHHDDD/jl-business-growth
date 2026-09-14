@@ -6,11 +6,14 @@ BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 
 .PHONY: dev generate generate-openapi generate-sqlc generate-frontend lint lint-backend lint-frontend \
-	test test-backend test-integration test-frontend test-e2e build build-backend build-frontend \
+	test test-backend test-integration test-frontend test-e2e build build-backend build-frontend reset-superadmin-password \
 	migrate-up migrate-status migrate-test-up migrate-test-status check-test-database check
 
 dev:
 	./scripts/dev.sh
+
+reset-superadmin-password:
+	cd $(BACKEND_DIR) && $(GO) run ./cmd/reset-superadmin-password
 
 generate: generate-openapi generate-sqlc generate-frontend
 
