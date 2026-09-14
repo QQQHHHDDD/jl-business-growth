@@ -1,6 +1,6 @@
 # V1 Implementation Plan
 
-- Status: Phase 1 complete and database-backed acceptance passed; stop before Phase 2
+- Status: Phase 1 complete; frontend application shell and design system refresh complete; stop before Phase 2
 - Updated: 2026-09-14
 - Source: `docs/00-文档索引.md` and current design documents `01` through `08`
 
@@ -9,7 +9,7 @@
 | Item | State | Action |
 |---|---|---|
 | OS / architecture | Ubuntu 22.04.5 LTS / x86_64 / 32 CPUs | Supported platform |
-| Git | Initialized; `43af68f` contains the Phase 0 baseline; Phase 1 changes are uncommitted | Preserve history; no commit without user approval |
+| Git | Initialized; `43af68f` contains the Phase 0 baseline and `d39d52a` contains the Phase 1 password recovery fix; frontend shell changes are pending commit | Keep the frontend refresh in its own commit |
 | Go | 1.26.1 | Below required Go 1.27+; upgrade before final Go validation |
 | Node / npm | Not on system PATH; local Node 24 toolchain exists | Use local toolchain for current project validation |
 | PostgreSQL | PostgreSQL 14 is installed; current local cluster is down (`pg_isready` reports no response) | User must start the existing service before migration/status checks; no sudo action was run |
@@ -41,6 +41,16 @@
 - [x] Focused backend security tests and frontend API/authentication tests
 - [x] Database-backed Phase 1 Playwright flow is available with explicit test credentials
 
+### Phase 1 frontend shell and design system refresh
+
+- [x] Add React Router, React Hook Form, Zod, Radix Dialog/Tabs/Slot, and shared UI primitives
+- [x] Establish the responsive application shell, role-aware navigation, mobile drawer, bottom navigation, and health indicator
+- [x] Migrate authentication, dashboard, settings, account switching, and administrator pages to the shared shell
+- [x] Register all documented user and administrator routes with role guards and placeholder pages for later phases
+- [x] Replace destructive `window.confirm`/`window.prompt` flows with accessible confirmation and prompt dialogs
+- [x] Add route, shell, shared-component, mobile, loading, empty, error, and dialog regression coverage
+- [x] Keep backend API, OpenAPI contract, and database migrations unchanged
+
 Phase 1 database-backed acceptance still requires applying `00002_authentication.sql` to the isolated `jl_business_test` database and running `make migrate-test-up`, `make test-integration`, plus the live API/browser checks below. The test migration and integration commands refuse any database other than `jl_business_test`. When `APP_ENV=test`, the Playwright backend is explicitly given `TEST_DATABASE_URL`, `E2E_SUPERADMIN_USERNAME`, and `E2E_SUPERADMIN_PASSWORD`; it cannot reuse an existing development backend.
 
 ### Phase 2-6
@@ -61,7 +71,7 @@ Go unit tests and PostgreSQL integration tests use only `jl_business_test`; Vite
 
 ## Active Blockers
 
-None known in the source tree. Live database migration and browser acceptance remain host-side steps because credentials are kept outside the checkout.
+None known in the source tree. Live database migration and database-backed browser acceptance remain host-side steps because credentials are kept outside the checkout; the current execution shell has not been given those variables.
 
 ## Warnings
 
@@ -69,6 +79,7 @@ None known in the source tree. Live database migration and browser acceptance re
 - Node/npm are provided by the local Node 24 toolchain rather than the system PATH.
 - Development HTTP uses `bos_session` / `bos_csrf`; secure production deployments use the required `__Host-bos_session` / `__Host-bos_csrf` cookies.
 - The current implementation uses the locally available Go 1.27.0 toolchain for validation; the host default Go remains unchanged.
+- `npm install` reports 2 moderate audit findings and an esbuild install-script approval warning; no forced audit upgrade was applied because it could change unrelated dependency versions.
 
 ## Host Validation Commands
 
@@ -134,3 +145,7 @@ The PostgreSQL commands are required for Goose migration, sqlc schema validation
 - Database-backed acceptance completed on the host: test database migration version 2, `TestPhase1APIIntegration`, and both Playwright tests passed.
 - Final Phase 1 regression: frontend Vitest 8 tests, backend `go test -race ./...`, `make check`, `make test-integration`, `make test-e2e`, and `git diff --check` passed.
 - Added `make reset-superadmin-password` as a development/test-only recovery command for an existing fixed super administrator; it updates the configured password hash, invalidates that account's sessions, refuses production, and was verified against the development API with HTTP 200 login.
+- Frontend shell refresh: `make generate`, `make lint`, `make test`, `make build`, and `make check` passed; Vitest now covers 21 tests across five files.
+- Frontend shell refresh: desktop baseline E2E passed; mobile shell and Phase 1 database-backed E2E are skipped when the host shell does not provide `APP_ENV=test`, `TEST_DATABASE_URL`, and explicit E2E credentials.
+- Frontend shell refresh: `make test-integration` was attempted and correctly refused the current shell because `TEST_DATABASE_URL` was unset; rerun with the isolated `jl_business_test` URL before final host acceptance.
+- Frontend shell refresh: `git diff --check` passed; only frontend source, dependency, Playwright, and this execution-plan documentation are changed.

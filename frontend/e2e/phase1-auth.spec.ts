@@ -15,7 +15,7 @@ test("covers the Phase 1 administrator, invitation, registration, and account-sw
   await page.getByLabel("账号").fill(superadminUsername!);
   await page.getByLabel("密码").fill(superadminPassword!);
   await page.getByRole("button", { name: "登录" }).click();
-  await expect(page.getByRole("heading", { name: superadminUsername! })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "管理员工作台" })).toBeVisible();
 
   await page.getByRole("tab", { name: "管理员" }).click();
   await page.getByLabel("新管理员账号").fill(`admin${Date.now().toString().slice(-10)}`);
@@ -32,7 +32,9 @@ test("covers the Phase 1 administrator, invitation, registration, and account-sw
 
   await page.getByRole("button", { name: "退出登录" }).click();
   await expect(page.getByRole("heading", { name: "登录系统" })).toBeVisible();
-  await page.getByRole("button", { name: "首次使用？注册普通用户" }).click();
+  await page.getByRole("link", { name: "首次使用？注册普通用户" }).click();
+  await expect(page).toHaveURL(/\/register$/);
+  await expect(page.getByRole("heading", { name: "注册普通用户" })).toBeVisible();
   await page.getByLabel("账号").fill(firstUsername);
   await page.getByLabel("密码").fill(userPassword);
   await page.getByLabel("邀请码").fill(invitationCode!);
@@ -40,8 +42,11 @@ test("covers the Phase 1 administrator, invitation, registration, and account-sw
   await expect(page.getByRole("heading", { name: firstUsername })).toBeVisible();
 
   await page.getByRole("button", { name: "退出登录" }).click();
-  await page.getByRole("button", { name: "已有账号？返回登录" }).click();
-  await page.getByRole("button", { name: "首次使用？注册普通用户" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "登录系统" })).toBeVisible();
+  await page.getByRole("link", { name: "首次使用？注册普通用户" }).click();
+  await expect(page).toHaveURL(/\/register$/);
+  await expect(page.getByRole("heading", { name: "注册普通用户" })).toBeVisible();
   await page.getByLabel("账号").fill(secondUsername);
   await page.getByLabel("密码").fill(secondUserPassword);
   await page.getByLabel("邀请码").fill(invitationCode!);
