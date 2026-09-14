@@ -8,7 +8,10 @@ import { AdminAdminsPage, AdminHomePage, AdminInvitationsPage, AdminUsersPage } 
 import { AuthPage } from "@/features/auth/auth-page";
 import { SettingsPage } from "@/features/auth/settings-page";
 import { DashboardPage } from "@/features/dashboard/dashboard-page";
+import { GoalsPage } from "@/features/goals/goals-page";
 import { PlaceholderPage } from "@/features/placeholder/placeholder-page";
+import { TurnoverPage } from "@/features/turnover/turnover-page";
+import { WorklogPage } from "@/features/worklog/worklog-page";
 import { roleHome } from "@/lib/utils";
 
 const userRoutes = [
@@ -70,6 +73,18 @@ function UserDashboardRoute({ meQuery }: { meQuery: MeQuery }) {
   return <DashboardPage account={authResponse.data.account} authResponse={authResponse} />;
 }
 
+function UserGoalsRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <GoalsPage authResponse={meQuery.data} /> : null;
+}
+
+function UserWorklogRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <WorklogPage authResponse={meQuery.data} /> : null;
+}
+
+function UserTurnoverRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <TurnoverPage authResponse={meQuery.data} /> : null;
+}
+
 function SettingsRoute({ meQuery }: { meQuery: MeQuery }) {
   const authResponse = meQuery.data;
   if (!authResponse) return null;
@@ -102,7 +117,12 @@ function AppRoutes({ meQuery, health, onLogout, loggingOut }: { meQuery: MeQuery
       <Route element={<RoleRoute meQuery={meQuery} roles={["USER"]} />}>
         <Route element={<ShellRoute meQuery={meQuery} health={health} admin={false} onLogout={onLogout} loggingOut={loggingOut} />}>
           <Route path="/app" element={<UserDashboardRoute meQuery={meQuery} />} />
-          {userRoutes.map(([path, title, description]) => <Route key={path} path={path} element={<PlaceholderPage title={title} description={description} />} />)}
+          {userRoutes.map(([path, title, description]) => {
+            if (path === "/app/goals") return <Route key={path} path={path} element={<UserGoalsRoute meQuery={meQuery} />} />;
+            if (path === "/app/worklog") return <Route key={path} path={path} element={<UserWorklogRoute meQuery={meQuery} />} />;
+            if (path === "/app/turnover") return <Route key={path} path={path} element={<UserTurnoverRoute meQuery={meQuery} />} />;
+            return <Route key={path} path={path} element={<PlaceholderPage title={title} description={description} />} />;
+          })}
         </Route>
       </Route>
       <Route element={<RoleRoute meQuery={meQuery} roles={["USER", "ADMIN", "SUPER_ADMIN"]} />}>

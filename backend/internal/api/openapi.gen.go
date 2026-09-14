@@ -30,6 +30,76 @@ const (
 	AccountStatusDISABLED AccountStatus = "DISABLED"
 )
 
+// Defines values for GoalStatus.
+const (
+	GoalStatusCANCELLED  GoalStatus = "CANCELLED"
+	GoalStatusCOMPLETED  GoalStatus = "COMPLETED"
+	GoalStatusINPROGRESS GoalStatus = "IN_PROGRESS"
+	GoalStatusNOTSTARTED GoalStatus = "NOT_STARTED"
+	GoalStatusPAUSED     GoalStatus = "PAUSED"
+)
+
+// Defines values for GoalType.
+const (
+	GoalTypeDAY      GoalType = "DAY"
+	GoalTypeLONGTERM GoalType = "LONG_TERM"
+	GoalTypeMONTH    GoalType = "MONTH"
+	GoalTypeSTAGE    GoalType = "STAGE"
+	GoalTypeWEEK     GoalType = "WEEK"
+	GoalTypeYEAR     GoalType = "YEAR"
+)
+
+// Defines values for GoalMetricMetricCode.
+const (
+	GoalMetricMetricCodeAudioMinutes          GoalMetricMetricCode = "audio_minutes"
+	GoalMetricMetricCodeBufferCount           GoalMetricMetricCode = "buffer_count"
+	GoalMetricMetricCodeConversationOpenCount GoalMetricMetricCode = "conversation_open_count"
+	GoalMetricMetricCodeCustomerFollowupCount GoalMetricMetricCode = "customer_followup_count"
+	GoalMetricMetricCodeDeepConversationCount GoalMetricMetricCode = "deep_conversation_count"
+	GoalMetricMetricCodeMeetingCount          GoalMetricMetricCode = "meeting_count"
+	GoalMetricMetricCodeOpportunityCount      GoalMetricMetricCode = "opportunity_count"
+	GoalMetricMetricCodeReadingMinutes        GoalMetricMetricCode = "reading_minutes"
+	GoalMetricMetricCodeScreeningCount        GoalMetricMetricCode = "screening_count"
+	GoalMetricMetricCodeStoryShareCount       GoalMetricMetricCode = "story_share_count"
+	GoalMetricMetricCodeTurnoverNetAmount     GoalMetricMetricCode = "turnover_net_amount"
+	GoalMetricMetricCodeTurnoverPv            GoalMetricMetricCode = "turnover_pv"
+)
+
+// Defines values for GoalRequestMetricsMetricCode.
+const (
+	GoalRequestMetricsMetricCodeAudioMinutes          GoalRequestMetricsMetricCode = "audio_minutes"
+	GoalRequestMetricsMetricCodeBufferCount           GoalRequestMetricsMetricCode = "buffer_count"
+	GoalRequestMetricsMetricCodeConversationOpenCount GoalRequestMetricsMetricCode = "conversation_open_count"
+	GoalRequestMetricsMetricCodeCustomerFollowupCount GoalRequestMetricsMetricCode = "customer_followup_count"
+	GoalRequestMetricsMetricCodeDeepConversationCount GoalRequestMetricsMetricCode = "deep_conversation_count"
+	GoalRequestMetricsMetricCodeMeetingCount          GoalRequestMetricsMetricCode = "meeting_count"
+	GoalRequestMetricsMetricCodeOpportunityCount      GoalRequestMetricsMetricCode = "opportunity_count"
+	GoalRequestMetricsMetricCodeReadingMinutes        GoalRequestMetricsMetricCode = "reading_minutes"
+	GoalRequestMetricsMetricCodeScreeningCount        GoalRequestMetricsMetricCode = "screening_count"
+	GoalRequestMetricsMetricCodeStoryShareCount       GoalRequestMetricsMetricCode = "story_share_count"
+	GoalRequestMetricsMetricCodeTurnoverNetAmount     GoalRequestMetricsMetricCode = "turnover_net_amount"
+	GoalRequestMetricsMetricCodeTurnoverPv            GoalRequestMetricsMetricCode = "turnover_pv"
+)
+
+// Defines values for GoalRequestStatus.
+const (
+	GoalRequestStatusCANCELLED  GoalRequestStatus = "CANCELLED"
+	GoalRequestStatusCOMPLETED  GoalRequestStatus = "COMPLETED"
+	GoalRequestStatusINPROGRESS GoalRequestStatus = "IN_PROGRESS"
+	GoalRequestStatusNOTSTARTED GoalRequestStatus = "NOT_STARTED"
+	GoalRequestStatusPAUSED     GoalRequestStatus = "PAUSED"
+)
+
+// Defines values for GoalRequestType.
+const (
+	GoalRequestTypeDAY      GoalRequestType = "DAY"
+	GoalRequestTypeLONGTERM GoalRequestType = "LONG_TERM"
+	GoalRequestTypeMONTH    GoalRequestType = "MONTH"
+	GoalRequestTypeSTAGE    GoalRequestType = "STAGE"
+	GoalRequestTypeWEEK     GoalRequestType = "WEEK"
+	GoalRequestTypeYEAR     GoalRequestType = "YEAR"
+)
+
 // Defines values for HealthDataChecks.
 const (
 	Ready       HealthDataChecks = "ready"
@@ -163,6 +233,63 @@ type CsrfResponse struct {
 	RequestId string   `json:"request_id"`
 }
 
+// DashboardData defines model for DashboardData.
+type DashboardData struct {
+	ActiveGoals []Goal             `json:"active_goals"`
+	Date        openapi_types.Date `json:"date"`
+	DreamsCount int                `json:"dreams_count"`
+	Month       DashboardPeriod    `json:"month"`
+	Today       DashboardPeriod    `json:"today"`
+	Week        DashboardPeriod    `json:"week"`
+}
+
+// DashboardPeriod defines model for DashboardPeriod.
+type DashboardPeriod struct {
+	From     openapi_types.Date `json:"from"`
+	To       openapi_types.Date `json:"to"`
+	Turnover TurnoverTotals     `json:"turnover"`
+	Worklogs WorklogTotals      `json:"worklogs"`
+}
+
+// DashboardResponse defines model for DashboardResponse.
+type DashboardResponse struct {
+	Data      DashboardData `json:"data"`
+	RequestId string        `json:"request_id"`
+}
+
+// Dream defines model for Dream.
+type Dream struct {
+	CreatedAt   time.Time            `json:"created_at"`
+	Description *string              `json:"description"`
+	GoalIds     []openapi_types.UUID `json:"goal_ids"`
+	Id          openapi_types.UUID   `json:"id"`
+	SortOrder   int                  `json:"sort_order"`
+	Title       string               `json:"title"`
+	UpdatedAt   time.Time            `json:"updated_at"`
+}
+
+// DreamListResponse defines model for DreamListResponse.
+type DreamListResponse struct {
+	Data struct {
+		Items []Dream `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// DreamRequest defines model for DreamRequest.
+type DreamRequest struct {
+	Description *string               `json:"description"`
+	GoalIds     *[]openapi_types.UUID `json:"goal_ids,omitempty"`
+	SortOrder   *int                  `json:"sort_order,omitempty"`
+	Title       string                `json:"title"`
+}
+
+// DreamResponse defines model for DreamResponse.
+type DreamResponse struct {
+	Data      Dream  `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
 	Code    string                  `json:"code"`
@@ -174,6 +301,81 @@ type ErrorBody struct {
 type ErrorResponse struct {
 	Error     ErrorBody `json:"error"`
 	RequestId string    `json:"request_id"`
+}
+
+// Goal defines model for Goal.
+type Goal struct {
+	CreatedAt   time.Time           `json:"created_at"`
+	Description *string             `json:"description"`
+	DueDate     *openapi_types.Date `json:"due_date"`
+	Id          openapi_types.UUID  `json:"id"`
+	Metrics     []GoalMetric        `json:"metrics"`
+	ParentId    *openapi_types.UUID `json:"parent_id"`
+	Progress    float32             `json:"progress"`
+	SortOrder   int                 `json:"sort_order"`
+	StartDate   *openapi_types.Date `json:"start_date"`
+	Status      GoalStatus          `json:"status"`
+	Title       string              `json:"title"`
+	Type        GoalType            `json:"type"`
+	UpdatedAt   time.Time           `json:"updated_at"`
+}
+
+// GoalStatus defines model for Goal.Status.
+type GoalStatus string
+
+// GoalType defines model for Goal.Type.
+type GoalType string
+
+// GoalListResponse defines model for GoalListResponse.
+type GoalListResponse struct {
+	Data struct {
+		Items []Goal `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// GoalMetric defines model for GoalMetric.
+type GoalMetric struct {
+	ActualValue float32              `json:"actual_value"`
+	MetricCode  GoalMetricMetricCode `json:"metric_code"`
+	Progress    float32              `json:"progress"`
+	TargetValue float32              `json:"target_value"`
+	Unit        string               `json:"unit"`
+}
+
+// GoalMetricMetricCode defines model for GoalMetric.MetricCode.
+type GoalMetricMetricCode string
+
+// GoalRequest defines model for GoalRequest.
+type GoalRequest struct {
+	Description *string             `json:"description"`
+	DueDate     *openapi_types.Date `json:"due_date"`
+	Metrics     *[]struct {
+		MetricCode  GoalRequestMetricsMetricCode `json:"metric_code"`
+		TargetValue float32                      `json:"target_value"`
+		Unit        string                       `json:"unit"`
+	} `json:"metrics,omitempty"`
+	ParentId  *openapi_types.UUID `json:"parent_id"`
+	SortOrder *int                `json:"sort_order,omitempty"`
+	StartDate *openapi_types.Date `json:"start_date"`
+	Status    *GoalRequestStatus  `json:"status,omitempty"`
+	Title     string              `json:"title"`
+	Type      GoalRequestType     `json:"type"`
+}
+
+// GoalRequestMetricsMetricCode defines model for GoalRequest.Metrics.MetricCode.
+type GoalRequestMetricsMetricCode string
+
+// GoalRequestStatus defines model for GoalRequest.Status.
+type GoalRequestStatus string
+
+// GoalRequestType defines model for GoalRequest.Type.
+type GoalRequestType string
+
+// GoalResponse defines model for GoalResponse.
+type GoalResponse struct {
+	Data      Goal   `json:"data"`
+	RequestId string `json:"request_id"`
 }
 
 // HealthData defines model for HealthData.
@@ -289,6 +491,45 @@ type TimezoneRequest struct {
 	Timezone string `json:"timezone"`
 }
 
+// Turnover defines model for Turnover.
+type Turnover struct {
+	CreatedAt    time.Time          `json:"created_at"`
+	Id           openapi_types.UUID `json:"id"`
+	NetAmount    float32            `json:"net_amount"`
+	Note         *string            `json:"note"`
+	Pv           float32            `json:"pv"`
+	TurnoverDate openapi_types.Date `json:"turnover_date"`
+	UpdatedAt    time.Time          `json:"updated_at"`
+}
+
+// TurnoverListResponse defines model for TurnoverListResponse.
+type TurnoverListResponse struct {
+	Data struct {
+		Items []Turnover `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// TurnoverRequest defines model for TurnoverRequest.
+type TurnoverRequest struct {
+	NetAmount    *float32           `json:"net_amount"`
+	Note         *string            `json:"note"`
+	Pv           *float32           `json:"pv"`
+	TurnoverDate openapi_types.Date `json:"turnover_date"`
+}
+
+// TurnoverResponse defines model for TurnoverResponse.
+type TurnoverResponse struct {
+	Data      Turnover `json:"data"`
+	RequestId string   `json:"request_id"`
+}
+
+// TurnoverTotals defines model for TurnoverTotals.
+type TurnoverTotals struct {
+	NetAmount float32 `json:"net_amount"`
+	Pv        float32 `json:"pv"`
+}
+
 // UpdateInvitationRequest defines model for UpdateInvitationRequest.
 type UpdateInvitationRequest struct {
 	// ClearExpiresAt Clear expires_at and make the code non-expiring.
@@ -304,8 +545,90 @@ type UpdateInvitationRequest struct {
 // UpdateInvitationRequestStatus defines model for UpdateInvitationRequest.Status.
 type UpdateInvitationRequestStatus string
 
+// Worklog defines model for Worklog.
+type Worklog struct {
+	AudioMinutes          int                `json:"audio_minutes"`
+	BufferCount           int                `json:"buffer_count"`
+	CreatedAt             time.Time          `json:"created_at"`
+	CustomerFollowupCount int                `json:"customer_followup_count"`
+	DeepConversationCount int                `json:"deep_conversation_count"`
+	Id                    openapi_types.UUID `json:"id"`
+	MeetingCount          int                `json:"meeting_count"`
+	Note                  *string            `json:"note"`
+	OpenConversationCount int                `json:"open_conversation_count"`
+	OpportunityCount      int                `json:"opportunity_count"`
+	ReadingMinutes        int                `json:"reading_minutes"`
+	ScreeningCount        int                `json:"screening_count"`
+	StoryShareCount       int                `json:"story_share_count"`
+	TurnoverNetAmount     *float32           `json:"turnover_net_amount"`
+	TurnoverPv            *float32           `json:"turnover_pv"`
+	UpdatedAt             time.Time          `json:"updated_at"`
+	WorkDate              openapi_types.Date `json:"work_date"`
+}
+
+// WorklogListResponse defines model for WorklogListResponse.
+type WorklogListResponse struct {
+	Data struct {
+		Items []Worklog `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// WorklogRequest defines model for WorklogRequest.
+type WorklogRequest struct {
+	AudioMinutes          int                `json:"audio_minutes"`
+	BufferCount           int                `json:"buffer_count"`
+	CustomerFollowupCount int                `json:"customer_followup_count"`
+	DeepConversationCount int                `json:"deep_conversation_count"`
+	MeetingCount          int                `json:"meeting_count"`
+	Note                  *string            `json:"note"`
+	OpenConversationCount int                `json:"open_conversation_count"`
+	OpportunityCount      int                `json:"opportunity_count"`
+	ReadingMinutes        int                `json:"reading_minutes"`
+	ScreeningCount        int                `json:"screening_count"`
+	StoryShareCount       int                `json:"story_share_count"`
+	TurnoverNetAmount     *float32           `json:"turnover_net_amount"`
+	TurnoverPv            *float32           `json:"turnover_pv"`
+	WorkDate              openapi_types.Date `json:"work_date"`
+}
+
+// WorklogResponse defines model for WorklogResponse.
+type WorklogResponse struct {
+	Data      Worklog `json:"data"`
+	RequestId string  `json:"request_id"`
+}
+
+// WorklogTotals defines model for WorklogTotals.
+type WorklogTotals struct {
+	AudioMinutes          int `json:"audio_minutes"`
+	BufferCount           int `json:"buffer_count"`
+	CustomerFollowupCount int `json:"customer_followup_count"`
+	DeepConversationCount int `json:"deep_conversation_count"`
+	MeetingCount          int `json:"meeting_count"`
+	OpenConversationCount int `json:"open_conversation_count"`
+	OpportunityCount      int `json:"opportunity_count"`
+	ReadingMinutes        int `json:"reading_minutes"`
+	ScreeningCount        int `json:"screening_count"`
+	StoryShareCount       int `json:"story_share_count"`
+}
+
 // AccountId defines model for AccountId.
 type AccountId = openapi_types.UUID
+
+// BusinessDate defines model for BusinessDate.
+type BusinessDate = openapi_types.Date
+
+// DateFrom defines model for DateFrom.
+type DateFrom = openapi_types.Date
+
+// DateTo defines model for DateTo.
+type DateTo = openapi_types.Date
+
+// DreamId defines model for DreamId.
+type DreamId = openapi_types.UUID
+
+// GoalId defines model for GoalId.
+type GoalId = openapi_types.UUID
 
 // InvitationId defines model for InvitationId.
 type InvitationId = openapi_types.UUID
@@ -316,10 +639,33 @@ type Page = int
 // PageSize defines model for PageSize.
 type PageSize = int
 
+// TurnoverDate defines model for TurnoverDate.
+type TurnoverDate = openapi_types.Date
+
+// WorkDate defines model for WorkDate.
+type WorkDate = openapi_types.Date
+
 // GetAdminUsersParams defines parameters for GetAdminUsers.
 type GetAdminUsersParams struct {
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// GetDashboardParams defines parameters for GetDashboard.
+type GetDashboardParams struct {
+	Date BusinessDate `form:"date" json:"date"`
+}
+
+// ListTurnoversParams defines parameters for ListTurnovers.
+type ListTurnoversParams struct {
+	From *DateFrom `form:"from,omitempty" json:"from,omitempty"`
+	To   *DateTo   `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// ListWorklogsParams defines parameters for ListWorklogs.
+type ListWorklogsParams struct {
+	From *DateFrom `form:"from,omitempty" json:"from,omitempty"`
+	To   *DateTo   `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostAdminAdminJSONRequestBody defines body for PostAdminAdmin for application/json ContentType.
@@ -357,6 +703,30 @@ type PatchAuthTimezoneJSONRequestBody = TimezoneRequest
 
 // PostAuthRegisterJSONRequestBody defines body for PostAuthRegister for application/json ContentType.
 type PostAuthRegisterJSONRequestBody = RegisterRequest
+
+// CreateDreamJSONRequestBody defines body for CreateDream for application/json ContentType.
+type CreateDreamJSONRequestBody = DreamRequest
+
+// UpdateDreamJSONRequestBody defines body for UpdateDream for application/json ContentType.
+type UpdateDreamJSONRequestBody = DreamRequest
+
+// CreateGoalJSONRequestBody defines body for CreateGoal for application/json ContentType.
+type CreateGoalJSONRequestBody = GoalRequest
+
+// UpdateGoalJSONRequestBody defines body for UpdateGoal for application/json ContentType.
+type UpdateGoalJSONRequestBody = GoalRequest
+
+// CreateTurnoverJSONRequestBody defines body for CreateTurnover for application/json ContentType.
+type CreateTurnoverJSONRequestBody = TurnoverRequest
+
+// UpdateTurnoverJSONRequestBody defines body for UpdateTurnover for application/json ContentType.
+type UpdateTurnoverJSONRequestBody = TurnoverRequest
+
+// CreateWorklogJSONRequestBody defines body for CreateWorklog for application/json ContentType.
+type CreateWorklogJSONRequestBody = WorklogRequest
+
+// UpdateWorklogJSONRequestBody defines body for UpdateWorklog for application/json ContentType.
+type UpdateWorklogJSONRequestBody = WorklogRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -432,12 +802,75 @@ type ServerInterface interface {
 	// Register a normal user with an invitation code
 	// (POST /api/auth/register)
 	PostAuthRegister(ctx echo.Context) error
+	// Return the user dashboard aggregates for a business date
+	// (GET /api/dashboard)
+	GetDashboard(ctx echo.Context, params GetDashboardParams) error
+	// List dreams for the current user
+	// (GET /api/dreams)
+	ListDreams(ctx echo.Context) error
+	// Create a dream
+	// (POST /api/dreams)
+	CreateDream(ctx echo.Context) error
+	// Delete a dream
+	// (DELETE /api/dreams/{dream_id})
+	DeleteDream(ctx echo.Context, dreamId DreamId) error
+	// Get a dream
+	// (GET /api/dreams/{dream_id})
+	GetDream(ctx echo.Context, dreamId DreamId) error
+	// Replace a dream
+	// (PUT /api/dreams/{dream_id})
+	UpdateDream(ctx echo.Context, dreamId DreamId) error
+	// List goals with calculated progress
+	// (GET /api/goals)
+	ListGoals(ctx echo.Context) error
+	// Create a goal
+	// (POST /api/goals)
+	CreateGoal(ctx echo.Context) error
+	// Delete a goal and its descendants
+	// (DELETE /api/goals/{goal_id})
+	DeleteGoal(ctx echo.Context, goalId GoalId) error
+	// Get a goal with calculated progress
+	// (GET /api/goals/{goal_id})
+	GetGoal(ctx echo.Context, goalId GoalId) error
+	// Replace a goal
+	// (PUT /api/goals/{goal_id})
+	UpdateGoal(ctx echo.Context, goalId GoalId) error
 	// Check whether the API process is live
 	// (GET /api/health/live)
 	GetHealthLive(ctx echo.Context) error
 	// Check whether required runtime dependencies are ready
 	// (GET /api/health/ready)
 	GetHealthReady(ctx echo.Context) error
+	// List daily turnovers in a business-date range
+	// (GET /api/turnover)
+	ListTurnovers(ctx echo.Context, params ListTurnoversParams) error
+	// Create or replace a daily turnover
+	// (POST /api/turnover)
+	CreateTurnover(ctx echo.Context) error
+	// Delete turnover for a business date
+	// (DELETE /api/turnover/{turnover_date})
+	DeleteTurnover(ctx echo.Context, turnoverDate TurnoverDate) error
+	// Get turnover for a business date
+	// (GET /api/turnover/{turnover_date})
+	GetTurnover(ctx echo.Context, turnoverDate TurnoverDate) error
+	// Replace turnover for a business date
+	// (PUT /api/turnover/{turnover_date})
+	UpdateTurnover(ctx echo.Context, turnoverDate TurnoverDate) error
+	// List daily worklogs in a business-date range
+	// (GET /api/worklogs)
+	ListWorklogs(ctx echo.Context, params ListWorklogsParams) error
+	// Create or replace a daily worklog
+	// (POST /api/worklogs)
+	CreateWorklog(ctx echo.Context) error
+	// Delete a daily worklog
+	// (DELETE /api/worklogs/{work_date})
+	DeleteWorklog(ctx echo.Context, workDate WorkDate) error
+	// Get a daily worklog
+	// (GET /api/worklogs/{work_date})
+	GetWorklog(ctx echo.Context, workDate WorkDate) error
+	// Replace a daily worklog
+	// (PUT /api/worklogs/{work_date})
+	UpdateWorklog(ctx echo.Context, workDate WorkDate) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -791,6 +1224,178 @@ func (w *ServerInterfaceWrapper) PostAuthRegister(ctx echo.Context) error {
 	return err
 }
 
+// GetDashboard converts echo context to params.
+func (w *ServerInterfaceWrapper) GetDashboard(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetDashboardParams
+	// ------------- Required query parameter "date" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "date", ctx.QueryParams(), &params.Date)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter date: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetDashboard(ctx, params)
+	return err
+}
+
+// ListDreams converts echo context to params.
+func (w *ServerInterfaceWrapper) ListDreams(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListDreams(ctx)
+	return err
+}
+
+// CreateDream converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateDream(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateDream(ctx)
+	return err
+}
+
+// DeleteDream converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteDream(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "dream_id" -------------
+	var dreamId DreamId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "dream_id", ctx.Param("dream_id"), &dreamId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter dream_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteDream(ctx, dreamId)
+	return err
+}
+
+// GetDream converts echo context to params.
+func (w *ServerInterfaceWrapper) GetDream(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "dream_id" -------------
+	var dreamId DreamId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "dream_id", ctx.Param("dream_id"), &dreamId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter dream_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetDream(ctx, dreamId)
+	return err
+}
+
+// UpdateDream converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateDream(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "dream_id" -------------
+	var dreamId DreamId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "dream_id", ctx.Param("dream_id"), &dreamId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter dream_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateDream(ctx, dreamId)
+	return err
+}
+
+// ListGoals converts echo context to params.
+func (w *ServerInterfaceWrapper) ListGoals(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListGoals(ctx)
+	return err
+}
+
+// CreateGoal converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateGoal(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateGoal(ctx)
+	return err
+}
+
+// DeleteGoal converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteGoal(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "goal_id" -------------
+	var goalId GoalId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "goal_id", ctx.Param("goal_id"), &goalId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter goal_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteGoal(ctx, goalId)
+	return err
+}
+
+// GetGoal converts echo context to params.
+func (w *ServerInterfaceWrapper) GetGoal(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "goal_id" -------------
+	var goalId GoalId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "goal_id", ctx.Param("goal_id"), &goalId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter goal_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetGoal(ctx, goalId)
+	return err
+}
+
+// UpdateGoal converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateGoal(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "goal_id" -------------
+	var goalId GoalId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "goal_id", ctx.Param("goal_id"), &goalId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter goal_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateGoal(ctx, goalId)
+	return err
+}
+
 // GetHealthLive converts echo context to params.
 func (w *ServerInterfaceWrapper) GetHealthLive(ctx echo.Context) error {
 	var err error
@@ -806,6 +1411,190 @@ func (w *ServerInterfaceWrapper) GetHealthReady(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetHealthReady(ctx)
+	return err
+}
+
+// ListTurnovers converts echo context to params.
+func (w *ServerInterfaceWrapper) ListTurnovers(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListTurnoversParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListTurnovers(ctx, params)
+	return err
+}
+
+// CreateTurnover converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateTurnover(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateTurnover(ctx)
+	return err
+}
+
+// DeleteTurnover converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteTurnover(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "turnover_date" -------------
+	var turnoverDate TurnoverDate
+
+	err = runtime.BindStyledParameterWithOptions("simple", "turnover_date", ctx.Param("turnover_date"), &turnoverDate, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter turnover_date: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteTurnover(ctx, turnoverDate)
+	return err
+}
+
+// GetTurnover converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTurnover(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "turnover_date" -------------
+	var turnoverDate TurnoverDate
+
+	err = runtime.BindStyledParameterWithOptions("simple", "turnover_date", ctx.Param("turnover_date"), &turnoverDate, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter turnover_date: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTurnover(ctx, turnoverDate)
+	return err
+}
+
+// UpdateTurnover converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateTurnover(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "turnover_date" -------------
+	var turnoverDate TurnoverDate
+
+	err = runtime.BindStyledParameterWithOptions("simple", "turnover_date", ctx.Param("turnover_date"), &turnoverDate, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter turnover_date: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateTurnover(ctx, turnoverDate)
+	return err
+}
+
+// ListWorklogs converts echo context to params.
+func (w *ServerInterfaceWrapper) ListWorklogs(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWorklogsParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListWorklogs(ctx, params)
+	return err
+}
+
+// CreateWorklog converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateWorklog(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateWorklog(ctx)
+	return err
+}
+
+// DeleteWorklog converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteWorklog(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "work_date" -------------
+	var workDate WorkDate
+
+	err = runtime.BindStyledParameterWithOptions("simple", "work_date", ctx.Param("work_date"), &workDate, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter work_date: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteWorklog(ctx, workDate)
+	return err
+}
+
+// GetWorklog converts echo context to params.
+func (w *ServerInterfaceWrapper) GetWorklog(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "work_date" -------------
+	var workDate WorkDate
+
+	err = runtime.BindStyledParameterWithOptions("simple", "work_date", ctx.Param("work_date"), &workDate, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter work_date: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetWorklog(ctx, workDate)
+	return err
+}
+
+// UpdateWorklog converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateWorklog(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "work_date" -------------
+	var workDate WorkDate
+
+	err = runtime.BindStyledParameterWithOptions("simple", "work_date", ctx.Param("work_date"), &workDate, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter work_date: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateWorklog(ctx, workDate)
 	return err
 }
 
@@ -861,7 +1650,28 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/api/auth/me", wrapper.GetAuthMe)
 	router.PATCH(baseURL+"/api/auth/me/timezone", wrapper.PatchAuthTimezone)
 	router.POST(baseURL+"/api/auth/register", wrapper.PostAuthRegister)
+	router.GET(baseURL+"/api/dashboard", wrapper.GetDashboard)
+	router.GET(baseURL+"/api/dreams", wrapper.ListDreams)
+	router.POST(baseURL+"/api/dreams", wrapper.CreateDream)
+	router.DELETE(baseURL+"/api/dreams/:dream_id", wrapper.DeleteDream)
+	router.GET(baseURL+"/api/dreams/:dream_id", wrapper.GetDream)
+	router.PUT(baseURL+"/api/dreams/:dream_id", wrapper.UpdateDream)
+	router.GET(baseURL+"/api/goals", wrapper.ListGoals)
+	router.POST(baseURL+"/api/goals", wrapper.CreateGoal)
+	router.DELETE(baseURL+"/api/goals/:goal_id", wrapper.DeleteGoal)
+	router.GET(baseURL+"/api/goals/:goal_id", wrapper.GetGoal)
+	router.PUT(baseURL+"/api/goals/:goal_id", wrapper.UpdateGoal)
 	router.GET(baseURL+"/api/health/live", wrapper.GetHealthLive)
 	router.GET(baseURL+"/api/health/ready", wrapper.GetHealthReady)
+	router.GET(baseURL+"/api/turnover", wrapper.ListTurnovers)
+	router.POST(baseURL+"/api/turnover", wrapper.CreateTurnover)
+	router.DELETE(baseURL+"/api/turnover/:turnover_date", wrapper.DeleteTurnover)
+	router.GET(baseURL+"/api/turnover/:turnover_date", wrapper.GetTurnover)
+	router.PUT(baseURL+"/api/turnover/:turnover_date", wrapper.UpdateTurnover)
+	router.GET(baseURL+"/api/worklogs", wrapper.ListWorklogs)
+	router.POST(baseURL+"/api/worklogs", wrapper.CreateWorklog)
+	router.DELETE(baseURL+"/api/worklogs/:work_date", wrapper.DeleteWorklog)
+	router.GET(baseURL+"/api/worklogs/:work_date", wrapper.GetWorklog)
+	router.PUT(baseURL+"/api/worklogs/:work_date", wrapper.UpdateWorklog)
 
 }

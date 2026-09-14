@@ -97,6 +97,97 @@ func (ns NullAccountStatus) Value() (driver.Value, error) {
 	return string(ns.AccountStatus), nil
 }
 
+type GoalStatus string
+
+const (
+	GoalStatusNOTSTARTED GoalStatus = "NOT_STARTED"
+	GoalStatusINPROGRESS GoalStatus = "IN_PROGRESS"
+	GoalStatusCOMPLETED  GoalStatus = "COMPLETED"
+	GoalStatusPAUSED     GoalStatus = "PAUSED"
+	GoalStatusCANCELLED  GoalStatus = "CANCELLED"
+)
+
+func (e *GoalStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = GoalStatus(s)
+	case string:
+		*e = GoalStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for GoalStatus: %T", src)
+	}
+	return nil
+}
+
+type NullGoalStatus struct {
+	GoalStatus GoalStatus
+	Valid      bool // Valid is true if GoalStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullGoalStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.GoalStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.GoalStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullGoalStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.GoalStatus), nil
+}
+
+type GoalType string
+
+const (
+	GoalTypeLONGTERM GoalType = "LONG_TERM"
+	GoalTypeYEAR     GoalType = "YEAR"
+	GoalTypeSTAGE    GoalType = "STAGE"
+	GoalTypeMONTH    GoalType = "MONTH"
+	GoalTypeWEEK     GoalType = "WEEK"
+	GoalTypeDAY      GoalType = "DAY"
+)
+
+func (e *GoalType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = GoalType(s)
+	case string:
+		*e = GoalType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for GoalType: %T", src)
+	}
+	return nil
+}
+
+type NullGoalType struct {
+	GoalType GoalType
+	Valid    bool // Valid is true if GoalType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullGoalType) Scan(value interface{}) error {
+	if value == nil {
+		ns.GoalType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.GoalType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullGoalType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.GoalType), nil
+}
+
 type InvitationStatus string
 
 const (
@@ -139,6 +230,89 @@ func (ns NullInvitationStatus) Value() (driver.Value, error) {
 	return string(ns.InvitationStatus), nil
 }
 
+type LearningActivityType string
+
+const (
+	LearningActivityTypeREADING LearningActivityType = "READING"
+	LearningActivityTypeAUDIO   LearningActivityType = "AUDIO"
+)
+
+func (e *LearningActivityType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = LearningActivityType(s)
+	case string:
+		*e = LearningActivityType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for LearningActivityType: %T", src)
+	}
+	return nil
+}
+
+type NullLearningActivityType struct {
+	LearningActivityType LearningActivityType
+	Valid                bool // Valid is true if LearningActivityType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullLearningActivityType) Scan(value interface{}) error {
+	if value == nil {
+		ns.LearningActivityType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.LearningActivityType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullLearningActivityType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.LearningActivityType), nil
+}
+
+type LearningSessionSource string
+
+const (
+	LearningSessionSourceDAILYUNALLOCATED LearningSessionSource = "DAILY_UNALLOCATED"
+)
+
+func (e *LearningSessionSource) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = LearningSessionSource(s)
+	case string:
+		*e = LearningSessionSource(s)
+	default:
+		return fmt.Errorf("unsupported scan type for LearningSessionSource: %T", src)
+	}
+	return nil
+}
+
+type NullLearningSessionSource struct {
+	LearningSessionSource LearningSessionSource
+	Valid                 bool // Valid is true if LearningSessionSource is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullLearningSessionSource) Scan(value interface{}) error {
+	if value == nil {
+		ns.LearningSessionSource, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.LearningSessionSource.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullLearningSessionSource) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.LearningSessionSource), nil
+}
+
 type Account struct {
 	ID           pgtype.UUID
 	Username     string
@@ -167,6 +341,71 @@ type BrowserSessionAccount struct {
 	AuthenticatedAt  pgtype.Timestamptz
 }
 
+type DailyTurnover struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	TurnoverDate pgtype.Date
+	Pv           pgtype.Numeric
+	NetAmount    pgtype.Numeric
+	Note         pgtype.Text
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type DailyWorklog struct {
+	ID                    pgtype.UUID
+	UserID                pgtype.UUID
+	WorkDate              pgtype.Date
+	OpenConversationCount int32
+	DeepConversationCount int32
+	BufferCount           int32
+	StoryShareCount       int32
+	ScreeningCount        int32
+	OpportunityCount      int32
+	MeetingCount          int32
+	CustomerFollowupCount int32
+	Note                  pgtype.Text
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+}
+
+type Dream struct {
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	Title       string
+	Description pgtype.Text
+	SortOrder   int32
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type DreamGoalLink struct {
+	DreamID pgtype.UUID
+	GoalID  pgtype.UUID
+}
+
+type Goal struct {
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	ParentID    pgtype.UUID
+	Type        GoalType
+	Title       string
+	Description pgtype.Text
+	StartDate   pgtype.Date
+	DueDate     pgtype.Date
+	Status      GoalStatus
+	SortOrder   int32
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type GoalMetric struct {
+	GoalID      pgtype.UUID
+	MetricCode  string
+	TargetValue pgtype.Numeric
+	Unit        string
+}
+
 type InvitationCode struct {
 	ID        pgtype.UUID
 	Code      string
@@ -182,6 +421,17 @@ type InvitationUse struct {
 	InvitationCodeID pgtype.UUID
 	AccountID        pgtype.UUID
 	UsedAt           pgtype.Timestamptz
+}
+
+type LearningSession struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	ActivityType LearningActivityType
+	ActivityDate pgtype.Date
+	Minutes      int32
+	Source       LearningSessionSource
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
 }
 
 type SecurityAuditLog struct {

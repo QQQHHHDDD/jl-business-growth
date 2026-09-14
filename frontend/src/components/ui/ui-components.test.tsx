@@ -22,6 +22,19 @@ describe("shared UI primitives", () => {
     expect(screen.getByText("账号不能为空")).toBeInTheDocument();
   });
 
+  it("keeps labels associated with distinct inputs even when field names repeat", () => {
+    render(
+      <>
+        <Input name="title" label="目标名称" />
+        <Input name="title" label="梦想标题" />
+      </>,
+    );
+
+    const goalInput = screen.getByLabelText("目标名称");
+    const dreamInput = screen.getByLabelText("梦想标题");
+    expect(goalInput).not.toHaveAttribute("id", dreamInput.getAttribute("id"));
+  });
+
   it("renders status, empty, loading, error and retry states accessibly", () => {
     const retry = vi.fn();
     render(

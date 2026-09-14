@@ -4,16 +4,19 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"jl-business-growth/backend/db/generated"
 	"jl-business-growth/backend/internal/admin"
 	"jl-business-growth/backend/internal/auth"
 	"jl-business-growth/backend/internal/config"
+	"jl-business-growth/backend/internal/daily"
 	"jl-business-growth/backend/internal/invitation"
 	"jl-business-growth/backend/internal/problem"
 )
@@ -22,11 +25,12 @@ type Handler struct {
 	auth       *auth.Service
 	admin      *admin.Service
 	invitation *invitation.Service
+	daily      *daily.Service
 	config     config.Config
 }
 
 func NewHandler(authService *auth.Service, adminService *admin.Service, invitationService *invitation.Service, cfg config.Config) *Handler {
-	return &Handler{auth: authService, admin: adminService, invitation: invitationService, config: cfg}
+	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(authService.Pool()), config: cfg}
 }
 
 func (h *Handler) PostAuthRegister(ctx echo.Context) error {
@@ -512,6 +516,495 @@ func (h *Handler) DeleteAdminInvitationCode(ctx echo.Context, invitationID Invit
 	}
 	h.audit(ctx, "invitation_disabled", actor.ID, uuid.Nil, invitationID)
 	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) GetDashboard(ctx echo.Context, params GetDashboardParams) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	dashboard, err := h.daily.Dashboard(ctx.Request().Context(), userID, params.Date.Time)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, DashboardResponse{Data: DashboardData{Date: apiDate(dashboard.Date), Today: dashboardPeriodDTO(dashboard.Today), Week: dashboardPeriodDTO(dashboard.Week), Month: dashboardPeriodDTO(dashboard.Month), ActiveGoals: goalsDTO(dashboard.ActiveGoals), DreamsCount: int(dashboard.DreamsCount)}, RequestId: requestID(ctx)})
+}
+
+func (h *Handler) ListWorklogs(ctx echo.Context, params ListWorklogsParams) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	from, to := dateRange(params.From, params.To)
+	items, err := h.daily.ListWorklogs(ctx.Request().Context(), userID, from, to)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, WorklogListResponse{Data: struct {
+		Items []Worklog `json:"items"`
+	}{Items: worklogsDTO(items)}, RequestId: requestID(ctx)})
+}
+
+func (h *Handler) GetWorklog(ctx echo.Context, workDate WorkDate) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	item, err := h.daily.GetWorklog(ctx.Request().Context(), userID, workDate.Time)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, WorklogResponse{Data: worklogDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) CreateWorklog(ctx echo.Context) error {
+	return h.saveWorklog(ctx, time.Time{}, http.StatusCreated)
+}
+
+func (h *Handler) UpdateWorklog(ctx echo.Context, workDate WorkDate) error {
+	return h.saveWorklog(ctx, workDate.Time, http.StatusOK)
+}
+
+func (h *Handler) saveWorklog(ctx echo.Context, pathDate time.Time, status int) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	var request WorklogRequest
+	if err := ctx.Bind(&request); err != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
+	}
+	if !pathDate.IsZero() {
+		request.WorkDate = openapi_types.Date{Time: pathDate}
+	}
+	item, err := h.daily.SaveWorklog(ctx.Request().Context(), account.ID, worklogInput(request))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(status, WorklogResponse{Data: worklogDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) DeleteWorklog(ctx echo.Context, workDate WorkDate) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	if err := h.daily.DeleteWorklog(ctx.Request().Context(), account.ID, workDate.Time); err != nil {
+		return err
+	}
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ListTurnovers(ctx echo.Context, params ListTurnoversParams) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	from, to := dateRange(params.From, params.To)
+	items, err := h.daily.ListTurnovers(ctx.Request().Context(), userID, from, to)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, TurnoverListResponse{Data: struct {
+		Items []Turnover `json:"items"`
+	}{Items: turnoversDTO(items)}, RequestId: requestID(ctx)})
+}
+
+func (h *Handler) GetTurnover(ctx echo.Context, turnoverDate TurnoverDate) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	item, err := h.daily.GetTurnover(ctx.Request().Context(), userID, turnoverDate.Time)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, TurnoverResponse{Data: turnoverDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) CreateTurnover(ctx echo.Context) error {
+	return h.saveTurnover(ctx, time.Time{}, http.StatusCreated)
+}
+
+func (h *Handler) UpdateTurnover(ctx echo.Context, turnoverDate TurnoverDate) error {
+	return h.saveTurnover(ctx, turnoverDate.Time, http.StatusOK)
+}
+
+func (h *Handler) saveTurnover(ctx echo.Context, pathDate time.Time, status int) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	var request TurnoverRequest
+	if err := ctx.Bind(&request); err != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
+	}
+	if !pathDate.IsZero() {
+		request.TurnoverDate = openapi_types.Date{Time: pathDate}
+	}
+	item, err := h.daily.SaveTurnover(ctx.Request().Context(), account.ID, turnoverInput(request))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(status, TurnoverResponse{Data: turnoverDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) DeleteTurnover(ctx echo.Context, turnoverDate TurnoverDate) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	if err := h.daily.DeleteTurnover(ctx.Request().Context(), account.ID, turnoverDate.Time); err != nil {
+		return err
+	}
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ListDreams(ctx echo.Context) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	items, err := h.daily.ListDreams(ctx.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, DreamListResponse{Data: struct {
+		Items []Dream `json:"items"`
+	}{Items: dreamsDTO(items)}, RequestId: requestID(ctx)})
+}
+
+func (h *Handler) GetDream(ctx echo.Context, dreamID DreamId) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	item, err := h.daily.GetDream(ctx.Request().Context(), userID, uuid.UUID(dreamID))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, DreamResponse{Data: dreamDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) CreateDream(ctx echo.Context) error {
+	return h.saveDream(ctx, uuid.Nil, http.StatusCreated)
+}
+
+func (h *Handler) UpdateDream(ctx echo.Context, dreamID DreamId) error {
+	return h.saveDream(ctx, uuid.UUID(dreamID), http.StatusOK)
+}
+
+func (h *Handler) saveDream(ctx echo.Context, dreamID uuid.UUID, status int) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	var request DreamRequest
+	if err := ctx.Bind(&request); err != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
+	}
+	item, err := h.daily.SaveDream(ctx.Request().Context(), account.ID, dreamID, dreamInput(request))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(status, DreamResponse{Data: dreamDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) DeleteDream(ctx echo.Context, dreamID DreamId) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	if err := h.daily.DeleteDream(ctx.Request().Context(), account.ID, uuid.UUID(dreamID)); err != nil {
+		return err
+	}
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ListGoals(ctx echo.Context) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	items, err := h.daily.ListGoals(ctx.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, GoalListResponse{Data: struct {
+		Items []Goal `json:"items"`
+	}{Items: goalsDTO(items)}, RequestId: requestID(ctx)})
+}
+
+func (h *Handler) GetGoal(ctx echo.Context, goalID GoalId) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	item, err := h.daily.GetGoal(ctx.Request().Context(), userID, uuid.UUID(goalID))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, GoalResponse{Data: goalDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) CreateGoal(ctx echo.Context) error {
+	return h.saveGoal(ctx, uuid.Nil, http.StatusCreated)
+}
+
+func (h *Handler) UpdateGoal(ctx echo.Context, goalID GoalId) error {
+	return h.saveGoal(ctx, uuid.UUID(goalID), http.StatusOK)
+}
+
+func (h *Handler) saveGoal(ctx echo.Context, goalID uuid.UUID, status int) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	var request GoalRequest
+	if err := ctx.Bind(&request); err != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
+	}
+	item, err := h.daily.SaveGoal(ctx.Request().Context(), account.ID, goalID, goalInput(request))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(status, GoalResponse{Data: goalDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) DeleteGoal(ctx echo.Context, goalID GoalId) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	if err := h.daily.DeleteGoal(ctx.Request().Context(), account.ID, uuid.UUID(goalID)); err != nil {
+		return err
+	}
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) dailyUser(ctx echo.Context) (uuid.UUID, *auth.Session, error) {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return uuid.Nil, nil, err
+	}
+	if err := requireUser(*account); err != nil {
+		return uuid.Nil, nil, err
+	}
+	return account.ID, session, nil
+}
+
+func worklogInput(value WorklogRequest) daily.WorklogInput {
+	var pv, netAmount *float64
+	if value.TurnoverPv != nil {
+		converted := float64(*value.TurnoverPv)
+		pv = &converted
+	}
+	if value.TurnoverNetAmount != nil {
+		converted := float64(*value.TurnoverNetAmount)
+		netAmount = &converted
+	}
+	return daily.WorklogInput{WorkDate: value.WorkDate.Time, OpenConversationCount: int32(value.OpenConversationCount), DeepConversationCount: int32(value.DeepConversationCount), BufferCount: int32(value.BufferCount), StoryShareCount: int32(value.StoryShareCount), ScreeningCount: int32(value.ScreeningCount), OpportunityCount: int32(value.OpportunityCount), MeetingCount: int32(value.MeetingCount), CustomerFollowupCount: int32(value.CustomerFollowupCount), ReadingMinutes: int32(value.ReadingMinutes), AudioMinutes: int32(value.AudioMinutes), TurnoverPV: pv, TurnoverNetAmount: netAmount, Note: value.Note}
+}
+
+func turnoverInput(value TurnoverRequest) daily.TurnoverInput {
+	var pv, netAmount *float64
+	if value.Pv != nil {
+		converted := float64(*value.Pv)
+		pv = &converted
+	}
+	if value.NetAmount != nil {
+		converted := float64(*value.NetAmount)
+		netAmount = &converted
+	}
+	return daily.TurnoverInput{TurnoverDate: value.TurnoverDate.Time, PV: pv, NetAmount: netAmount, Note: value.Note}
+}
+
+func dreamInput(value DreamRequest) daily.DreamInput {
+	goalIDs := []uuid.UUID{}
+	if value.GoalIds != nil {
+		for _, id := range *value.GoalIds {
+			goalIDs = append(goalIDs, uuid.UUID(id))
+		}
+	}
+	sortOrder := 0
+	if value.SortOrder != nil {
+		sortOrder = *value.SortOrder
+	}
+	return daily.DreamInput{Title: value.Title, Description: value.Description, GoalIDs: goalIDs, SortOrder: int32(sortOrder)}
+}
+
+func goalInput(value GoalRequest) daily.GoalInput {
+	var parentID *uuid.UUID
+	if value.ParentId != nil {
+		converted := uuid.UUID(*value.ParentId)
+		parentID = &converted
+	}
+	var startDate, dueDate *time.Time
+	if value.StartDate != nil {
+		converted := value.StartDate.Time
+		startDate = &converted
+	}
+	if value.DueDate != nil {
+		converted := value.DueDate.Time
+		dueDate = &converted
+	}
+	status := "NOT_STARTED"
+	if value.Status != nil {
+		status = string(*value.Status)
+	}
+	sortOrder := 0
+	if value.SortOrder != nil {
+		sortOrder = *value.SortOrder
+	}
+	metrics := []daily.GoalMetricInput{}
+	if value.Metrics != nil {
+		for _, metric := range *value.Metrics {
+			metrics = append(metrics, daily.GoalMetricInput{MetricCode: string(metric.MetricCode), TargetValue: float64(metric.TargetValue), Unit: metric.Unit})
+		}
+	}
+	return daily.GoalInput{ParentID: parentID, Type: string(value.Type), Title: value.Title, Description: value.Description, StartDate: startDate, DueDate: dueDate, Status: status, SortOrder: int32(sortOrder), Metrics: metrics}
+}
+
+func dateRange(from *DateFrom, to *DateTo) (time.Time, time.Time) {
+	start := time.Now().UTC().AddDate(0, 0, -30)
+	end := time.Now().UTC()
+	if from != nil {
+		start = from.Time
+	}
+	if to != nil {
+		end = to.Time
+	}
+	return start, end
+}
+
+func apiDate(value time.Time) openapi_types.Date { return openapi_types.Date{Time: dailyDate(value)} }
+func dailyDate(value time.Time) time.Time {
+	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+func worklogDTO(value daily.Worklog) Worklog {
+	return Worklog{Id: value.ID, WorkDate: apiDate(value.WorkDate), OpenConversationCount: int(value.OpenConversationCount), DeepConversationCount: int(value.DeepConversationCount), BufferCount: int(value.BufferCount), StoryShareCount: int(value.StoryShareCount), ScreeningCount: int(value.ScreeningCount), OpportunityCount: int(value.OpportunityCount), MeetingCount: int(value.MeetingCount), CustomerFollowupCount: int(value.CustomerFollowupCount), ReadingMinutes: value.ReadingMinutes, AudioMinutes: value.AudioMinutes, TurnoverPv: float32Pointer(value.TurnoverPV), TurnoverNetAmount: float32Pointer(value.TurnoverNetAmount), Note: value.Note, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+}
+
+func worklogsDTO(values []daily.Worklog) []Worklog {
+	result := make([]Worklog, 0, len(values))
+	for _, value := range values {
+		result = append(result, worklogDTO(value))
+	}
+	return result
+}
+
+func turnoverDTO(value daily.Turnover) Turnover {
+	return Turnover{Id: value.ID, TurnoverDate: apiDate(value.TurnoverDate), Pv: float32(value.PV), NetAmount: float32(value.NetAmount), Note: value.Note, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+}
+func turnoversDTO(values []daily.Turnover) []Turnover {
+	result := make([]Turnover, 0, len(values))
+	for _, value := range values {
+		result = append(result, turnoverDTO(value))
+	}
+	return result
+}
+
+func dreamDTO(value daily.Dream) Dream {
+	ids := make([]openapi_types.UUID, 0, len(value.GoalIDs))
+	for _, id := range value.GoalIDs {
+		ids = append(ids, id)
+	}
+	return Dream{Id: value.ID, Title: value.Title, Description: value.Description, GoalIds: ids, SortOrder: int(value.SortOrder), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+}
+func dreamsDTO(values []daily.Dream) []Dream {
+	result := make([]Dream, 0, len(values))
+	for _, value := range values {
+		result = append(result, dreamDTO(value))
+	}
+	return result
+}
+
+func goalDTO(value daily.Goal) Goal {
+	metrics := make([]GoalMetric, 0, len(value.Metrics))
+	for _, metric := range value.Metrics {
+		metrics = append(metrics, GoalMetric{MetricCode: GoalMetricMetricCode(metric.MetricCode), TargetValue: float32(metric.TargetValue), Unit: metric.Unit, ActualValue: float32(metric.ActualValue), Progress: float32(metric.Progress)})
+	}
+	var parentID *openapi_types.UUID
+	if value.ParentID != nil {
+		converted := openapi_types.UUID(*value.ParentID)
+		parentID = &converted
+	}
+	return Goal{Id: value.ID, ParentId: parentID, Type: GoalType(value.Type), Title: value.Title, Description: value.Description, StartDate: datePointer(value.StartDate), DueDate: datePointer(value.DueDate), Status: GoalStatus(value.Status), SortOrder: int(value.SortOrder), Metrics: metrics, Progress: float32(value.Progress), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+}
+func goalsDTO(values []daily.Goal) []Goal {
+	result := make([]Goal, 0, len(values))
+	for _, value := range values {
+		result = append(result, goalDTO(value))
+	}
+	return result
+}
+
+func dashboardPeriodDTO(value daily.Period) DashboardPeriod {
+	return DashboardPeriod{From: apiDate(value.From), To: apiDate(value.To), Worklogs: WorklogTotals{OpenConversationCount: int(value.Worklogs.OpenConversationCount), DeepConversationCount: int(value.Worklogs.DeepConversationCount), BufferCount: int(value.Worklogs.BufferCount), StoryShareCount: int(value.Worklogs.StoryShareCount), ScreeningCount: int(value.Worklogs.ScreeningCount), OpportunityCount: int(value.Worklogs.OpportunityCount), MeetingCount: int(value.Worklogs.MeetingCount), CustomerFollowupCount: int(value.Worklogs.CustomerFollowupCount), ReadingMinutes: int(value.Worklogs.ReadingMinutes), AudioMinutes: int(value.Worklogs.AudioMinutes)}, Turnover: TurnoverTotals{Pv: float32(value.Turnover.PV), NetAmount: float32(value.Turnover.NetAmount)}}
+}
+
+func float32Pointer(value *float64) *float32 {
+	if value == nil {
+		return nil
+	}
+	converted := float32(*value)
+	return &converted
+}
+func datePointer(value *time.Time) *openapi_types.Date {
+	if value == nil {
+		return nil
+	}
+	converted := apiDate(*value)
+	return &converted
 }
 
 func (h *Handler) authResponse(ctx echo.Context, account auth.Account, session *auth.Session, csrfToken string) AuthResponse {

@@ -382,6 +382,171 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return the user dashboard aggregates for a business date */
+        get: operations["getDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/worklogs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List daily worklogs in a business-date range */
+        get: operations["listWorklogs"];
+        put?: never;
+        /** Create or replace a daily worklog */
+        post: operations["createWorklog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/worklogs/{work_date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a daily worklog */
+        get: operations["getWorklog"];
+        /** Replace a daily worklog */
+        put: operations["updateWorklog"];
+        post?: never;
+        /** Delete a daily worklog */
+        delete: operations["deleteWorklog"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/turnover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List daily turnovers in a business-date range */
+        get: operations["listTurnovers"];
+        put?: never;
+        /** Create or replace a daily turnover */
+        post: operations["createTurnover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/turnover/{turnover_date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get turnover for a business date */
+        get: operations["getTurnover"];
+        /** Replace turnover for a business date */
+        put: operations["updateTurnover"];
+        post?: never;
+        /** Delete turnover for a business date */
+        delete: operations["deleteTurnover"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dreams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List dreams for the current user */
+        get: operations["listDreams"];
+        put?: never;
+        /** Create a dream */
+        post: operations["createDream"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dreams/{dream_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a dream */
+        get: operations["getDream"];
+        /** Replace a dream */
+        put: operations["updateDream"];
+        post?: never;
+        /** Delete a dream */
+        delete: operations["deleteDream"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List goals with calculated progress */
+        get: operations["listGoals"];
+        put?: never;
+        /** Create a goal */
+        post: operations["createGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/goals/{goal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a goal with calculated progress */
+        get: operations["getGoal"];
+        /** Replace a goal */
+        put: operations["updateGoal"];
+        post?: never;
+        /** Delete a goal and its descendants */
+        delete: operations["deleteGoal"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -547,6 +712,220 @@ export interface components {
             data: components["schemas"]["Invitation"];
             request_id: string;
         };
+        Worklog: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            work_date: string;
+            open_conversation_count: number;
+            deep_conversation_count: number;
+            buffer_count: number;
+            story_share_count: number;
+            screening_count: number;
+            opportunity_count: number;
+            meeting_count: number;
+            customer_followup_count: number;
+            reading_minutes: number;
+            audio_minutes: number;
+            turnover_pv?: number | null;
+            turnover_net_amount?: number | null;
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        WorklogRequest: {
+            /** Format: date */
+            work_date: string;
+            open_conversation_count: number;
+            deep_conversation_count: number;
+            buffer_count: number;
+            story_share_count: number;
+            screening_count: number;
+            opportunity_count: number;
+            meeting_count: number;
+            customer_followup_count: number;
+            /** @default 0 */
+            reading_minutes: number;
+            /** @default 0 */
+            audio_minutes: number;
+            turnover_pv?: number | null;
+            turnover_net_amount?: number | null;
+            note?: string | null;
+        };
+        WorklogResponse: {
+            data: components["schemas"]["Worklog"];
+            request_id: string;
+        };
+        WorklogListResponse: {
+            data: {
+                items: components["schemas"]["Worklog"][];
+            };
+            request_id: string;
+        };
+        Turnover: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            turnover_date: string;
+            pv: number;
+            net_amount: number;
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        TurnoverRequest: {
+            /** Format: date */
+            turnover_date: string;
+            pv?: number | null;
+            net_amount?: number | null;
+            note?: string | null;
+        };
+        TurnoverResponse: {
+            data: components["schemas"]["Turnover"];
+            request_id: string;
+        };
+        TurnoverListResponse: {
+            data: {
+                items: components["schemas"]["Turnover"][];
+            };
+            request_id: string;
+        };
+        Dream: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            description?: string | null;
+            goal_ids: string[];
+            sort_order: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        DreamRequest: {
+            title: string;
+            description?: string | null;
+            goal_ids?: string[];
+            /** @default 0 */
+            sort_order: number;
+        };
+        DreamResponse: {
+            data: components["schemas"]["Dream"];
+            request_id: string;
+        };
+        DreamListResponse: {
+            data: {
+                items: components["schemas"]["Dream"][];
+            };
+            request_id: string;
+        };
+        GoalMetric: {
+            /** @enum {string} */
+            metric_code: "conversation_open_count" | "deep_conversation_count" | "buffer_count" | "story_share_count" | "screening_count" | "opportunity_count" | "meeting_count" | "customer_followup_count" | "reading_minutes" | "audio_minutes" | "turnover_pv" | "turnover_net_amount";
+            target_value: number;
+            unit: string;
+            actual_value: number;
+            progress: number;
+        };
+        Goal: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parent_id?: string | null;
+            /** @enum {string} */
+            type: "LONG_TERM" | "YEAR" | "STAGE" | "MONTH" | "WEEK" | "DAY";
+            title: string;
+            description?: string | null;
+            /** Format: date */
+            start_date?: string | null;
+            /** Format: date */
+            due_date?: string | null;
+            /** @enum {string} */
+            status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "PAUSED" | "CANCELLED";
+            sort_order: number;
+            metrics: components["schemas"]["GoalMetric"][];
+            progress: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        GoalRequest: {
+            /** Format: uuid */
+            parent_id?: string | null;
+            /** @enum {string} */
+            type: "LONG_TERM" | "YEAR" | "STAGE" | "MONTH" | "WEEK" | "DAY";
+            title: string;
+            description?: string | null;
+            /** Format: date */
+            start_date?: string | null;
+            /** Format: date */
+            due_date?: string | null;
+            /**
+             * @default NOT_STARTED
+             * @enum {string}
+             */
+            status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "PAUSED" | "CANCELLED";
+            /** @default 0 */
+            sort_order: number;
+            metrics?: {
+                /** @enum {string} */
+                metric_code: "conversation_open_count" | "deep_conversation_count" | "buffer_count" | "story_share_count" | "screening_count" | "opportunity_count" | "meeting_count" | "customer_followup_count" | "reading_minutes" | "audio_minutes" | "turnover_pv" | "turnover_net_amount";
+                target_value: number;
+                unit: string;
+            }[];
+        };
+        GoalResponse: {
+            data: components["schemas"]["Goal"];
+            request_id: string;
+        };
+        GoalListResponse: {
+            data: {
+                items: components["schemas"]["Goal"][];
+            };
+            request_id: string;
+        };
+        WorklogTotals: {
+            open_conversation_count: number;
+            deep_conversation_count: number;
+            buffer_count: number;
+            story_share_count: number;
+            screening_count: number;
+            opportunity_count: number;
+            meeting_count: number;
+            customer_followup_count: number;
+            reading_minutes: number;
+            audio_minutes: number;
+        };
+        TurnoverTotals: {
+            pv: number;
+            net_amount: number;
+        };
+        DashboardPeriod: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            worklogs: components["schemas"]["WorklogTotals"];
+            turnover: components["schemas"]["TurnoverTotals"];
+        };
+        DashboardData: {
+            /** Format: date */
+            date: string;
+            today: components["schemas"]["DashboardPeriod"];
+            week: components["schemas"]["DashboardPeriod"];
+            month: components["schemas"]["DashboardPeriod"];
+            active_goals: components["schemas"]["Goal"][];
+            dreams_count: number;
+        };
+        DashboardResponse: {
+            data: components["schemas"]["DashboardData"];
+            request_id: string;
+        };
     };
     responses: {
         /** @description Request failed */
@@ -564,6 +943,13 @@ export interface components {
         InvitationId: string;
         Page: number;
         PageSize: number;
+        BusinessDate: string;
+        DateFrom: string;
+        DateTo: string;
+        WorkDate: string;
+        TurnoverDate: string;
+        DreamId: string;
+        GoalId: string;
     };
     requestBodies: never;
     headers: never;
@@ -1179,6 +1565,503 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResetPasswordResponse"];
                 };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getDashboard: {
+        parameters: {
+            query: {
+                date: components["parameters"]["BusinessDate"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dashboard aggregates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listWorklogs: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daily worklogs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklogListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createWorklog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorklogRequest"];
+            };
+        };
+        responses: {
+            /** @description Worklog saved */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklogResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getWorklog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                work_date: components["parameters"]["WorkDate"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daily worklog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklogResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateWorklog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                work_date: components["parameters"]["WorkDate"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorklogRequest"];
+            };
+        };
+        responses: {
+            /** @description Worklog saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklogResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteWorklog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                work_date: components["parameters"]["WorkDate"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Worklog deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listTurnovers: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daily turnovers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoverListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createTurnover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TurnoverRequest"];
+            };
+        };
+        responses: {
+            /** @description Turnover saved */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoverResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getTurnover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turnover_date: components["parameters"]["TurnoverDate"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daily turnover */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoverResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateTurnover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turnover_date: components["parameters"]["TurnoverDate"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TurnoverRequest"];
+            };
+        };
+        responses: {
+            /** @description Turnover saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoverResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteTurnover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turnover_date: components["parameters"]["TurnoverDate"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Turnover deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listDreams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dreams */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DreamListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createDream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DreamRequest"];
+            };
+        };
+        responses: {
+            /** @description Dream created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DreamResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getDream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dream_id: components["parameters"]["DreamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dream */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DreamResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateDream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dream_id: components["parameters"]["DreamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DreamRequest"];
+            };
+        };
+        responses: {
+            /** @description Dream updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DreamResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteDream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dream_id: components["parameters"]["DreamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dream deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listGoals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Goals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalRequest"];
+            };
+        };
+        responses: {
+            /** @description Goal created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goal_id: components["parameters"]["GoalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Goal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goal_id: components["parameters"]["GoalId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalRequest"];
+            };
+        };
+        responses: {
+            /** @description Goal updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goal_id: components["parameters"]["GoalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Goal deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["ErrorResponse"];
         };

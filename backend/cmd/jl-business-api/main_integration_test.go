@@ -262,6 +262,116 @@ func TestPhase1APIIntegration(t *testing.T) {
 	getTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/users", http.StatusUnauthorized)
 }
 
+func TestPhase2APIIntegration(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
+	}
+	parsedURL, err := url.Parse(databaseURL)
+	if err != nil {
+		t.Fatalf("parse TEST_DATABASE_URL: %v", err)
+	}
+	if strings.TrimPrefix(parsedURL.Path, "/") != "jl_business_test" {
+		t.Fatalf("refusing to run integration test against %q; TEST_DATABASE_URL must target jl_business_test", parsedURL.Path)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatalf("create test database pool: %v", err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
+		t.Fatalf("ping test database: %v", err)
+	}
+	var dailyTables bool
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.daily_worklogs') IS NOT NULL AND to_regclass('public.daily_turnovers') IS NOT NULL AND to_regclass('public.goals') IS NOT NULL`).Scan(&dailyTables); err != nil {
+		t.Fatalf("check Phase 2 migration: %v", err)
+	}
+	if !dailyTables {
+		t.Fatal("Phase 2 migration is not applied; run make migrate-test-up first")
+	}
+	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
+		t.Fatalf("reset isolated test database: %v", err)
+	}
+
+	fileRoot := t.TempDir()
+	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	authService := auth.NewService(pool, applicationConfig)
+	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
+		t.Fatalf("bootstrap test super administrator: %v", err)
+	}
+	server := httptest.NewServer(newServer(pool, applicationConfig, authService))
+	defer server.Close()
+
+	superAdminClient := newTestClient(t)
+	superAdminLogin := postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{"username": applicationConfig.SuperadminUsername, "password": applicationConfig.SuperadminPassword}, "", http.StatusOK)
+	var superAdminAuth api.AuthResponse
+	decodeTestJSON(t, superAdminLogin, &superAdminAuth)
+	invitationBody := map[string]interface{}{"max_uses": 1}
+	invitationResponse := postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", invitationBody, superAdminAuth.Data.CsrfToken, http.StatusCreated)
+	var invitation api.InvitationResponse
+	decodeTestJSON(t, invitationResponse, &invitation)
+
+	userClient := newTestClient(t)
+	userResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase2-user", "password": "phase2-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
+	var userAuth api.AuthResponse
+	decodeTestJSON(t, userResponse, &userAuth)
+	dailyDate := time.Now().UTC().Format("2006-01-02")
+	worklogResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/worklogs", map[string]interface{}{
+		"work_date": dailyDate, "open_conversation_count": 1, "deep_conversation_count": 1, "buffer_count": 0, "story_share_count": 0,
+		"screening_count": 0, "opportunity_count": 0, "meeting_count": 2, "customer_followup_count": 0, "reading_minutes": 30, "audio_minutes": 15,
+		"turnover_pv": 2, "turnover_net_amount": nil, "note": "phase 2 integration",
+	}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var worklog api.WorklogResponse
+	decodeTestJSON(t, worklogResponse, &worklog)
+	if worklog.Data.TurnoverPv == nil || *worklog.Data.TurnoverPv != 2 || worklog.Data.TurnoverNetAmount == nil || *worklog.Data.TurnoverNetAmount != 25 || worklog.Data.ReadingMinutes != 30 || worklog.Data.AudioMinutes != 15 {
+		t.Fatalf("worklog response = %+v, want turnover 2 PV/25 amount and learning minutes", worklog.Data)
+	}
+	worklogList := getTestJSON(t, userClient, server.URL, "/api/worklogs?from="+dailyDate+"&to="+dailyDate, http.StatusOK)
+	var listedWorklogs api.WorklogListResponse
+	decodeTestJSON(t, worklogList, &listedWorklogs)
+	if len(listedWorklogs.Data.Items) != 1 {
+		t.Fatalf("worklog list length = %d, want 1", len(listedWorklogs.Data.Items))
+	}
+
+	turnoverResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/turnover", map[string]interface{}{"turnover_date": dailyDate, "net_amount": 37.5, "note": "direct turnover update"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var turnover api.TurnoverResponse
+	decodeTestJSON(t, turnoverResponse, &turnover)
+	if turnover.Data.Pv != 3 || turnover.Data.NetAmount != 37.5 {
+		t.Fatalf("turnover response = %+v, want 3 PV and 37.5 amount", turnover.Data)
+	}
+	postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/turnover", map[string]interface{}{"turnover_date": dailyDate, "pv": 2, "net_amount": 30}, userAuth.Data.CsrfToken, http.StatusBadRequest)
+
+	goalResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/goals", map[string]interface{}{
+		"type": "YEAR", "title": "Phase 2 meeting goal", "start_date": dailyDate, "due_date": dailyDate, "status": "IN_PROGRESS",
+		"metrics": []map[string]interface{}{{"metric_code": "meeting_count", "target_value": 2, "unit": "次"}},
+	}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var goal api.GoalResponse
+	decodeTestJSON(t, goalResponse, &goal)
+	if goal.Data.Progress != 1 || len(goal.Data.Metrics) != 1 || goal.Data.Metrics[0].ActualValue != 2 {
+		t.Fatalf("goal response = %+v, want meeting progress 1 with actual 2", goal.Data)
+	}
+	dreamResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/dreams", map[string]interface{}{"title": "Phase 2 dream", "description": "A verified direction", "goal_ids": []string{goal.Data.Id.String()}}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var dream api.DreamResponse
+	decodeTestJSON(t, dreamResponse, &dream)
+	if len(dream.Data.GoalIds) != 1 || dream.Data.GoalIds[0] != goal.Data.Id {
+		t.Fatalf("dream response = %+v, want linked goal", dream.Data)
+	}
+
+	dashboardResponse := getTestJSON(t, userClient, server.URL, "/api/dashboard?date="+dailyDate, http.StatusOK)
+	var dashboard api.DashboardResponse
+	decodeTestJSON(t, dashboardResponse, &dashboard)
+	if dashboard.Data.Today.Worklogs.MeetingCount != 2 || dashboard.Data.Today.Turnover.Pv != 3 || dashboard.Data.Today.Turnover.NetAmount != 37.5 || dashboard.Data.DreamsCount != 1 || len(dashboard.Data.ActiveGoals) != 1 || dashboard.Data.ActiveGoals[0].Progress != 1 {
+		t.Fatalf("dashboard response = %+v, want daily totals, one dream, and completed goal progress", dashboard.Data)
+	}
+	getTestJSON(t, superAdminClient, server.URL, "/api/worklogs", http.StatusForbidden)
+	getTestJSON(t, superAdminClient, server.URL, "/api/turnover", http.StatusForbidden)
+	getTestJSON(t, superAdminClient, server.URL, "/api/goals", http.StatusForbidden)
+	getTestJSON(t, superAdminClient, server.URL, "/api/dreams", http.StatusForbidden)
+}
+
 var (
 	testClientIPs      sync.Map
 	testClientSequence uint32

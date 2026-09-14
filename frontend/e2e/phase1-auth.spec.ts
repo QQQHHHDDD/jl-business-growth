@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const superadminUsername = process.env.E2E_SUPERADMIN_USERNAME;
 const superadminPassword = process.env.E2E_SUPERADMIN_PASSWORD;
 
-test("covers the Phase 1 administrator, invitation, registration, and account-switching flow", async ({ page }) => {
+test("covers the Phase 1 administrator flow and Phase 2 daily core loop", async ({ page }) => {
   test.skip(process.env.APP_ENV !== "test" || !superadminUsername || !superadminPassword, "run against APP_ENV=test with E2E_SUPERADMIN_USERNAME and E2E_SUPERADMIN_PASSWORD");
 
   const userPassword = "phase1-user-password";
@@ -40,6 +40,33 @@ test("covers the Phase 1 administrator, invitation, registration, and account-sw
   await page.getByLabel("邀请码").fill(invitationCode!);
   await page.getByRole("button", { name: "注册并登录" }).click();
   await expect(page.getByRole("heading", { name: firstUsername })).toBeVisible();
+
+  await page.goto("/app/worklog");
+  await expect(page.getByRole("heading", { name: "今日工作量" })).toBeVisible();
+  await page.getByLabel("开启对话").fill("1");
+  await page.getByLabel("会面").fill("2");
+  await page.getByLabel("读书分钟").fill("30");
+  await page.getByLabel("听音频分钟").fill("15");
+  await page.getByLabel("营业额 PV（可选）").fill("2");
+  await page.getByRole("button", { name: "保存今日记录" }).click();
+  await expect(page.getByRole("status")).toContainText("今日工作已保存");
+
+  await page.goto("/app/goals");
+  await expect(page.getByRole("heading", { name: "梦想与目标" })).toBeVisible();
+  await page.getByLabel("目标名称").fill("本周会面目标");
+  await page.getByLabel("指标").selectOption("meeting_count");
+  await page.getByLabel("目标值").fill("2");
+  await page.getByLabel("单位").fill("次");
+  await page.getByRole("button", { name: "创建目标" }).click();
+  await expect(page.locator("p").filter({ hasText: "本周会面目标" }).first()).toBeVisible();
+  await expect(page.locator("span").filter({ hasText: "100%" }).first()).toBeVisible();
+  await page.getByLabel("梦想标题").fill("更有节奏的经营");
+  await page.getByRole("button", { name: "保存梦想" }).click();
+  await expect(page.getByText("更有节奏的经营")).toBeVisible();
+
+  await page.goto("/app");
+  await expect(page.getByText("今日工作量")).toBeVisible();
+  await expect(page.getByText("本月 PV")).toBeVisible();
 
   await page.getByRole("button", { name: "退出登录" }).click();
   await expect(page).toHaveURL(/\/login$/);

@@ -1,6 +1,6 @@
 # V1 Implementation Plan
 
-- Status: Phase 1 complete; frontend application shell and design system refresh complete; stop before Phase 2
+- Status: Phase 2 complete; ready for Phase 3 planning
 - Updated: 2026-09-14
 - Source: `docs/00-文档索引.md` and current design documents `01` through `08`
 
@@ -9,7 +9,7 @@
 | Item | State | Action |
 |---|---|---|
 | OS / architecture | Ubuntu 22.04.5 LTS / x86_64 / 32 CPUs | Supported platform |
-| Git | Initialized; `43af68f` contains the Phase 0 baseline and `d39d52a` contains the Phase 1 password recovery fix; frontend shell changes are pending commit | Keep the frontend refresh in its own commit |
+| Git | Initialized; `43af68f` contains the Phase 0 baseline, `d39d52a` contains the Phase 1 password recovery fix, and `aa30c15` contains the Phase 2 daily core loop | Keep each verified phase in its own semantic commit |
 | Go | 1.26.1 | Below required Go 1.27+; upgrade before final Go validation |
 | Node / npm | Not on system PATH; local Node 24 toolchain exists | Use local toolchain for current project validation |
 | PostgreSQL | PostgreSQL 14 is installed; current local cluster is down (`pg_isready` reports no response) | User must start the existing service before migration/status checks; no sudo action was run |
@@ -51,11 +51,21 @@
 - [x] Add route, shell, shared-component, mobile, loading, empty, error, and dialog regression coverage
 - [x] Keep backend API, OpenAPI contract, and database migrations unchanged
 
-Phase 1 database-backed acceptance still requires applying `00002_authentication.sql` to the isolated `jl_business_test` database and running `make migrate-test-up`, `make test-integration`, plus the live API/browser checks below. The test migration and integration commands refuse any database other than `jl_business_test`. When `APP_ENV=test`, the Playwright backend is explicitly given `TEST_DATABASE_URL`, `E2E_SUPERADMIN_USERNAME`, and `E2E_SUPERADMIN_PASSWORD`; it cannot reuse an existing development backend.
+Phase 1 and Phase 2 database-backed acceptance completed against the isolated `jl_business_test` database. The test migration and integration commands refuse any database other than `jl_business_test`. When `APP_ENV=test`, the Playwright backend is explicitly given `TEST_DATABASE_URL`, `E2E_SUPERADMIN_USERNAME`, and `E2E_SUPERADMIN_PASSWORD`; it cannot reuse an existing development backend.
 
-### Phase 2-6
+### Phase 2: Daily core loop
 
-Implement daily core; calendar/reviews; team/learning/files/search; finance/income simulation; import/export/data governance, in that order.
+- [x] Add dreams, goals, goal metrics, daily worklogs, learning-minute allocation, and daily turnovers migrations
+- [x] Add OpenAPI contract, sqlc queries, and Go domain services for daily core data
+- [x] Add dashboard aggregation without duplicating turnover or goal actuals
+- [x] Add user-scoped API integration coverage for daily core and goal progress
+- [x] Add worklog, turnover, dashboard, dream, and goal pages with target-map visualization
+- [x] Add frontend and Playwright coverage for daily entry, turnover conversion, goal progress, and isolation
+- [x] Run the complete phase gate and create a dedicated Phase 2 commit
+
+### Phase 3-6
+
+Implement calendar/reviews; team/learning/files/search; finance/income simulation; import/export/data governance, in that order.
 
 ## Migration Order
 
@@ -71,7 +81,7 @@ Go unit tests and PostgreSQL integration tests use only `jl_business_test`; Vite
 
 ## Active Blockers
 
-None known in the source tree. Live database migration and database-backed browser acceptance remain host-side steps because credentials are kept outside the checkout; the current execution shell has not been given those variables.
+None known in the source tree or required host acceptance. Database credentials remain outside the checkout by design.
 
 ## Warnings
 
@@ -149,3 +159,7 @@ The PostgreSQL commands are required for Goose migration, sqlc schema validation
 - Frontend shell refresh: desktop baseline E2E passed; mobile shell and Phase 1 database-backed E2E are skipped when the host shell does not provide `APP_ENV=test`, `TEST_DATABASE_URL`, and explicit E2E credentials.
 - Frontend shell refresh: `make test-integration` was attempted and correctly refused the current shell because `TEST_DATABASE_URL` was unset; rerun with the isolated `jl_business_test` URL before final host acceptance.
 - Frontend shell refresh: `git diff --check` passed; only frontend source, dependency, Playwright, and this execution-plan documentation are changed.
+- Phase 2 daily-core acceptance: development and isolated test databases migrated to version 3; `TestPhase1APIIntegration` and `TestPhase2APIIntegration` passed.
+- Phase 2 frontend acceptance: Playwright baseline, Phase 1 administrator plus Phase 2 daily-core flow, and mobile shell passed (3 tests); the flow covers daily worklog entry, PV conversion, goal progress, dream creation, Dashboard totals, and account flow.
+- Phase 2 local gate: `make generate`, `make lint`, `make test`, `make build`, `make check`, backend race tests, and `git diff --check` passed; generated API/sqlc files are stable.
+- Phase 2 UI regression: shared `Input` fields now generate unique IDs when field names repeat; Vitest covers this label-association case.

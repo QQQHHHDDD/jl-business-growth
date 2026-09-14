@@ -10,6 +10,15 @@ export type AccountsListResponse = components["schemas"]["AccountsListResponse"]
 export type ErrorResponse = components["schemas"]["ErrorResponse"];
 export type AccountResponse = components["schemas"]["AccountResponse"];
 export type ResetPasswordResponse = components["schemas"]["ResetPasswordResponse"];
+export type DashboardResponse = components["schemas"]["DashboardResponse"];
+export type Worklog = components["schemas"]["Worklog"];
+export type WorklogRequest = components["schemas"]["WorklogRequest"];
+export type Turnover = components["schemas"]["Turnover"];
+export type TurnoverRequest = components["schemas"]["TurnoverRequest"];
+export type Dream = components["schemas"]["Dream"];
+export type DreamRequest = components["schemas"]["DreamRequest"];
+export type Goal = components["schemas"]["Goal"];
+export type GoalRequest = components["schemas"]["GoalRequest"];
 
 export class ApiError extends Error {
   status: number;
@@ -234,4 +243,70 @@ export function disableInvitation(csrfToken: string, invitationId: string): Prom
     `/api/admin/invitation-codes/${encodeURIComponent(invitationId)}`,
     withCsrf(csrfToken, undefined, "DELETE"),
   );
+}
+
+function dateParam(value: string | undefined): string {
+  return value ? encodeURIComponent(value) : "";
+}
+
+export function getDashboard(date: string): Promise<DashboardResponse> {
+  return request<DashboardResponse>(`/api/dashboard?date=${dateParam(date)}`);
+}
+
+export function listWorklogs(from?: string, to?: string): Promise<components["schemas"]["WorklogListResponse"]> {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const suffix = params.toString();
+  return request(`/api/worklogs${suffix ? `?${suffix}` : ""}`);
+}
+
+export function saveWorklog(csrfToken: string, input: WorklogRequest, existing = false): Promise<components["schemas"]["WorklogResponse"]> {
+  const path = existing ? `/api/worklogs/${encodeURIComponent(input.work_date)}` : "/api/worklogs";
+  return request(path, withCsrf(csrfToken, input, existing ? "PUT" : "POST"));
+}
+
+export function deleteWorklog(csrfToken: string, date: string): Promise<void> {
+  return request(`/api/worklogs/${encodeURIComponent(date)}`, withCsrf(csrfToken, undefined, "DELETE"));
+}
+
+export function listTurnovers(from?: string, to?: string): Promise<components["schemas"]["TurnoverListResponse"]> {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const suffix = params.toString();
+  return request(`/api/turnover${suffix ? `?${suffix}` : ""}`);
+}
+
+export function saveTurnover(csrfToken: string, input: TurnoverRequest, existing = false): Promise<components["schemas"]["TurnoverResponse"]> {
+  const path = existing ? `/api/turnover/${encodeURIComponent(input.turnover_date)}` : "/api/turnover";
+  return request(path, withCsrf(csrfToken, input, existing ? "PUT" : "POST"));
+}
+
+export function deleteTurnover(csrfToken: string, date: string): Promise<void> {
+  return request(`/api/turnover/${encodeURIComponent(date)}`, withCsrf(csrfToken, undefined, "DELETE"));
+}
+
+export function listDreams(): Promise<components["schemas"]["DreamListResponse"]> {
+  return request("/api/dreams");
+}
+
+export function saveDream(csrfToken: string, input: DreamRequest, id?: string): Promise<components["schemas"]["DreamResponse"]> {
+  return request(id ? `/api/dreams/${encodeURIComponent(id)}` : "/api/dreams", withCsrf(csrfToken, input, id ? "PUT" : "POST"));
+}
+
+export function deleteDream(csrfToken: string, id: string): Promise<void> {
+  return request(`/api/dreams/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE"));
+}
+
+export function listGoals(): Promise<components["schemas"]["GoalListResponse"]> {
+  return request("/api/goals");
+}
+
+export function saveGoal(csrfToken: string, input: GoalRequest, id?: string): Promise<components["schemas"]["GoalResponse"]> {
+  return request(id ? `/api/goals/${encodeURIComponent(id)}` : "/api/goals", withCsrf(csrfToken, input, id ? "PUT" : "POST"));
+}
+
+export function deleteGoal(csrfToken: string, id: string): Promise<void> {
+  return request(`/api/goals/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE"));
 }
