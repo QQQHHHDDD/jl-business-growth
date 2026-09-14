@@ -19,10 +19,15 @@ import (
 	"jl-business-growth/backend/internal/calendar"
 	"jl-business-growth/backend/internal/config"
 	"jl-business-growth/backend/internal/daily"
+	fileassets "jl-business-growth/backend/internal/files"
+	"jl-business-growth/backend/internal/finance"
 	"jl-business-growth/backend/internal/invitation"
+	"jl-business-growth/backend/internal/knowledge"
 	"jl-business-growth/backend/internal/mail"
 	"jl-business-growth/backend/internal/problem"
 	"jl-business-growth/backend/internal/reviews"
+	"jl-business-growth/backend/internal/search"
+	"jl-business-growth/backend/internal/team"
 )
 
 type Handler struct {
@@ -33,11 +38,17 @@ type Handler struct {
 	calendar   *calendar.Service
 	reviews    *reviews.Service
 	analytics  *analytics.Service
+	team       *team.Service
+	knowledge  *knowledge.Service
+	files      *fileassets.Service
+	search     *search.Service
+	finance    *finance.Service
 	config     config.Config
 }
 
 func NewHandler(authService *auth.Service, adminService *admin.Service, invitationService *invitation.Service, cfg config.Config) *Handler {
-	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(authService.Pool()), calendar: calendar.NewService(authService.Pool(), mail.NewSender(cfg)), reviews: reviews.NewService(authService.Pool()), analytics: analytics.NewService(authService.Pool()), config: cfg}
+	pool := authService.Pool()
+	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(pool), calendar: calendar.NewService(pool, mail.NewSender(cfg)), reviews: reviews.NewService(pool), analytics: analytics.NewService(pool), team: team.NewService(pool), knowledge: knowledge.NewService(pool), files: fileassets.NewService(pool, cfg), search: search.NewService(pool), finance: finance.NewService(pool), config: cfg}
 }
 
 func (h *Handler) PostAuthRegister(ctx echo.Context) error {

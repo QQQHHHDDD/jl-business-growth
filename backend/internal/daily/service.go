@@ -255,6 +255,13 @@ func (s *Service) SaveWorklog(ctx context.Context, userID uuid.UUID, input Workl
 		generated.LearningActivityTypeREADING: input.ReadingMinutes,
 		generated.LearningActivityTypeAUDIO:   input.AudioMinutes,
 	} {
+		var allocated int32
+		if err := tx.QueryRow(ctx, `SELECT COALESCE(SUM(minutes), 0)::int FROM learning_sessions WHERE user_id=$1 AND activity_date=$2 AND activity_type=$3 AND source='ITEM'`, userID, input.WorkDate, activityType).Scan(&allocated); err != nil {
+			return Worklog{}, err
+		}
+		if minutes < allocated {
+			return Worklog{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "daily learning minutes cannot be less than item learning minutes")
+		}
 		if minutes == 0 {
 			if err := queries.DeleteDailyLearningSession(ctx, generated.DeleteDailyLearningSessionParams{UserID: auth.ToPGUUID(userID), ActivityDate: toPGDate(input.WorkDate), ActivityType: activityType}); err != nil {
 				return Worklog{}, err

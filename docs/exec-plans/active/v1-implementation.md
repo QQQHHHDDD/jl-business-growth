@@ -1,6 +1,6 @@
 # V1 Implementation Plan
 
-- Status: Phase 3 complete; ready for Phase 4 planning
+- Status: Phase 4 and Phase 5 complete; committed
 - Updated: 2026-09-14
 - Source: `docs/00-文档索引.md` and current design documents `01` through `08`
 
@@ -77,6 +77,28 @@ Implement calendar/reviews; team/learning/files/search; finance/income simulatio
 - [x] Add calendar, review, and analytics frontend pages and critical E2E flow
 - [x] Run Phase 3 database-backed integration and full E2E acceptance on the host
 - [x] Create the dedicated Phase 3 commit after all acceptance gates pass
+
+### Phase 4: Team, learning, files, and search
+
+- [x] Add team members, hierarchy validation, and monthly/manual immutable snapshots
+- [x] Add knowledge items, normalized tags, item learning sessions, and daily minute allocation validation
+- [x] Add safe file upload, ownership checks, MIME/extension and size limits, inline/attachment delivery
+- [x] Add user-scoped PostgreSQL fuzzy search across supported business records
+- [x] Add Phase 4 OpenAPI contract, generated types, services, handlers, frontend pages, and E2E coverage
+- [x] Run local Go/frontend generation, lint, unit tests, build, and diff checks
+- [x] Run Phase 4 database-backed integration and full E2E acceptance on the host
+- [x] Create the atomic Phase 4/5 commit after all acceptance gates pass
+
+### Phase 5: Finance and income simulation
+
+- [x] Add finance categories, transactions, monthly budgets, savings, and emergency-fund snapshots
+- [x] Add versioned income simulation snapshots with copy, compare, and delete operations
+- [x] Implement the Excel-compatible V1 calculation engine and fixed double-year rank table
+- [x] Add Golden Test coverage for zero/default, thresholds, special market, BFI/BBI, annual growth, and double-year cases
+- [x] Add Phase 5 OpenAPI contract, generated types, services, handlers, frontend pages, and E2E coverage
+- [x] Run local Go/frontend generation, lint, unit tests, build, and diff checks
+- [x] Run Phase 5 database-backed integration and full E2E acceptance on the host
+- [x] Include the Phase 5 implementation in the atomic Phase 4/5 commit
 
 ## Migration Order
 
@@ -176,3 +198,6 @@ The PostgreSQL commands are required for Goose migration, sqlc schema validation
 - Phase 2 UI regression: shared `Input` fields now generate unique IDs when field names repeat; Vitest covers this label-association case.
 - Phase 3 local implementation: calendar/reviews/analytics services, OpenAPI generation, frontend lint/build/Vitest, backend tests/race tests, and `git diff --check` passed.
 - Phase 3 host acceptance: development and isolated test databases migrated to version 4; Phase 1/2/3 API integration tests passed; Playwright baseline, Phase 1-3 flow, and mobile shell passed (3 tests).
+- Phase 4/5 local implementation: migrations 00005-00006, OpenAPI/sqlc generation, Go vet/tests/race tests, frontend lint/Vitest/build, and `git diff --check` passed.
+- Phase 4/5 host acceptance completed: migrations are at version 6, Phase 1-5 API integration tests passed, and desktop baseline, Phase 1-5 flow, and mobile shell Playwright tests passed (3 tests).
+- Final Phase 4/5 regression: `make check`, backend `go test -race ./...` from `backend`, and `git diff --check` passed.

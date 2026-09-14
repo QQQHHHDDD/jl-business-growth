@@ -13,8 +13,13 @@ import { DashboardPage } from "@/features/dashboard/dashboard-page";
 import { GoalsPage } from "@/features/goals/goals-page";
 import { PlaceholderPage } from "@/features/placeholder/placeholder-page";
 import { ReviewsPage } from "@/features/reviews/reviews-page";
+import { SearchPage } from "@/features/search/search-page";
+import { TeamPage } from "@/features/team/team-page";
 import { TurnoverPage } from "@/features/turnover/turnover-page";
 import { WorklogPage } from "@/features/worklog/worklog-page";
+import { KnowledgePage } from "@/features/knowledge/knowledge-page";
+import { FinancePage } from "@/features/finance/finance-page";
+import { IncomePage } from "@/features/income/income-page";
 import { roleHome } from "@/lib/utils";
 
 const userRoutes = [
@@ -100,6 +105,26 @@ function UserAnalyticsRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? <AnalyticsPage authResponse={meQuery.data} /> : null;
 }
 
+function UserTeamRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <TeamPage authResponse={meQuery.data} /> : null;
+}
+
+function UserKnowledgeRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <KnowledgePage authResponse={meQuery.data} /> : null;
+}
+
+function UserSearchRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <SearchPage authResponse={meQuery.data} /> : null;
+}
+
+function UserFinanceRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <FinancePage authResponse={meQuery.data} /> : null;
+}
+
+function UserIncomeRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <IncomePage authResponse={meQuery.data} /> : null;
+}
+
 function SettingsRoute({ meQuery }: { meQuery: MeQuery }) {
   const authResponse = meQuery.data;
   if (!authResponse) return null;
@@ -139,6 +164,11 @@ function AppRoutes({ meQuery, health, onLogout, loggingOut }: { meQuery: MeQuery
             if (path === "/app/calendar") return <Route key={path} path={path} element={<UserCalendarRoute meQuery={meQuery} />} />;
             if (path === "/app/reviews") return <Route key={path} path={path} element={<UserReviewsRoute meQuery={meQuery} />} />;
             if (path === "/app/analytics") return <Route key={path} path={path} element={<UserAnalyticsRoute meQuery={meQuery} />} />;
+            if (path === "/app/team") return <Route key={path} path={path} element={<UserTeamRoute meQuery={meQuery} />} />;
+            if (path === "/app/knowledge") return <Route key={path} path={path} element={<UserKnowledgeRoute meQuery={meQuery} />} />;
+            if (path === "/app/search") return <Route key={path} path={path} element={<UserSearchRoute meQuery={meQuery} />} />;
+            if (path === "/app/finance") return <Route key={path} path={path} element={<UserFinanceRoute meQuery={meQuery} />} />;
+            if (path === "/app/income-simulator") return <Route key={path} path={path} element={<UserIncomeRoute meQuery={meQuery} />} />;
             return <Route key={path} path={path} element={<PlaceholderPage title={title} description={description} />} />;
           })}
         </Route>

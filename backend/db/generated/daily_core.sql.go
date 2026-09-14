@@ -798,7 +798,18 @@ type UpsertDailyLearningSessionParams struct {
 	Minutes      int32
 }
 
-func (q *Queries) UpsertDailyLearningSession(ctx context.Context, arg UpsertDailyLearningSessionParams) (LearningSession, error) {
+type UpsertDailyLearningSessionRow struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	ActivityType LearningActivityType
+	ActivityDate pgtype.Date
+	Minutes      int32
+	Source       LearningSessionSource
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) UpsertDailyLearningSession(ctx context.Context, arg UpsertDailyLearningSessionParams) (UpsertDailyLearningSessionRow, error) {
 	row := q.db.QueryRow(ctx, upsertDailyLearningSession,
 		arg.ID,
 		arg.UserID,
@@ -806,7 +817,7 @@ func (q *Queries) UpsertDailyLearningSession(ctx context.Context, arg UpsertDail
 		arg.ActivityDate,
 		arg.Minutes,
 	)
-	var i LearningSession
+	var i UpsertDailyLearningSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,

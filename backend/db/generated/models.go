@@ -227,6 +227,175 @@ func (ns NullCalendarRecurrenceFreq) Value() (driver.Value, error) {
 	return string(ns.CalendarRecurrenceFreq), nil
 }
 
+type FileAssetCategory string
+
+const (
+	FileAssetCategoryDREAMIMAGE        FileAssetCategory = "DREAM_IMAGE"
+	FileAssetCategoryKNOWLEDGEDOCUMENT FileAssetCategory = "KNOWLEDGE_DOCUMENT"
+	FileAssetCategoryKNOWLEDGEIMAGE    FileAssetCategory = "KNOWLEDGE_IMAGE"
+)
+
+func (e *FileAssetCategory) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = FileAssetCategory(s)
+	case string:
+		*e = FileAssetCategory(s)
+	default:
+		return fmt.Errorf("unsupported scan type for FileAssetCategory: %T", src)
+	}
+	return nil
+}
+
+type NullFileAssetCategory struct {
+	FileAssetCategory FileAssetCategory
+	Valid             bool // Valid is true if FileAssetCategory is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullFileAssetCategory) Scan(value interface{}) error {
+	if value == nil {
+		ns.FileAssetCategory, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.FileAssetCategory.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullFileAssetCategory) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.FileAssetCategory), nil
+}
+
+type FinanceSnapshotKind string
+
+const (
+	FinanceSnapshotKindSAVINGS       FinanceSnapshotKind = "SAVINGS"
+	FinanceSnapshotKindEMERGENCYFUND FinanceSnapshotKind = "EMERGENCY_FUND"
+)
+
+func (e *FinanceSnapshotKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = FinanceSnapshotKind(s)
+	case string:
+		*e = FinanceSnapshotKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for FinanceSnapshotKind: %T", src)
+	}
+	return nil
+}
+
+type NullFinanceSnapshotKind struct {
+	FinanceSnapshotKind FinanceSnapshotKind
+	Valid               bool // Valid is true if FinanceSnapshotKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullFinanceSnapshotKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.FinanceSnapshotKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.FinanceSnapshotKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullFinanceSnapshotKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.FinanceSnapshotKind), nil
+}
+
+type FinanceTransactionSource string
+
+const (
+	FinanceTransactionSourceMANUAL FinanceTransactionSource = "MANUAL"
+	FinanceTransactionSourceIMPORT FinanceTransactionSource = "IMPORT"
+)
+
+func (e *FinanceTransactionSource) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = FinanceTransactionSource(s)
+	case string:
+		*e = FinanceTransactionSource(s)
+	default:
+		return fmt.Errorf("unsupported scan type for FinanceTransactionSource: %T", src)
+	}
+	return nil
+}
+
+type NullFinanceTransactionSource struct {
+	FinanceTransactionSource FinanceTransactionSource
+	Valid                    bool // Valid is true if FinanceTransactionSource is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullFinanceTransactionSource) Scan(value interface{}) error {
+	if value == nil {
+		ns.FinanceTransactionSource, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.FinanceTransactionSource.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullFinanceTransactionSource) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.FinanceTransactionSource), nil
+}
+
+type FinanceTransactionType string
+
+const (
+	FinanceTransactionTypeINCOME  FinanceTransactionType = "INCOME"
+	FinanceTransactionTypeEXPENSE FinanceTransactionType = "EXPENSE"
+)
+
+func (e *FinanceTransactionType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = FinanceTransactionType(s)
+	case string:
+		*e = FinanceTransactionType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for FinanceTransactionType: %T", src)
+	}
+	return nil
+}
+
+type NullFinanceTransactionType struct {
+	FinanceTransactionType FinanceTransactionType
+	Valid                  bool // Valid is true if FinanceTransactionType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullFinanceTransactionType) Scan(value interface{}) error {
+	if value == nil {
+		ns.FinanceTransactionType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.FinanceTransactionType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullFinanceTransactionType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.FinanceTransactionType), nil
+}
+
 type GoalStatus string
 
 const (
@@ -360,6 +529,98 @@ func (ns NullInvitationStatus) Value() (driver.Value, error) {
 	return string(ns.InvitationStatus), nil
 }
 
+type KnowledgeItemStatus string
+
+const (
+	KnowledgeItemStatusNOTSTARTED KnowledgeItemStatus = "NOT_STARTED"
+	KnowledgeItemStatusINPROGRESS KnowledgeItemStatus = "IN_PROGRESS"
+	KnowledgeItemStatusCOMPLETED  KnowledgeItemStatus = "COMPLETED"
+)
+
+func (e *KnowledgeItemStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = KnowledgeItemStatus(s)
+	case string:
+		*e = KnowledgeItemStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for KnowledgeItemStatus: %T", src)
+	}
+	return nil
+}
+
+type NullKnowledgeItemStatus struct {
+	KnowledgeItemStatus KnowledgeItemStatus
+	Valid               bool // Valid is true if KnowledgeItemStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullKnowledgeItemStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.KnowledgeItemStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.KnowledgeItemStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullKnowledgeItemStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.KnowledgeItemStatus), nil
+}
+
+type KnowledgeItemType string
+
+const (
+	KnowledgeItemTypeAUDIO   KnowledgeItemType = "AUDIO"
+	KnowledgeItemTypeVIDEO   KnowledgeItemType = "VIDEO"
+	KnowledgeItemTypeBOOK    KnowledgeItemType = "BOOK"
+	KnowledgeItemTypeEVENT   KnowledgeItemType = "EVENT"
+	KnowledgeItemTypeMEETING KnowledgeItemType = "MEETING"
+	KnowledgeItemTypePHP     KnowledgeItemType = "PHP"
+	KnowledgeItemTypeMENTOR  KnowledgeItemType = "MENTOR"
+	KnowledgeItemTypePRODUCT KnowledgeItemType = "PRODUCT"
+	KnowledgeItemTypeOTHER   KnowledgeItemType = "OTHER"
+)
+
+func (e *KnowledgeItemType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = KnowledgeItemType(s)
+	case string:
+		*e = KnowledgeItemType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for KnowledgeItemType: %T", src)
+	}
+	return nil
+}
+
+type NullKnowledgeItemType struct {
+	KnowledgeItemType KnowledgeItemType
+	Valid             bool // Valid is true if KnowledgeItemType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullKnowledgeItemType) Scan(value interface{}) error {
+	if value == nil {
+		ns.KnowledgeItemType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.KnowledgeItemType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullKnowledgeItemType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.KnowledgeItemType), nil
+}
+
 type LearningActivityType string
 
 const (
@@ -406,6 +667,7 @@ type LearningSessionSource string
 
 const (
 	LearningSessionSourceDAILYUNALLOCATED LearningSessionSource = "DAILY_UNALLOCATED"
+	LearningSessionSourceITEM             LearningSessionSource = "ITEM"
 )
 
 func (e *LearningSessionSource) Scan(src interface{}) error {
@@ -571,6 +833,90 @@ func (ns NullReviewType) Value() (driver.Value, error) {
 	return string(ns.ReviewType), nil
 }
 
+type TeamMemberStatus string
+
+const (
+	TeamMemberStatusACTIVE   TeamMemberStatus = "ACTIVE"
+	TeamMemberStatusINACTIVE TeamMemberStatus = "INACTIVE"
+)
+
+func (e *TeamMemberStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TeamMemberStatus(s)
+	case string:
+		*e = TeamMemberStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TeamMemberStatus: %T", src)
+	}
+	return nil
+}
+
+type NullTeamMemberStatus struct {
+	TeamMemberStatus TeamMemberStatus
+	Valid            bool // Valid is true if TeamMemberStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTeamMemberStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.TeamMemberStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TeamMemberStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTeamMemberStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TeamMemberStatus), nil
+}
+
+type TeamSnapshotType string
+
+const (
+	TeamSnapshotTypeAUTO   TeamSnapshotType = "AUTO"
+	TeamSnapshotTypeMANUAL TeamSnapshotType = "MANUAL"
+)
+
+func (e *TeamSnapshotType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TeamSnapshotType(s)
+	case string:
+		*e = TeamSnapshotType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TeamSnapshotType: %T", src)
+	}
+	return nil
+}
+
+type NullTeamSnapshotType struct {
+	TeamSnapshotType TeamSnapshotType
+	Valid            bool // Valid is true if TeamSnapshotType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTeamSnapshotType) Scan(value interface{}) error {
+	if value == nil {
+		ns.TeamSnapshotType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TeamSnapshotType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTeamSnapshotType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TeamSnapshotType), nil
+}
+
 type Account struct {
 	ID           pgtype.UUID
 	Username     string
@@ -597,6 +943,16 @@ type BrowserSessionAccount struct {
 	BrowserSessionID pgtype.UUID
 	AccountID        pgtype.UUID
 	AuthenticatedAt  pgtype.Timestamptz
+}
+
+type Budget struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	Month      pgtype.Date
+	CategoryID pgtype.UUID
+	Amount     pgtype.Numeric
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }
 
 type CalendarAttendee struct {
@@ -681,6 +1037,51 @@ type DreamGoalLink struct {
 	GoalID  pgtype.UUID
 }
 
+type FileAsset struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	Category     FileAssetCategory
+	OriginalName string
+	StorageName  string
+	MimeType     string
+	SizeBytes    int64
+	Sha256       string
+	CreatedAt    pgtype.Timestamptz
+}
+
+type FinanceCategory struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	Type       FinanceTransactionType
+	Name       string
+	ArchivedAt pgtype.Timestamptz
+}
+
+type FinancialSnapshot struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	SnapshotDate pgtype.Date
+	Kind         FinanceSnapshotKind
+	Amount       pgtype.Numeric
+	Note         pgtype.Text
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type FinancialTransaction struct {
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	OccurredOn  pgtype.Date
+	Type        FinanceTransactionType
+	CategoryID  pgtype.UUID
+	Amount      pgtype.Numeric
+	Description pgtype.Text
+	Note        pgtype.Text
+	Source      FinanceTransactionSource
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Goal struct {
 	ID          pgtype.UUID
 	UserID      pgtype.UUID
@@ -703,6 +1104,17 @@ type GoalMetric struct {
 	Unit        string
 }
 
+type IncomeSimulation struct {
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	Name           string
+	RuleVersion    string
+	InputSnapshot  []byte
+	ResultSnapshot []byte
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
 type InvitationCode struct {
 	ID        pgtype.UUID
 	Code      string
@@ -720,15 +1132,46 @@ type InvitationUse struct {
 	UsedAt           pgtype.Timestamptz
 }
 
+type KnowledgeItem struct {
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	Title           string
+	Type            KnowledgeItemType
+	RawText         pgtype.Text
+	Summary         pgtype.Text
+	Understanding   pgtype.Text
+	ActionItems     pgtype.Text
+	SourceUrl       pgtype.Text
+	LearnedOn       pgtype.Date
+	Status          KnowledgeItemStatus
+	ProgressCurrent pgtype.Numeric
+	ProgressTotal   pgtype.Numeric
+	ProgressUnit    pgtype.Text
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+type KnowledgeItemFile struct {
+	KnowledgeItemID pgtype.UUID
+	FileID          pgtype.UUID
+}
+
+type KnowledgeItemTag struct {
+	KnowledgeItemID pgtype.UUID
+	TagID           pgtype.UUID
+}
+
 type LearningSession struct {
-	ID           pgtype.UUID
-	UserID       pgtype.UUID
-	ActivityType LearningActivityType
-	ActivityDate pgtype.Date
-	Minutes      int32
-	Source       LearningSessionSource
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	ActivityType    LearningActivityType
+	ActivityDate    pgtype.Date
+	Minutes         int32
+	Source          LearningSessionSource
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	KnowledgeItemID pgtype.UUID
+	Note            pgtype.Text
 }
 
 type MailDelivery struct {
@@ -768,4 +1211,49 @@ type SecurityAuditLog struct {
 	UserAgentSummary pgtype.Text
 	RequestID        pgtype.Text
 	CreatedAt        pgtype.Timestamptz
+}
+
+type Tag struct {
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	Name           string
+	NameNormalized string
+}
+
+type TeamMember struct {
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	ParentMemberID pgtype.UUID
+	Name           string
+	JoinedOn       pgtype.Date
+	Rank           pgtype.Text
+	City           pgtype.Text
+	Status         TeamMemberStatus
+	Note           pgtype.Text
+	SortOrder      int32
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type TeamSnapshot struct {
+	ID            pgtype.UUID
+	UserID        pgtype.UUID
+	SnapshotMonth pgtype.Date
+	SnapshotType  TeamSnapshotType
+	CapturedAt    pgtype.Timestamptz
+	CapturedLate  bool
+}
+
+type TeamSnapshotMember struct {
+	ID                     pgtype.UUID
+	SnapshotID             pgtype.UUID
+	OriginalMemberID       pgtype.UUID
+	ParentSnapshotMemberID pgtype.UUID
+	Name                   string
+	JoinedOn               pgtype.Date
+	Rank                   pgtype.Text
+	City                   pgtype.Text
+	Status                 TeamMemberStatus
+	Note                   pgtype.Text
+	SortOrder              int32
 }

@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/textproto"
 	"net/url"
 	"os"
 	"strings"
@@ -471,6 +474,230 @@ func TestPhase3APIIntegration(t *testing.T) {
 	getTestJSON(t, superClient, server.URL, "/api/calendar/events?from="+url.QueryEscape(from)+"&to="+url.QueryEscape(to), http.StatusForbidden)
 	getTestJSON(t, superClient, server.URL, "/api/reviews", http.StatusForbidden)
 	getTestJSON(t, superClient, server.URL, "/api/analytics/worklogs?granularity=day", http.StatusForbidden)
+}
+
+func TestPhase4APIIntegration(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
+	}
+	parsedURL, err := url.Parse(databaseURL)
+	if err != nil {
+		t.Fatalf("parse TEST_DATABASE_URL: %v", err)
+	}
+	if strings.TrimPrefix(parsedURL.Path, "/") != "jl_business_test" {
+		t.Fatalf("refusing to run integration test against %q; TEST_DATABASE_URL must target jl_business_test", parsedURL.Path)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatalf("create test database pool: %v", err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
+		t.Fatalf("ping test database: %v", err)
+	}
+	var tables bool
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.team_members') IS NOT NULL AND to_regclass('public.knowledge_items') IS NOT NULL AND to_regclass('public.file_assets') IS NOT NULL`).Scan(&tables); err != nil {
+		t.Fatalf("check Phase 4 migration: %v", err)
+	}
+	if !tables {
+		t.Fatal("Phase 4 migration is not applied; run make migrate-test-up first")
+	}
+	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
+		t.Fatalf("reset isolated test database: %v", err)
+	}
+	fileRoot := t.TempDir()
+	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	authService := auth.NewService(pool, cfg)
+	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
+		t.Fatalf("bootstrap test super administrator: %v", err)
+	}
+	server := httptest.NewServer(newServer(pool, cfg, authService))
+	defer server.Close()
+	adminClient := newTestClient(t)
+	login := postTestJSON(t, adminClient, server.URL, cfg.PublicBaseURL, "/api/auth/login", map[string]string{"username": cfg.SuperadminUsername, "password": cfg.SuperadminPassword}, "", http.StatusOK)
+	var adminAuth api.AuthResponse
+	decodeTestJSON(t, login, &adminAuth)
+	invite := postTestJSON(t, adminClient, server.URL, cfg.PublicBaseURL, "/api/admin/invitation-codes", map[string]interface{}{"max_uses": 2}, adminAuth.Data.CsrfToken, http.StatusCreated)
+	var invitation api.InvitationResponse
+	decodeTestJSON(t, invite, &invitation)
+	userClient := newTestClient(t)
+	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase4-user", "password": "phase4-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
+	var userAuth api.AuthResponse
+	decodeTestJSON(t, registered, &userAuth)
+	parentBody := map[string]interface{}{"name": "Phase 4 root", "rank": "主任", "city": "上海"}
+	parentResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", parentBody, userAuth.Data.CsrfToken, http.StatusCreated)
+	var parent api.TeamMemberResponse
+	decodeTestJSON(t, parentResponse, &parent)
+	childResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "Phase 4 child", "parent_id": parent.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var child api.TeamMemberResponse
+	decodeTestJSON(t, childResponse, &child)
+	putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members/"+parent.Data.Id.String(), map[string]interface{}{"name": "Phase 4 root", "parent_id": child.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusBadRequest)
+	snapshot := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/snapshots", map[string]interface{}{"snapshot_month": "2026-09-01", "snapshot_type": "MANUAL"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var snapshotResponse api.TeamSnapshotResponse
+	decodeTestJSON(t, snapshot, &snapshotResponse)
+	if len(snapshotResponse.Data.Members) != 2 {
+		t.Fatalf("snapshot members = %d, want 2", len(snapshotResponse.Data.Members))
+	}
+	knowledgeResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/knowledge", map[string]interface{}{"title": "Phase 4 book", "type": "BOOK", "tags": []string{"经营", "经营"}, "status": "IN_PROGRESS"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var item api.KnowledgeItemResponse
+	decodeTestJSON(t, knowledgeResponse, &item)
+	if len(item.Data.Tags) != 1 {
+		t.Fatalf("knowledge tags = %v, want one normalized tag", item.Data.Tags)
+	}
+	sessionResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/learning-sessions", map[string]interface{}{"knowledge_item_id": item.Data.Id.String(), "activity_type": "READING", "activity_date": "2026-09-14", "minutes": 30, "source": "ITEM"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var session api.LearningSessionResponse
+	decodeTestJSON(t, sessionResponse, &session)
+	if session.Data.Minutes != 30 {
+		t.Fatalf("learning session = %+v", session.Data)
+	}
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	_ = writer.WriteField("category", "KNOWLEDGE_DOCUMENT")
+	part, err := writer.CreatePart(textproto.MIMEHeader{
+		"Content-Disposition": {`form-data; name="file"; filename="phase4.txt"`},
+		"Content-Type":        {"text/plain"},
+	})
+	if err != nil {
+		t.Fatalf("create multipart file: %v", err)
+	}
+	_, _ = part.Write([]byte("phase 4 attachment"))
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+	uploadRequest, err := http.NewRequest(http.MethodPost, endpointURL(server.URL, "/api/files"), &body)
+	if err != nil {
+		t.Fatalf("create upload request: %v", err)
+	}
+	uploadRequest.Header.Set("Content-Type", writer.FormDataContentType())
+	uploadRequest.Header.Set("Origin", cfg.PublicBaseURL)
+	uploadRequest.Header.Set("X-CSRF-Token", userAuth.Data.CsrfToken)
+	uploadRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
+	uploadResponse := doTestRequest(t, userClient, uploadRequest, http.StatusCreated)
+	var fileResponse api.FileResponse
+	decodeTestJSON(t, uploadResponse, &fileResponse)
+	searchResponse := getTestJSON(t, userClient, server.URL, "/api/search?q=Phase%204%20book", http.StatusOK)
+	var searchResult api.SearchResponse
+	decodeTestJSON(t, searchResponse, &searchResult)
+	if len(searchResult.Data.Items) == 0 {
+		t.Fatal("search did not find the user's knowledge item")
+	}
+	getTestJSON(t, userClient, server.URL, "/api/files/"+fileResponse.Data.Id.String()+"/content?disposition=inline", http.StatusOK)
+	getTestJSON(t, adminClient, server.URL, "/api/team/members", http.StatusForbidden)
+	getTestJSON(t, adminClient, server.URL, "/api/knowledge", http.StatusForbidden)
+	getTestJSON(t, adminClient, server.URL, "/api/search?q=Phase", http.StatusForbidden)
+}
+
+func TestPhase5APIIntegration(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
+	}
+	parsedURL, err := url.Parse(databaseURL)
+	if err != nil {
+		t.Fatalf("parse TEST_DATABASE_URL: %v", err)
+	}
+	if strings.TrimPrefix(parsedURL.Path, "/") != "jl_business_test" {
+		t.Fatalf("refusing to run integration test against %q; TEST_DATABASE_URL must target jl_business_test", parsedURL.Path)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatalf("create test database pool: %v", err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
+		t.Fatalf("ping test database: %v", err)
+	}
+	var tables bool
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.finance_categories') IS NOT NULL AND to_regclass('public.income_simulations') IS NOT NULL`).Scan(&tables); err != nil {
+		t.Fatalf("check Phase 5 migration: %v", err)
+	}
+	if !tables {
+		t.Fatal("Phase 5 migration is not applied; run make migrate-test-up first")
+	}
+	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
+		t.Fatalf("reset isolated test database: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO finance_categories (user_id, type, name) VALUES (NULL, 'INCOME', '其他收入'), (NULL, 'EXPENSE', '其他支出'), (NULL, 'EXPENSE', '生活'), (NULL, 'EXPENSE', '交通'), (NULL, 'EXPENSE', '学习')`); err != nil {
+		t.Fatalf("restore Phase 5 system categories after reset: %v", err)
+	}
+	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: t.TempDir(), MailOutboxRoot: t.TempDir()}
+	authService := auth.NewService(pool, cfg)
+	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
+		t.Fatalf("bootstrap test super administrator: %v", err)
+	}
+	server := httptest.NewServer(newServer(pool, cfg, authService))
+	defer server.Close()
+	adminClient := newTestClient(t)
+	login := postTestJSON(t, adminClient, server.URL, cfg.PublicBaseURL, "/api/auth/login", map[string]string{"username": cfg.SuperadminUsername, "password": cfg.SuperadminPassword}, "", http.StatusOK)
+	var adminAuth api.AuthResponse
+	decodeTestJSON(t, login, &adminAuth)
+	inviteBody := postTestJSON(t, adminClient, server.URL, cfg.PublicBaseURL, "/api/admin/invitation-codes", map[string]interface{}{"max_uses": 1}, adminAuth.Data.CsrfToken, http.StatusCreated)
+	var invite api.InvitationResponse
+	decodeTestJSON(t, inviteBody, &invite)
+	userClient := newTestClient(t)
+	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase5-user", "password": "phase5-user-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
+	var userAuth api.AuthResponse
+	decodeTestJSON(t, registered, &userAuth)
+
+	categoriesBody := getTestJSON(t, userClient, server.URL, "/api/finance/categories", http.StatusOK)
+	var categories api.FinanceCategoryListResponse
+	decodeTestJSON(t, categoriesBody, &categories)
+	if len(categories.Data.Items) != 5 {
+		t.Fatalf("finance categories = %d, want 5 system defaults", len(categories.Data.Items))
+	}
+	categoryBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/categories", map[string]string{"type": "EXPENSE", "name": "Phase 5 testing"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var category api.FinanceCategoryResponse
+	decodeTestJSON(t, categoryBody, &category)
+	today := time.Now().UTC().Format("2006-01-02")
+	transactionBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/transactions", map[string]interface{}{"occurred_on": today, "type": "EXPENSE", "category_id": category.Data.Id.String(), "amount": 123.45, "description": "Phase 5 transaction"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var transaction api.FinanceTransactionResponse
+	decodeTestJSON(t, transactionBody, &transaction)
+	transactionsBody := getTestJSON(t, userClient, server.URL, "/api/finance/transactions?from="+today+"&to="+today, http.StatusOK)
+	var transactions api.FinanceTransactionListResponse
+	decodeTestJSON(t, transactionsBody, &transactions)
+	if len(transactions.Data.Items) != 1 || transactions.Data.Items[0].Amount != 123.45 {
+		t.Fatalf("finance transactions = %+v", transactions.Data.Items)
+	}
+	budgetInput := map[string]interface{}{"month": "2026-09-01", "amount": 1000}
+	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/budgets", budgetInput, userAuth.Data.CsrfToken, http.StatusOK)
+	budgetInput["amount"] = 1500
+	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/budgets", budgetInput, userAuth.Data.CsrfToken, http.StatusOK)
+	budgetsBody := getTestJSON(t, userClient, server.URL, "/api/finance/budgets", http.StatusOK)
+	var budgets api.FinanceBudgetListResponse
+	decodeTestJSON(t, budgetsBody, &budgets)
+	if len(budgets.Data.Items) != 1 || budgets.Data.Items[0].Amount != 1500 {
+		t.Fatalf("finance budgets = %+v", budgets.Data.Items)
+	}
+	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/snapshots", map[string]interface{}{"snapshot_date": today, "kind": "SAVINGS", "amount": 8000, "note": "Phase 5"}, userAuth.Data.CsrfToken, http.StatusOK)
+	incomeInput := map[string]interface{}{"personal_use_pv": 1000, "customer_pv": 0, "markets": []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, "annual_growth_status": "NOT_QUALIFIED", "annual_growth_qualified_months": 0, "bfi_period_eligible": false, "bbi_period_eligible": false, "double_year_mode": "NONE"}
+	calculationBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulator/calculate", incomeInput, "", http.StatusOK)
+	var calculation api.IncomeCalculationResponse
+	decodeTestJSON(t, calculationBody, &calculation)
+	if calculation.Data.Result.PersonalSalesBonus != 1125 || calculation.Data.RuleVersion == "" {
+		t.Fatalf("income calculation = %+v", calculation.Data)
+	}
+	simulationBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulations", map[string]interface{}{"name": "Phase 5 plan", "input": incomeInput}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var simulation api.IncomeSimulationResponse
+	decodeTestJSON(t, simulationBody, &simulation)
+	duplicateBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulations/"+simulation.Data.Id.String()+"/duplicate", nil, userAuth.Data.CsrfToken, http.StatusCreated)
+	var duplicate api.IncomeSimulationResponse
+	decodeTestJSON(t, duplicateBody, &duplicate)
+	compareBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulations/compare", map[string]interface{}{"ids": []string{simulation.Data.Id.String(), duplicate.Data.Id.String()}}, "", http.StatusOK)
+	var comparison api.IncomeSimulationListResponse
+	decodeTestJSON(t, compareBody, &comparison)
+	if len(comparison.Data.Items) != 2 {
+		t.Fatalf("income comparison items = %d, want 2", len(comparison.Data.Items))
+	}
+	getTestJSON(t, adminClient, server.URL, "/api/finance/categories", http.StatusForbidden)
+	deleteTestJSON(t, userClient, server.URL, "/api/finance/transactions/"+transaction.Data.Id.String(), userAuth.Data.CsrfToken, http.StatusNoContent)
+	deleteTestJSON(t, userClient, server.URL, "/api/finance/categories/"+category.Data.Id.String(), userAuth.Data.CsrfToken, http.StatusNoContent)
+	deleteTestJSON(t, userClient, server.URL, "/api/income-simulations/"+simulation.Data.Id.String(), userAuth.Data.CsrfToken, http.StatusNoContent)
+	deleteTestJSON(t, userClient, server.URL, "/api/income-simulations/"+duplicate.Data.Id.String(), userAuth.Data.CsrfToken, http.StatusNoContent)
 }
 
 var (

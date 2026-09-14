@@ -293,13 +293,24 @@ func SecurityMiddleware(cfg config.Config) echo.MiddlewareFunc {
 				if err := validateOrigin(ctx, cfg); err != nil {
 					return err
 				}
-				if err := validateJSONContentType(ctx); err != nil {
+				if err := validateMutationContentType(ctx); err != nil {
 					return err
 				}
 			}
 			return next(ctx)
 		}
 	}
+}
+
+func validateMutationContentType(ctx echo.Context) error {
+	if ctx.Request().URL.Path == "/api/files" {
+		mediaType, _, err := mime.ParseMediaType(ctx.Request().Header.Get(echo.HeaderContentType))
+		if err != nil || mediaType != "multipart/form-data" {
+			return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "multipart form content type is required")
+		}
+		return nil
+	}
+	return validateJSONContentType(ctx)
 }
 
 func validateJSONContentType(ctx echo.Context) error {

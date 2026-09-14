@@ -76,6 +76,61 @@ const (
 	CalendarEventRequestRecurrenceFreqYEARLY  CalendarEventRequestRecurrenceFreq = "YEARLY"
 )
 
+// Defines values for FileAssetCategory.
+const (
+	FileAssetCategoryDREAMIMAGE        FileAssetCategory = "DREAM_IMAGE"
+	FileAssetCategoryKNOWLEDGEDOCUMENT FileAssetCategory = "KNOWLEDGE_DOCUMENT"
+	FileAssetCategoryKNOWLEDGEIMAGE    FileAssetCategory = "KNOWLEDGE_IMAGE"
+)
+
+// Defines values for FinanceCategoryType.
+const (
+	FinanceCategoryTypeEXPENSE FinanceCategoryType = "EXPENSE"
+	FinanceCategoryTypeINCOME  FinanceCategoryType = "INCOME"
+)
+
+// Defines values for FinanceCategoryRequestType.
+const (
+	FinanceCategoryRequestTypeEXPENSE FinanceCategoryRequestType = "EXPENSE"
+	FinanceCategoryRequestTypeINCOME  FinanceCategoryRequestType = "INCOME"
+)
+
+// Defines values for FinanceSnapshotKind.
+const (
+	FinanceSnapshotKindEMERGENCYFUND FinanceSnapshotKind = "EMERGENCY_FUND"
+	FinanceSnapshotKindSAVINGS       FinanceSnapshotKind = "SAVINGS"
+)
+
+// Defines values for FinanceSnapshotRequestKind.
+const (
+	FinanceSnapshotRequestKindEMERGENCYFUND FinanceSnapshotRequestKind = "EMERGENCY_FUND"
+	FinanceSnapshotRequestKindSAVINGS       FinanceSnapshotRequestKind = "SAVINGS"
+)
+
+// Defines values for FinanceTransactionSource.
+const (
+	FinanceTransactionSourceIMPORT FinanceTransactionSource = "IMPORT"
+	FinanceTransactionSourceMANUAL FinanceTransactionSource = "MANUAL"
+)
+
+// Defines values for FinanceTransactionType.
+const (
+	FinanceTransactionTypeEXPENSE FinanceTransactionType = "EXPENSE"
+	FinanceTransactionTypeINCOME  FinanceTransactionType = "INCOME"
+)
+
+// Defines values for FinanceTransactionRequestSource.
+const (
+	FinanceTransactionRequestSourceIMPORT FinanceTransactionRequestSource = "IMPORT"
+	FinanceTransactionRequestSourceMANUAL FinanceTransactionRequestSource = "MANUAL"
+)
+
+// Defines values for FinanceTransactionRequestType.
+const (
+	FinanceTransactionRequestTypeEXPENSE FinanceTransactionRequestType = "EXPENSE"
+	FinanceTransactionRequestTypeINCOME  FinanceTransactionRequestType = "INCOME"
+)
+
 // Defines values for GoalStatus.
 const (
 	GoalStatusCANCELLED  GoalStatus = "CANCELLED"
@@ -157,10 +212,88 @@ const (
 	Ok HealthDataStatus = "ok"
 )
 
+// Defines values for IncomeSimulationInputAnnualGrowthStatus.
+const (
+	GROWTH       IncomeSimulationInputAnnualGrowthStatus = "GROWTH"
+	KEEP         IncomeSimulationInputAnnualGrowthStatus = "KEEP"
+	NOTQUALIFIED IncomeSimulationInputAnnualGrowthStatus = "NOT_QUALIFIED"
+)
+
+// Defines values for IncomeSimulationInputDoubleYearMode.
+const (
+	FIRST  IncomeSimulationInputDoubleYearMode = "FIRST"
+	NONE   IncomeSimulationInputDoubleYearMode = "NONE"
+	REPEAT IncomeSimulationInputDoubleYearMode = "REPEAT"
+)
+
 // Defines values for InvitationStatus.
 const (
 	InvitationStatusACTIVE   InvitationStatus = "ACTIVE"
 	InvitationStatusDISABLED InvitationStatus = "DISABLED"
+)
+
+// Defines values for KnowledgeItemStatus.
+const (
+	KnowledgeItemStatusCOMPLETED  KnowledgeItemStatus = "COMPLETED"
+	KnowledgeItemStatusINPROGRESS KnowledgeItemStatus = "IN_PROGRESS"
+	KnowledgeItemStatusNOTSTARTED KnowledgeItemStatus = "NOT_STARTED"
+)
+
+// Defines values for KnowledgeItemType.
+const (
+	KnowledgeItemTypeAUDIO   KnowledgeItemType = "AUDIO"
+	KnowledgeItemTypeBOOK    KnowledgeItemType = "BOOK"
+	KnowledgeItemTypeEVENT   KnowledgeItemType = "EVENT"
+	KnowledgeItemTypeMEETING KnowledgeItemType = "MEETING"
+	KnowledgeItemTypeMENTOR  KnowledgeItemType = "MENTOR"
+	KnowledgeItemTypeOTHER   KnowledgeItemType = "OTHER"
+	KnowledgeItemTypePHP     KnowledgeItemType = "PHP"
+	KnowledgeItemTypePRODUCT KnowledgeItemType = "PRODUCT"
+	KnowledgeItemTypeVIDEO   KnowledgeItemType = "VIDEO"
+)
+
+// Defines values for KnowledgeItemRequestStatus.
+const (
+	KnowledgeItemRequestStatusCOMPLETED  KnowledgeItemRequestStatus = "COMPLETED"
+	KnowledgeItemRequestStatusINPROGRESS KnowledgeItemRequestStatus = "IN_PROGRESS"
+	KnowledgeItemRequestStatusNOTSTARTED KnowledgeItemRequestStatus = "NOT_STARTED"
+)
+
+// Defines values for KnowledgeItemRequestType.
+const (
+	KnowledgeItemRequestTypeAUDIO   KnowledgeItemRequestType = "AUDIO"
+	KnowledgeItemRequestTypeBOOK    KnowledgeItemRequestType = "BOOK"
+	KnowledgeItemRequestTypeEVENT   KnowledgeItemRequestType = "EVENT"
+	KnowledgeItemRequestTypeMEETING KnowledgeItemRequestType = "MEETING"
+	KnowledgeItemRequestTypeMENTOR  KnowledgeItemRequestType = "MENTOR"
+	KnowledgeItemRequestTypeOTHER   KnowledgeItemRequestType = "OTHER"
+	KnowledgeItemRequestTypePHP     KnowledgeItemRequestType = "PHP"
+	KnowledgeItemRequestTypePRODUCT KnowledgeItemRequestType = "PRODUCT"
+	KnowledgeItemRequestTypeVIDEO   KnowledgeItemRequestType = "VIDEO"
+)
+
+// Defines values for LearningSessionActivityType.
+const (
+	LearningSessionActivityTypeAUDIO   LearningSessionActivityType = "AUDIO"
+	LearningSessionActivityTypeREADING LearningSessionActivityType = "READING"
+)
+
+// Defines values for LearningSessionSource.
+const (
+	LearningSessionSourceDAILYUNALLOCATED LearningSessionSource = "DAILY_UNALLOCATED"
+	LearningSessionSourceITEM             LearningSessionSource = "ITEM"
+)
+
+// Defines values for LearningSessionRequestActivityType.
+const (
+	LearningSessionRequestActivityTypeAUDIO   LearningSessionRequestActivityType = "AUDIO"
+	LearningSessionRequestActivityTypeREADING LearningSessionRequestActivityType = "READING"
+)
+
+// Defines values for LearningSessionRequestSource.
+const (
+	LearningSessionRequestSourceDAILYUNALLOCATED LearningSessionRequestSource = "DAILY_UNALLOCATED"
+	LearningSessionRequestSourceITEM             LearningSessionRequestSource = "ITEM"
 )
 
 // Defines values for ReviewType.
@@ -189,10 +322,40 @@ const (
 	StatusRequestStatusDISABLED StatusRequestStatus = "DISABLED"
 )
 
+// Defines values for TeamMemberStatus.
+const (
+	TeamMemberStatusACTIVE   TeamMemberStatus = "ACTIVE"
+	TeamMemberStatusINACTIVE TeamMemberStatus = "INACTIVE"
+)
+
+// Defines values for TeamMemberRequestStatus.
+const (
+	TeamMemberRequestStatusACTIVE   TeamMemberRequestStatus = "ACTIVE"
+	TeamMemberRequestStatusINACTIVE TeamMemberRequestStatus = "INACTIVE"
+)
+
+// Defines values for TeamSnapshotSnapshotType.
+const (
+	TeamSnapshotSnapshotTypeAUTO   TeamSnapshotSnapshotType = "AUTO"
+	TeamSnapshotSnapshotTypeMANUAL TeamSnapshotSnapshotType = "MANUAL"
+)
+
+// Defines values for TeamSnapshotMemberStatus.
+const (
+	TeamSnapshotMemberStatusACTIVE   TeamSnapshotMemberStatus = "ACTIVE"
+	TeamSnapshotMemberStatusINACTIVE TeamSnapshotMemberStatus = "INACTIVE"
+)
+
+// Defines values for TeamSnapshotRequestSnapshotType.
+const (
+	TeamSnapshotRequestSnapshotTypeAUTO   TeamSnapshotRequestSnapshotType = "AUTO"
+	TeamSnapshotRequestSnapshotTypeMANUAL TeamSnapshotRequestSnapshotType = "MANUAL"
+)
+
 // Defines values for UpdateInvitationRequestStatus.
 const (
-	ACTIVE   UpdateInvitationRequestStatus = "ACTIVE"
-	DISABLED UpdateInvitationRequestStatus = "DISABLED"
+	UpdateInvitationRequestStatusACTIVE   UpdateInvitationRequestStatus = "ACTIVE"
+	UpdateInvitationRequestStatusDISABLED UpdateInvitationRequestStatus = "DISABLED"
 )
 
 // Defines values for AnalyticsGranularity.
@@ -221,6 +384,19 @@ const (
 	Day   GetWorklogAnalyticsParamsGranularity = "day"
 	Month GetWorklogAnalyticsParamsGranularity = "month"
 	Week  GetWorklogAnalyticsParamsGranularity = "week"
+)
+
+// Defines values for UploadFileMultipartBodyCategory.
+const (
+	UploadFileMultipartBodyCategoryDREAMIMAGE        UploadFileMultipartBodyCategory = "DREAM_IMAGE"
+	UploadFileMultipartBodyCategoryKNOWLEDGEDOCUMENT UploadFileMultipartBodyCategory = "KNOWLEDGE_DOCUMENT"
+	UploadFileMultipartBodyCategoryKNOWLEDGEIMAGE    UploadFileMultipartBodyCategory = "KNOWLEDGE_IMAGE"
+)
+
+// Defines values for GetFileContentParamsDisposition.
+const (
+	Attachment GetFileContentParamsDisposition = "attachment"
+	Inline     GetFileContentParamsDisposition = "inline"
 )
 
 // Defines values for GetReviewParamsReviewType.
@@ -507,6 +683,190 @@ type ErrorResponse struct {
 	RequestId string    `json:"request_id"`
 }
 
+// FileAsset defines model for FileAsset.
+type FileAsset struct {
+	Category     FileAssetCategory  `json:"category"`
+	CreatedAt    time.Time          `json:"created_at"`
+	Id           openapi_types.UUID `json:"id"`
+	MimeType     string             `json:"mime_type"`
+	OriginalName string             `json:"original_name"`
+	Sha256       string             `json:"sha256"`
+	SizeBytes    int64              `json:"size_bytes"`
+}
+
+// FileAssetCategory defines model for FileAsset.Category.
+type FileAssetCategory string
+
+// FileListResponse defines model for FileListResponse.
+type FileListResponse struct {
+	Data struct {
+		Items []FileAsset `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// FileResponse defines model for FileResponse.
+type FileResponse struct {
+	Data      FileAsset `json:"data"`
+	RequestId string    `json:"request_id"`
+}
+
+// FinanceBudget defines model for FinanceBudget.
+type FinanceBudget struct {
+	Amount     float32             `json:"amount"`
+	CategoryId *openapi_types.UUID `json:"category_id"`
+	CreatedAt  time.Time           `json:"created_at"`
+	Id         openapi_types.UUID  `json:"id"`
+	Month      openapi_types.Date  `json:"month"`
+	UpdatedAt  time.Time           `json:"updated_at"`
+}
+
+// FinanceBudgetListResponse defines model for FinanceBudgetListResponse.
+type FinanceBudgetListResponse struct {
+	Data struct {
+		Items []FinanceBudget `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// FinanceBudgetRequest defines model for FinanceBudgetRequest.
+type FinanceBudgetRequest struct {
+	Amount     float32             `json:"amount"`
+	CategoryId *openapi_types.UUID `json:"category_id"`
+	Month      openapi_types.Date  `json:"month"`
+}
+
+// FinanceBudgetResponse defines model for FinanceBudgetResponse.
+type FinanceBudgetResponse struct {
+	Data      FinanceBudget `json:"data"`
+	RequestId string        `json:"request_id"`
+}
+
+// FinanceCategory defines model for FinanceCategory.
+type FinanceCategory struct {
+	ArchivedAt    *time.Time          `json:"archived_at"`
+	Id            openapi_types.UUID  `json:"id"`
+	Name          string              `json:"name"`
+	SystemDefault *bool               `json:"system_default,omitempty"`
+	Type          FinanceCategoryType `json:"type"`
+}
+
+// FinanceCategoryType defines model for FinanceCategory.Type.
+type FinanceCategoryType string
+
+// FinanceCategoryListResponse defines model for FinanceCategoryListResponse.
+type FinanceCategoryListResponse struct {
+	Data struct {
+		Items []FinanceCategory `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// FinanceCategoryRequest defines model for FinanceCategoryRequest.
+type FinanceCategoryRequest struct {
+	Name string                     `json:"name"`
+	Type FinanceCategoryRequestType `json:"type"`
+}
+
+// FinanceCategoryRequestType defines model for FinanceCategoryRequest.Type.
+type FinanceCategoryRequestType string
+
+// FinanceCategoryResponse defines model for FinanceCategoryResponse.
+type FinanceCategoryResponse struct {
+	Data      FinanceCategory `json:"data"`
+	RequestId string          `json:"request_id"`
+}
+
+// FinanceSnapshot defines model for FinanceSnapshot.
+type FinanceSnapshot struct {
+	Amount       float32             `json:"amount"`
+	CreatedAt    time.Time           `json:"created_at"`
+	Id           openapi_types.UUID  `json:"id"`
+	Kind         FinanceSnapshotKind `json:"kind"`
+	Note         *string             `json:"note"`
+	SnapshotDate openapi_types.Date  `json:"snapshot_date"`
+	UpdatedAt    time.Time           `json:"updated_at"`
+}
+
+// FinanceSnapshotKind defines model for FinanceSnapshot.Kind.
+type FinanceSnapshotKind string
+
+// FinanceSnapshotListResponse defines model for FinanceSnapshotListResponse.
+type FinanceSnapshotListResponse struct {
+	Data struct {
+		Items []FinanceSnapshot `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// FinanceSnapshotRequest defines model for FinanceSnapshotRequest.
+type FinanceSnapshotRequest struct {
+	Amount       float32                    `json:"amount"`
+	Kind         FinanceSnapshotRequestKind `json:"kind"`
+	Note         *string                    `json:"note"`
+	SnapshotDate openapi_types.Date         `json:"snapshot_date"`
+}
+
+// FinanceSnapshotRequestKind defines model for FinanceSnapshotRequest.Kind.
+type FinanceSnapshotRequestKind string
+
+// FinanceSnapshotResponse defines model for FinanceSnapshotResponse.
+type FinanceSnapshotResponse struct {
+	Data      FinanceSnapshot `json:"data"`
+	RequestId string          `json:"request_id"`
+}
+
+// FinanceTransaction defines model for FinanceTransaction.
+type FinanceTransaction struct {
+	Amount      float32                  `json:"amount"`
+	CategoryId  openapi_types.UUID       `json:"category_id"`
+	CreatedAt   time.Time                `json:"created_at"`
+	Description *string                  `json:"description"`
+	Id          openapi_types.UUID       `json:"id"`
+	Note        *string                  `json:"note"`
+	OccurredOn  openapi_types.Date       `json:"occurred_on"`
+	Source      FinanceTransactionSource `json:"source"`
+	Type        FinanceTransactionType   `json:"type"`
+	UpdatedAt   time.Time                `json:"updated_at"`
+}
+
+// FinanceTransactionSource defines model for FinanceTransaction.Source.
+type FinanceTransactionSource string
+
+// FinanceTransactionType defines model for FinanceTransaction.Type.
+type FinanceTransactionType string
+
+// FinanceTransactionListResponse defines model for FinanceTransactionListResponse.
+type FinanceTransactionListResponse struct {
+	Data struct {
+		Items []FinanceTransaction `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// FinanceTransactionRequest defines model for FinanceTransactionRequest.
+type FinanceTransactionRequest struct {
+	Amount      float32                          `json:"amount"`
+	CategoryId  openapi_types.UUID               `json:"category_id"`
+	Description *string                          `json:"description"`
+	Note        *string                          `json:"note"`
+	OccurredOn  openapi_types.Date               `json:"occurred_on"`
+	Source      *FinanceTransactionRequestSource `json:"source,omitempty"`
+	Type        FinanceTransactionRequestType    `json:"type"`
+}
+
+// FinanceTransactionRequestSource defines model for FinanceTransactionRequest.Source.
+type FinanceTransactionRequestSource string
+
+// FinanceTransactionRequestType defines model for FinanceTransactionRequest.Type.
+type FinanceTransactionRequestType string
+
+// FinanceTransactionResponse defines model for FinanceTransactionResponse.
+type FinanceTransactionResponse struct {
+	Data      FinanceTransaction `json:"data"`
+	RequestId string             `json:"request_id"`
+}
+
 // Goal defines model for Goal.
 type Goal struct {
 	CreatedAt   time.Time           `json:"created_at"`
@@ -600,6 +960,83 @@ type HealthResponse struct {
 	RequestId string     `json:"request_id"`
 }
 
+// IncomeCalculationResponse defines model for IncomeCalculationResponse.
+type IncomeCalculationResponse struct {
+	Data struct {
+		Input       IncomeSimulationInput  `json:"input"`
+		Result      IncomeSimulationResult `json:"result"`
+		RuleVersion string                 `json:"rule_version"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// IncomeSimulation defines model for IncomeSimulation.
+type IncomeSimulation struct {
+	CreatedAt   time.Time              `json:"created_at"`
+	Id          openapi_types.UUID     `json:"id"`
+	Input       IncomeSimulationInput  `json:"input"`
+	Name        string                 `json:"name"`
+	Result      IncomeSimulationResult `json:"result"`
+	RuleVersion string                 `json:"rule_version"`
+	UpdatedAt   time.Time              `json:"updated_at"`
+}
+
+// IncomeSimulationInput defines model for IncomeSimulationInput.
+type IncomeSimulationInput struct {
+	AnnualGrowthQualifiedMonths int                                     `json:"annual_growth_qualified_months"`
+	AnnualGrowthStatus          IncomeSimulationInputAnnualGrowthStatus `json:"annual_growth_status"`
+	BbiPeriodEligible           bool                                    `json:"bbi_period_eligible"`
+	BfiPeriodEligible           bool                                    `json:"bfi_period_eligible"`
+	CustomerPv                  float32                                 `json:"customer_pv"`
+	DoubleYearMode              IncomeSimulationInputDoubleYearMode     `json:"double_year_mode"`
+	DoubleYearRank              *string                                 `json:"double_year_rank"`
+	Markets                     []float32                               `json:"markets"`
+	PersonalUsePv               float32                                 `json:"personal_use_pv"`
+}
+
+// IncomeSimulationInputAnnualGrowthStatus defines model for IncomeSimulationInput.AnnualGrowthStatus.
+type IncomeSimulationInputAnnualGrowthStatus string
+
+// IncomeSimulationInputDoubleYearMode defines model for IncomeSimulationInput.DoubleYearMode.
+type IncomeSimulationInputDoubleYearMode string
+
+// IncomeSimulationListResponse defines model for IncomeSimulationListResponse.
+type IncomeSimulationListResponse struct {
+	Data struct {
+		Items []IncomeSimulation `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// IncomeSimulationRequest defines model for IncomeSimulationRequest.
+type IncomeSimulationRequest struct {
+	Input IncomeSimulationInput `json:"input"`
+	Name  string                `json:"name"`
+}
+
+// IncomeSimulationResponse defines model for IncomeSimulationResponse.
+type IncomeSimulationResponse struct {
+	Data      IncomeSimulation `json:"data"`
+	RequestId string           `json:"request_id"`
+}
+
+// IncomeSimulationResult defines model for IncomeSimulationResult.
+type IncomeSimulationResult struct {
+	AnnualGrowthBonus         float32 `json:"annual_growth_bonus"`
+	AnnualOrOneTimeIncome     float32 `json:"annual_or_one_time_income"`
+	BbiBonus                  float32 `json:"bbi_bonus"`
+	BfiBonus                  float32 `json:"bfi_bonus"`
+	CombinedIncome            float32 `json:"combined_income"`
+	Coupon6Percent            float32 `json:"coupon_6_percent"`
+	DifferentialBonus         float32 `json:"differential_bonus"`
+	DoubleYearBonus           float32 `json:"double_year_bonus"`
+	ExcelTotalIncome          float32 `json:"excel_total_income"`
+	MonthlyIncome             float32 `json:"monthly_income"`
+	MonthlyMarketingStarBonus float32 `json:"monthly_marketing_star_bonus"`
+	PersonalSalesBonus        float32 `json:"personal_sales_bonus"`
+	RubyBonus                 float32 `json:"ruby_bonus"`
+}
+
 // Invitation defines model for Invitation.
 type Invitation struct {
 	Code      string             `json:"code"`
@@ -626,6 +1063,120 @@ type InvitationListResponse struct {
 type InvitationResponse struct {
 	Data      Invitation `json:"data"`
 	RequestId string     `json:"request_id"`
+}
+
+// KnowledgeItem defines model for KnowledgeItem.
+type KnowledgeItem struct {
+	ActionItems     *string              `json:"action_items"`
+	CreatedAt       time.Time            `json:"created_at"`
+	FileIds         []openapi_types.UUID `json:"file_ids"`
+	Id              openapi_types.UUID   `json:"id"`
+	LearnedOn       *openapi_types.Date  `json:"learned_on"`
+	ProgressCurrent *float32             `json:"progress_current"`
+	ProgressTotal   *float32             `json:"progress_total"`
+	ProgressUnit    *string              `json:"progress_unit"`
+	RawText         *string              `json:"raw_text"`
+	SourceUrl       *string              `json:"source_url"`
+	Status          KnowledgeItemStatus  `json:"status"`
+	Summary         *string              `json:"summary"`
+	Tags            []string             `json:"tags"`
+	Title           string               `json:"title"`
+	Type            KnowledgeItemType    `json:"type"`
+	Understanding   *string              `json:"understanding"`
+	UpdatedAt       time.Time            `json:"updated_at"`
+}
+
+// KnowledgeItemStatus defines model for KnowledgeItem.Status.
+type KnowledgeItemStatus string
+
+// KnowledgeItemType defines model for KnowledgeItem.Type.
+type KnowledgeItemType string
+
+// KnowledgeItemListResponse defines model for KnowledgeItemListResponse.
+type KnowledgeItemListResponse struct {
+	Data struct {
+		Items []KnowledgeItem `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// KnowledgeItemRequest defines model for KnowledgeItemRequest.
+type KnowledgeItemRequest struct {
+	ActionItems     *string                     `json:"action_items"`
+	FileIds         *[]openapi_types.UUID       `json:"file_ids,omitempty"`
+	LearnedOn       *openapi_types.Date         `json:"learned_on"`
+	ProgressCurrent *float32                    `json:"progress_current"`
+	ProgressTotal   *float32                    `json:"progress_total"`
+	ProgressUnit    *string                     `json:"progress_unit"`
+	RawText         *string                     `json:"raw_text"`
+	SourceUrl       *string                     `json:"source_url"`
+	Status          *KnowledgeItemRequestStatus `json:"status,omitempty"`
+	Summary         *string                     `json:"summary"`
+	Tags            *[]string                   `json:"tags,omitempty"`
+	Title           string                      `json:"title"`
+	Type            *KnowledgeItemRequestType   `json:"type,omitempty"`
+	Understanding   *string                     `json:"understanding"`
+}
+
+// KnowledgeItemRequestStatus defines model for KnowledgeItemRequest.Status.
+type KnowledgeItemRequestStatus string
+
+// KnowledgeItemRequestType defines model for KnowledgeItemRequest.Type.
+type KnowledgeItemRequestType string
+
+// KnowledgeItemResponse defines model for KnowledgeItemResponse.
+type KnowledgeItemResponse struct {
+	Data      KnowledgeItem `json:"data"`
+	RequestId string        `json:"request_id"`
+}
+
+// LearningSession defines model for LearningSession.
+type LearningSession struct {
+	ActivityDate    openapi_types.Date          `json:"activity_date"`
+	ActivityType    LearningSessionActivityType `json:"activity_type"`
+	CreatedAt       time.Time                   `json:"created_at"`
+	Id              openapi_types.UUID          `json:"id"`
+	KnowledgeItemId *openapi_types.UUID         `json:"knowledge_item_id"`
+	Minutes         int                         `json:"minutes"`
+	Note            *string                     `json:"note"`
+	Source          LearningSessionSource       `json:"source"`
+	UpdatedAt       time.Time                   `json:"updated_at"`
+}
+
+// LearningSessionActivityType defines model for LearningSession.ActivityType.
+type LearningSessionActivityType string
+
+// LearningSessionSource defines model for LearningSession.Source.
+type LearningSessionSource string
+
+// LearningSessionListResponse defines model for LearningSessionListResponse.
+type LearningSessionListResponse struct {
+	Data struct {
+		Items []LearningSession `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// LearningSessionRequest defines model for LearningSessionRequest.
+type LearningSessionRequest struct {
+	ActivityDate    openapi_types.Date                 `json:"activity_date"`
+	ActivityType    LearningSessionRequestActivityType `json:"activity_type"`
+	KnowledgeItemId *openapi_types.UUID                `json:"knowledge_item_id"`
+	Minutes         int                                `json:"minutes"`
+	Note            *string                            `json:"note"`
+	Source          *LearningSessionRequestSource      `json:"source,omitempty"`
+}
+
+// LearningSessionRequestActivityType defines model for LearningSessionRequest.ActivityType.
+type LearningSessionRequestActivityType string
+
+// LearningSessionRequestSource defines model for LearningSessionRequest.Source.
+type LearningSessionRequestSource string
+
+// LearningSessionResponse defines model for LearningSessionResponse.
+type LearningSessionResponse struct {
+	Data      LearningSession `json:"data"`
+	RequestId string          `json:"request_id"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -710,6 +1261,25 @@ type ReviewResponse struct {
 	RequestId string `json:"request_id"`
 }
 
+// SearchResponse defines model for SearchResponse.
+type SearchResponse struct {
+	Data struct {
+		Items []SearchResult `json:"items"`
+	} `json:"data"`
+	Meta      PaginationMeta `json:"meta"`
+	RequestId string         `json:"request_id"`
+}
+
+// SearchResult defines model for SearchResult.
+type SearchResult struct {
+	Id        openapi_types.UUID `json:"id"`
+	Module    string             `json:"module"`
+	Score     float32            `json:"score"`
+	Snippet   string             `json:"snippet"`
+	Title     string             `json:"title"`
+	UpdatedAt time.Time          `json:"updated_at"`
+}
+
 // SessionAccount defines model for SessionAccount.
 type SessionAccount struct {
 	Active      bool                 `json:"active"`
@@ -735,6 +1305,107 @@ type StatusRequest struct {
 
 // StatusRequestStatus defines model for StatusRequest.Status.
 type StatusRequestStatus string
+
+// TeamMember defines model for TeamMember.
+type TeamMember struct {
+	City      *string             `json:"city"`
+	CreatedAt time.Time           `json:"created_at"`
+	Id        openapi_types.UUID  `json:"id"`
+	JoinedOn  *openapi_types.Date `json:"joined_on"`
+	Name      string              `json:"name"`
+	Note      *string             `json:"note"`
+	ParentId  *openapi_types.UUID `json:"parent_id"`
+	Rank      *string             `json:"rank"`
+	SortOrder int                 `json:"sort_order"`
+	Status    TeamMemberStatus    `json:"status"`
+	UpdatedAt time.Time           `json:"updated_at"`
+}
+
+// TeamMemberStatus defines model for TeamMember.Status.
+type TeamMemberStatus string
+
+// TeamMemberListResponse defines model for TeamMemberListResponse.
+type TeamMemberListResponse struct {
+	Data struct {
+		Items []TeamMember `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// TeamMemberRequest defines model for TeamMemberRequest.
+type TeamMemberRequest struct {
+	City      *string                  `json:"city"`
+	JoinedOn  *openapi_types.Date      `json:"joined_on"`
+	Name      string                   `json:"name"`
+	Note      *string                  `json:"note"`
+	ParentId  *openapi_types.UUID      `json:"parent_id"`
+	Rank      *string                  `json:"rank"`
+	SortOrder *int                     `json:"sort_order,omitempty"`
+	Status    *TeamMemberRequestStatus `json:"status,omitempty"`
+}
+
+// TeamMemberRequestStatus defines model for TeamMemberRequest.Status.
+type TeamMemberRequestStatus string
+
+// TeamMemberResponse defines model for TeamMemberResponse.
+type TeamMemberResponse struct {
+	Data      TeamMember `json:"data"`
+	RequestId string     `json:"request_id"`
+}
+
+// TeamSnapshot defines model for TeamSnapshot.
+type TeamSnapshot struct {
+	CapturedAt    time.Time                `json:"captured_at"`
+	CapturedLate  bool                     `json:"captured_late"`
+	Id            openapi_types.UUID       `json:"id"`
+	Members       []TeamSnapshotMember     `json:"members"`
+	SnapshotMonth openapi_types.Date       `json:"snapshot_month"`
+	SnapshotType  TeamSnapshotSnapshotType `json:"snapshot_type"`
+}
+
+// TeamSnapshotSnapshotType defines model for TeamSnapshot.SnapshotType.
+type TeamSnapshotSnapshotType string
+
+// TeamSnapshotListResponse defines model for TeamSnapshotListResponse.
+type TeamSnapshotListResponse struct {
+	Data struct {
+		Items []TeamSnapshot `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// TeamSnapshotMember defines model for TeamSnapshotMember.
+type TeamSnapshotMember struct {
+	City             *string                  `json:"city"`
+	Id               openapi_types.UUID       `json:"id"`
+	JoinedOn         *openapi_types.Date      `json:"joined_on"`
+	Name             string                   `json:"name"`
+	Note             *string                  `json:"note"`
+	OriginalMemberId openapi_types.UUID       `json:"original_member_id"`
+	ParentId         *openapi_types.UUID      `json:"parent_id"`
+	Rank             *string                  `json:"rank"`
+	SortOrder        int                      `json:"sort_order"`
+	Status           TeamSnapshotMemberStatus `json:"status"`
+}
+
+// TeamSnapshotMemberStatus defines model for TeamSnapshotMember.Status.
+type TeamSnapshotMemberStatus string
+
+// TeamSnapshotRequest defines model for TeamSnapshotRequest.
+type TeamSnapshotRequest struct {
+	CapturedLate  *bool                            `json:"captured_late,omitempty"`
+	SnapshotMonth *openapi_types.Date              `json:"snapshot_month,omitempty"`
+	SnapshotType  *TeamSnapshotRequestSnapshotType `json:"snapshot_type,omitempty"`
+}
+
+// TeamSnapshotRequestSnapshotType defines model for TeamSnapshotRequest.SnapshotType.
+type TeamSnapshotRequestSnapshotType string
+
+// TeamSnapshotResponse defines model for TeamSnapshotResponse.
+type TeamSnapshotResponse struct {
+	Data      TeamSnapshot `json:"data"`
+	RequestId string       `json:"request_id"`
+}
 
 // TimezoneRequest defines model for TimezoneRequest.
 type TimezoneRequest struct {
@@ -880,6 +1551,9 @@ type CalendarFrom = time.Time
 // CalendarTo defines model for CalendarTo.
 type CalendarTo = time.Time
 
+// CategoryId defines model for CategoryId.
+type CategoryId = openapi_types.UUID
+
 // DateFrom defines model for DateFrom.
 type DateFrom = openapi_types.Date
 
@@ -889,11 +1563,20 @@ type DateTo = openapi_types.Date
 // DreamId defines model for DreamId.
 type DreamId = openapi_types.UUID
 
+// FileId defines model for FileId.
+type FileId = openapi_types.UUID
+
 // GoalId defines model for GoalId.
 type GoalId = openapi_types.UUID
 
 // InvitationId defines model for InvitationId.
 type InvitationId = openapi_types.UUID
+
+// KnowledgeId defines model for KnowledgeId.
+type KnowledgeId = openapi_types.UUID
+
+// MemberId defines model for MemberId.
+type MemberId = openapi_types.UUID
 
 // Page defines model for Page.
 type Page = int
@@ -901,8 +1584,23 @@ type Page = int
 // PageSize defines model for PageSize.
 type PageSize = int
 
+// PromoteChildren defines model for PromoteChildren.
+type PromoteChildren = bool
+
 // ReviewPeriodStart defines model for ReviewPeriodStart.
 type ReviewPeriodStart = openapi_types.Date
+
+// SessionId defines model for SessionId.
+type SessionId = openapi_types.UUID
+
+// SimulationId defines model for SimulationId.
+type SimulationId = openapi_types.UUID
+
+// SnapshotId defines model for SnapshotId.
+type SnapshotId = openapi_types.UUID
+
+// TransactionId defines model for TransactionId.
+type TransactionId = openapi_types.UUID
 
 // TurnoverDate defines model for TurnoverDate.
 type TurnoverDate = openapi_types.Date
@@ -957,6 +1655,40 @@ type GetDashboardParams struct {
 	Date BusinessDate `form:"date" json:"date"`
 }
 
+// UploadFileMultipartBody defines parameters for UploadFile.
+type UploadFileMultipartBody struct {
+	Category *UploadFileMultipartBodyCategory `json:"category,omitempty"`
+	File     openapi_types.File               `json:"file"`
+}
+
+// UploadFileMultipartBodyCategory defines parameters for UploadFile.
+type UploadFileMultipartBodyCategory string
+
+// GetFileContentParams defines parameters for GetFileContent.
+type GetFileContentParams struct {
+	Disposition *GetFileContentParamsDisposition `form:"disposition,omitempty" json:"disposition,omitempty"`
+}
+
+// GetFileContentParamsDisposition defines parameters for GetFileContent.
+type GetFileContentParamsDisposition string
+
+// ListFinanceTransactionsParams defines parameters for ListFinanceTransactions.
+type ListFinanceTransactionsParams struct {
+	From *DateFrom `form:"from,omitempty" json:"from,omitempty"`
+	To   *DateTo   `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// CompareIncomeSimulationsJSONBody defines parameters for CompareIncomeSimulations.
+type CompareIncomeSimulationsJSONBody struct {
+	Ids []openapi_types.UUID `json:"ids"`
+}
+
+// ListLearningSessionsParams defines parameters for ListLearningSessions.
+type ListLearningSessionsParams struct {
+	From *DateFrom `form:"from,omitempty" json:"from,omitempty"`
+	To   *DateTo   `form:"to,omitempty" json:"to,omitempty"`
+}
+
 // ListReviewsParams defines parameters for ListReviews.
 type ListReviewsParams struct {
 	From *DateFrom `form:"from,omitempty" json:"from,omitempty"`
@@ -968,6 +1700,18 @@ type GetReviewParamsReviewType string
 
 // UpdateReviewParamsReviewType defines parameters for UpdateReview.
 type UpdateReviewParamsReviewType string
+
+// SearchParams defines parameters for Search.
+type SearchParams struct {
+	Q        string    `form:"q" json:"q"`
+	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// DeleteTeamMemberParams defines parameters for DeleteTeamMember.
+type DeleteTeamMemberParams struct {
+	PromoteChildren *PromoteChildren `form:"promote_children,omitempty" json:"promote_children,omitempty"`
+}
 
 // ListTurnoversParams defines parameters for ListTurnovers.
 type ListTurnoversParams struct {
@@ -1029,14 +1773,62 @@ type CreateDreamJSONRequestBody = DreamRequest
 // UpdateDreamJSONRequestBody defines body for UpdateDream for application/json ContentType.
 type UpdateDreamJSONRequestBody = DreamRequest
 
+// UploadFileMultipartRequestBody defines body for UploadFile for multipart/form-data ContentType.
+type UploadFileMultipartRequestBody UploadFileMultipartBody
+
+// SaveFinanceBudgetJSONRequestBody defines body for SaveFinanceBudget for application/json ContentType.
+type SaveFinanceBudgetJSONRequestBody = FinanceBudgetRequest
+
+// CreateFinanceCategoryJSONRequestBody defines body for CreateFinanceCategory for application/json ContentType.
+type CreateFinanceCategoryJSONRequestBody = FinanceCategoryRequest
+
+// SaveFinanceSnapshotJSONRequestBody defines body for SaveFinanceSnapshot for application/json ContentType.
+type SaveFinanceSnapshotJSONRequestBody = FinanceSnapshotRequest
+
+// CreateFinanceTransactionJSONRequestBody defines body for CreateFinanceTransaction for application/json ContentType.
+type CreateFinanceTransactionJSONRequestBody = FinanceTransactionRequest
+
+// UpdateFinanceTransactionJSONRequestBody defines body for UpdateFinanceTransaction for application/json ContentType.
+type UpdateFinanceTransactionJSONRequestBody = FinanceTransactionRequest
+
 // CreateGoalJSONRequestBody defines body for CreateGoal for application/json ContentType.
 type CreateGoalJSONRequestBody = GoalRequest
 
 // UpdateGoalJSONRequestBody defines body for UpdateGoal for application/json ContentType.
 type UpdateGoalJSONRequestBody = GoalRequest
 
+// CreateIncomeSimulationJSONRequestBody defines body for CreateIncomeSimulation for application/json ContentType.
+type CreateIncomeSimulationJSONRequestBody = IncomeSimulationRequest
+
+// CompareIncomeSimulationsJSONRequestBody defines body for CompareIncomeSimulations for application/json ContentType.
+type CompareIncomeSimulationsJSONRequestBody CompareIncomeSimulationsJSONBody
+
+// UpdateIncomeSimulationJSONRequestBody defines body for UpdateIncomeSimulation for application/json ContentType.
+type UpdateIncomeSimulationJSONRequestBody = IncomeSimulationRequest
+
+// CalculateIncomeJSONRequestBody defines body for CalculateIncome for application/json ContentType.
+type CalculateIncomeJSONRequestBody = IncomeSimulationInput
+
+// CreateKnowledgeItemJSONRequestBody defines body for CreateKnowledgeItem for application/json ContentType.
+type CreateKnowledgeItemJSONRequestBody = KnowledgeItemRequest
+
+// UpdateKnowledgeItemJSONRequestBody defines body for UpdateKnowledgeItem for application/json ContentType.
+type UpdateKnowledgeItemJSONRequestBody = KnowledgeItemRequest
+
+// CreateLearningSessionJSONRequestBody defines body for CreateLearningSession for application/json ContentType.
+type CreateLearningSessionJSONRequestBody = LearningSessionRequest
+
 // UpdateReviewJSONRequestBody defines body for UpdateReview for application/json ContentType.
 type UpdateReviewJSONRequestBody = ReviewRequest
+
+// CreateTeamMemberJSONRequestBody defines body for CreateTeamMember for application/json ContentType.
+type CreateTeamMemberJSONRequestBody = TeamMemberRequest
+
+// UpdateTeamMemberJSONRequestBody defines body for UpdateTeamMember for application/json ContentType.
+type UpdateTeamMemberJSONRequestBody = TeamMemberRequest
+
+// CreateTeamSnapshotJSONRequestBody defines body for CreateTeamSnapshot for application/json ContentType.
+type CreateTeamSnapshotJSONRequestBody = TeamSnapshotRequest
 
 // CreateTurnoverJSONRequestBody defines body for CreateTurnover for application/json ContentType.
 type CreateTurnoverJSONRequestBody = TurnoverRequest
@@ -1166,6 +1958,51 @@ type ServerInterface interface {
 	// Replace a dream
 	// (PUT /api/dreams/{dream_id})
 	UpdateDream(ctx echo.Context, dreamId DreamId) error
+	// List uploaded files
+	// (GET /api/files)
+	ListFiles(ctx echo.Context) error
+	// Upload an allowed file without parsing its contents
+	// (POST /api/files)
+	UploadFile(ctx echo.Context) error
+	// Delete an uploaded file
+	// (DELETE /api/files/{file_id})
+	DeleteFile(ctx echo.Context, fileId FileId) error
+	// Preview or download an uploaded file
+	// (GET /api/files/{file_id}/content)
+	GetFileContent(ctx echo.Context, fileId FileId, params GetFileContentParams) error
+	// List monthly budgets
+	// (GET /api/finance/budgets)
+	ListFinanceBudgets(ctx echo.Context) error
+	// Create or replace a monthly budget
+	// (POST /api/finance/budgets)
+	SaveFinanceBudget(ctx echo.Context) error
+	// List system and user finance categories
+	// (GET /api/finance/categories)
+	ListFinanceCategories(ctx echo.Context) error
+	// Create a finance category
+	// (POST /api/finance/categories)
+	CreateFinanceCategory(ctx echo.Context) error
+	// Archive a user finance category
+	// (DELETE /api/finance/categories/{category_id})
+	ArchiveFinanceCategory(ctx echo.Context, categoryId CategoryId) error
+	// List savings and emergency-fund snapshots
+	// (GET /api/finance/snapshots)
+	ListFinanceSnapshots(ctx echo.Context) error
+	// Create or replace a financial snapshot
+	// (POST /api/finance/snapshots)
+	SaveFinanceSnapshot(ctx echo.Context) error
+	// List financial transactions
+	// (GET /api/finance/transactions)
+	ListFinanceTransactions(ctx echo.Context, params ListFinanceTransactionsParams) error
+	// Create a financial transaction
+	// (POST /api/finance/transactions)
+	CreateFinanceTransaction(ctx echo.Context) error
+	// Delete a financial transaction
+	// (DELETE /api/finance/transactions/{transaction_id})
+	DeleteFinanceTransaction(ctx echo.Context, transactionId TransactionId) error
+	// Update a financial transaction
+	// (PUT /api/finance/transactions/{transaction_id})
+	UpdateFinanceTransaction(ctx echo.Context, transactionId TransactionId) error
 	// List goals with calculated progress
 	// (GET /api/goals)
 	ListGoals(ctx echo.Context) error
@@ -1187,6 +2024,54 @@ type ServerInterface interface {
 	// Check whether required runtime dependencies are ready
 	// (GET /api/health/ready)
 	GetHealthReady(ctx echo.Context) error
+	// List saved income simulations
+	// (GET /api/income-simulations)
+	ListIncomeSimulations(ctx echo.Context) error
+	// Save an income simulation snapshot
+	// (POST /api/income-simulations)
+	CreateIncomeSimulation(ctx echo.Context) error
+	// Compare saved income simulations
+	// (POST /api/income-simulations/compare)
+	CompareIncomeSimulations(ctx echo.Context) error
+	// Delete a saved income simulation
+	// (DELETE /api/income-simulations/{simulation_id})
+	DeleteIncomeSimulation(ctx echo.Context, simulationId SimulationId) error
+	// Get a saved income simulation
+	// (GET /api/income-simulations/{simulation_id})
+	GetIncomeSimulation(ctx echo.Context, simulationId SimulationId) error
+	// Update a saved income simulation
+	// (PUT /api/income-simulations/{simulation_id})
+	UpdateIncomeSimulation(ctx echo.Context, simulationId SimulationId) error
+	// Duplicate a saved income simulation
+	// (POST /api/income-simulations/{simulation_id}/duplicate)
+	DuplicateIncomeSimulation(ctx echo.Context, simulationId SimulationId) error
+	// Calculate income using the Excel-compatible V1 rules without saving
+	// (POST /api/income-simulator/calculate)
+	CalculateIncome(ctx echo.Context) error
+	// List knowledge items
+	// (GET /api/knowledge)
+	ListKnowledgeItems(ctx echo.Context) error
+	// Create a knowledge item
+	// (POST /api/knowledge)
+	CreateKnowledgeItem(ctx echo.Context) error
+	// Delete a knowledge item
+	// (DELETE /api/knowledge/{knowledge_id})
+	DeleteKnowledgeItem(ctx echo.Context, knowledgeId KnowledgeId) error
+	// Get a knowledge item
+	// (GET /api/knowledge/{knowledge_id})
+	GetKnowledgeItem(ctx echo.Context, knowledgeId KnowledgeId) error
+	// Update a knowledge item
+	// (PUT /api/knowledge/{knowledge_id})
+	UpdateKnowledgeItem(ctx echo.Context, knowledgeId KnowledgeId) error
+	// List learning sessions
+	// (GET /api/learning-sessions)
+	ListLearningSessions(ctx echo.Context, params ListLearningSessionsParams) error
+	// Record an item or unallocated learning session
+	// (POST /api/learning-sessions)
+	CreateLearningSession(ctx echo.Context) error
+	// Delete a learning session
+	// (DELETE /api/learning-sessions/{session_id})
+	DeleteLearningSession(ctx echo.Context, sessionId SessionId) error
 	// List saved daily, weekly, or monthly reviews
 	// (GET /api/reviews)
 	ListReviews(ctx echo.Context, params ListReviewsParams) error
@@ -1196,6 +2081,33 @@ type ServerInterface interface {
 	// Create or update one review for its period
 	// (PUT /api/reviews/{review_type}/{period_start})
 	UpdateReview(ctx echo.Context, reviewType UpdateReviewParamsReviewType, periodStart ReviewPeriodStart) error
+	// Search user-owned business records
+	// (GET /api/search)
+	Search(ctx echo.Context, params SearchParams) error
+	// List the current user's team members
+	// (GET /api/team/members)
+	ListTeamMembers(ctx echo.Context) error
+	// Create a team member
+	// (POST /api/team/members)
+	CreateTeamMember(ctx echo.Context) error
+	// Delete a team member
+	// (DELETE /api/team/members/{member_id})
+	DeleteTeamMember(ctx echo.Context, memberId MemberId, params DeleteTeamMemberParams) error
+	// Get a team member
+	// (GET /api/team/members/{member_id})
+	GetTeamMember(ctx echo.Context, memberId MemberId) error
+	// Update a team member
+	// (PUT /api/team/members/{member_id})
+	UpdateTeamMember(ctx echo.Context, memberId MemberId) error
+	// List team history snapshots
+	// (GET /api/team/snapshots)
+	ListTeamSnapshots(ctx echo.Context) error
+	// Capture a manual team snapshot
+	// (POST /api/team/snapshots)
+	CreateTeamSnapshot(ctx echo.Context) error
+	// Get a read-only team snapshot
+	// (GET /api/team/snapshots/{snapshot_id})
+	GetTeamSnapshot(ctx echo.Context, snapshotId SnapshotId) error
 	// List daily turnovers in a business-date range
 	// (GET /api/turnover)
 	ListTurnovers(ctx echo.Context, params ListTurnoversParams) error
@@ -1869,6 +2781,231 @@ func (w *ServerInterfaceWrapper) UpdateDream(ctx echo.Context) error {
 	return err
 }
 
+// ListFiles converts echo context to params.
+func (w *ServerInterfaceWrapper) ListFiles(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListFiles(ctx)
+	return err
+}
+
+// UploadFile converts echo context to params.
+func (w *ServerInterfaceWrapper) UploadFile(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UploadFile(ctx)
+	return err
+}
+
+// DeleteFile converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteFile(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "file_id" -------------
+	var fileId FileId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "file_id", ctx.Param("file_id"), &fileId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter file_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteFile(ctx, fileId)
+	return err
+}
+
+// GetFileContent converts echo context to params.
+func (w *ServerInterfaceWrapper) GetFileContent(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "file_id" -------------
+	var fileId FileId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "file_id", ctx.Param("file_id"), &fileId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter file_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetFileContentParams
+	// ------------- Optional query parameter "disposition" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "disposition", ctx.QueryParams(), &params.Disposition)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter disposition: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetFileContent(ctx, fileId, params)
+	return err
+}
+
+// ListFinanceBudgets converts echo context to params.
+func (w *ServerInterfaceWrapper) ListFinanceBudgets(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListFinanceBudgets(ctx)
+	return err
+}
+
+// SaveFinanceBudget converts echo context to params.
+func (w *ServerInterfaceWrapper) SaveFinanceBudget(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SaveFinanceBudget(ctx)
+	return err
+}
+
+// ListFinanceCategories converts echo context to params.
+func (w *ServerInterfaceWrapper) ListFinanceCategories(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListFinanceCategories(ctx)
+	return err
+}
+
+// CreateFinanceCategory converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateFinanceCategory(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateFinanceCategory(ctx)
+	return err
+}
+
+// ArchiveFinanceCategory converts echo context to params.
+func (w *ServerInterfaceWrapper) ArchiveFinanceCategory(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "category_id" -------------
+	var categoryId CategoryId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "category_id", ctx.Param("category_id"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter category_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ArchiveFinanceCategory(ctx, categoryId)
+	return err
+}
+
+// ListFinanceSnapshots converts echo context to params.
+func (w *ServerInterfaceWrapper) ListFinanceSnapshots(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListFinanceSnapshots(ctx)
+	return err
+}
+
+// SaveFinanceSnapshot converts echo context to params.
+func (w *ServerInterfaceWrapper) SaveFinanceSnapshot(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SaveFinanceSnapshot(ctx)
+	return err
+}
+
+// ListFinanceTransactions converts echo context to params.
+func (w *ServerInterfaceWrapper) ListFinanceTransactions(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListFinanceTransactionsParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListFinanceTransactions(ctx, params)
+	return err
+}
+
+// CreateFinanceTransaction converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateFinanceTransaction(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateFinanceTransaction(ctx)
+	return err
+}
+
+// DeleteFinanceTransaction converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteFinanceTransaction(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "transaction_id" -------------
+	var transactionId TransactionId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "transaction_id", ctx.Param("transaction_id"), &transactionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter transaction_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteFinanceTransaction(ctx, transactionId)
+	return err
+}
+
+// UpdateFinanceTransaction converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateFinanceTransaction(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "transaction_id" -------------
+	var transactionId TransactionId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "transaction_id", ctx.Param("transaction_id"), &transactionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter transaction_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateFinanceTransaction(ctx, transactionId)
+	return err
+}
+
 // ListGoals converts echo context to params.
 func (w *ServerInterfaceWrapper) ListGoals(ctx echo.Context) error {
 	var err error
@@ -1963,6 +3100,254 @@ func (w *ServerInterfaceWrapper) GetHealthReady(ctx echo.Context) error {
 	return err
 }
 
+// ListIncomeSimulations converts echo context to params.
+func (w *ServerInterfaceWrapper) ListIncomeSimulations(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListIncomeSimulations(ctx)
+	return err
+}
+
+// CreateIncomeSimulation converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateIncomeSimulation(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateIncomeSimulation(ctx)
+	return err
+}
+
+// CompareIncomeSimulations converts echo context to params.
+func (w *ServerInterfaceWrapper) CompareIncomeSimulations(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CompareIncomeSimulations(ctx)
+	return err
+}
+
+// DeleteIncomeSimulation converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteIncomeSimulation(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "simulation_id" -------------
+	var simulationId SimulationId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "simulation_id", ctx.Param("simulation_id"), &simulationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter simulation_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteIncomeSimulation(ctx, simulationId)
+	return err
+}
+
+// GetIncomeSimulation converts echo context to params.
+func (w *ServerInterfaceWrapper) GetIncomeSimulation(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "simulation_id" -------------
+	var simulationId SimulationId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "simulation_id", ctx.Param("simulation_id"), &simulationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter simulation_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetIncomeSimulation(ctx, simulationId)
+	return err
+}
+
+// UpdateIncomeSimulation converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateIncomeSimulation(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "simulation_id" -------------
+	var simulationId SimulationId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "simulation_id", ctx.Param("simulation_id"), &simulationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter simulation_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateIncomeSimulation(ctx, simulationId)
+	return err
+}
+
+// DuplicateIncomeSimulation converts echo context to params.
+func (w *ServerInterfaceWrapper) DuplicateIncomeSimulation(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "simulation_id" -------------
+	var simulationId SimulationId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "simulation_id", ctx.Param("simulation_id"), &simulationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter simulation_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DuplicateIncomeSimulation(ctx, simulationId)
+	return err
+}
+
+// CalculateIncome converts echo context to params.
+func (w *ServerInterfaceWrapper) CalculateIncome(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CalculateIncome(ctx)
+	return err
+}
+
+// ListKnowledgeItems converts echo context to params.
+func (w *ServerInterfaceWrapper) ListKnowledgeItems(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListKnowledgeItems(ctx)
+	return err
+}
+
+// CreateKnowledgeItem converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateKnowledgeItem(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateKnowledgeItem(ctx)
+	return err
+}
+
+// DeleteKnowledgeItem converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteKnowledgeItem(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "knowledge_id" -------------
+	var knowledgeId KnowledgeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "knowledge_id", ctx.Param("knowledge_id"), &knowledgeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter knowledge_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteKnowledgeItem(ctx, knowledgeId)
+	return err
+}
+
+// GetKnowledgeItem converts echo context to params.
+func (w *ServerInterfaceWrapper) GetKnowledgeItem(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "knowledge_id" -------------
+	var knowledgeId KnowledgeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "knowledge_id", ctx.Param("knowledge_id"), &knowledgeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter knowledge_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetKnowledgeItem(ctx, knowledgeId)
+	return err
+}
+
+// UpdateKnowledgeItem converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateKnowledgeItem(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "knowledge_id" -------------
+	var knowledgeId KnowledgeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "knowledge_id", ctx.Param("knowledge_id"), &knowledgeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter knowledge_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateKnowledgeItem(ctx, knowledgeId)
+	return err
+}
+
+// ListLearningSessions converts echo context to params.
+func (w *ServerInterfaceWrapper) ListLearningSessions(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListLearningSessionsParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListLearningSessions(ctx, params)
+	return err
+}
+
+// CreateLearningSession converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateLearningSession(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateLearningSession(ctx)
+	return err
+}
+
+// DeleteLearningSession converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteLearningSession(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "session_id" -------------
+	var sessionId SessionId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "session_id", ctx.Param("session_id"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter session_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteLearningSession(ctx, sessionId)
+	return err
+}
+
 // ListReviews converts echo context to params.
 func (w *ServerInterfaceWrapper) ListReviews(ctx echo.Context) error {
 	var err error
@@ -2039,6 +3424,165 @@ func (w *ServerInterfaceWrapper) UpdateReview(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateReview(ctx, reviewType, periodStart)
+	return err
+}
+
+// Search converts echo context to params.
+func (w *ServerInterfaceWrapper) Search(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchParams
+	// ------------- Required query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "q", ctx.QueryParams(), &params.Q)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter q: %s", err))
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page_size", ctx.QueryParams(), &params.PageSize)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page_size: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Search(ctx, params)
+	return err
+}
+
+// ListTeamMembers converts echo context to params.
+func (w *ServerInterfaceWrapper) ListTeamMembers(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListTeamMembers(ctx)
+	return err
+}
+
+// CreateTeamMember converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateTeamMember(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateTeamMember(ctx)
+	return err
+}
+
+// DeleteTeamMember converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteTeamMember(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "member_id" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "member_id", ctx.Param("member_id"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter member_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteTeamMemberParams
+	// ------------- Optional query parameter "promote_children" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "promote_children", ctx.QueryParams(), &params.PromoteChildren)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter promote_children: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteTeamMember(ctx, memberId, params)
+	return err
+}
+
+// GetTeamMember converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTeamMember(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "member_id" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "member_id", ctx.Param("member_id"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter member_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTeamMember(ctx, memberId)
+	return err
+}
+
+// UpdateTeamMember converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateTeamMember(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "member_id" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "member_id", ctx.Param("member_id"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter member_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateTeamMember(ctx, memberId)
+	return err
+}
+
+// ListTeamSnapshots converts echo context to params.
+func (w *ServerInterfaceWrapper) ListTeamSnapshots(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListTeamSnapshots(ctx)
+	return err
+}
+
+// CreateTeamSnapshot converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateTeamSnapshot(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateTeamSnapshot(ctx)
+	return err
+}
+
+// GetTeamSnapshot converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTeamSnapshot(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "snapshot_id" -------------
+	var snapshotId SnapshotId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "snapshot_id", ctx.Param("snapshot_id"), &snapshotId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter snapshot_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTeamSnapshot(ctx, snapshotId)
 	return err
 }
 
@@ -2292,6 +3836,21 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/api/dreams/:dream_id", wrapper.DeleteDream)
 	router.GET(baseURL+"/api/dreams/:dream_id", wrapper.GetDream)
 	router.PUT(baseURL+"/api/dreams/:dream_id", wrapper.UpdateDream)
+	router.GET(baseURL+"/api/files", wrapper.ListFiles)
+	router.POST(baseURL+"/api/files", wrapper.UploadFile)
+	router.DELETE(baseURL+"/api/files/:file_id", wrapper.DeleteFile)
+	router.GET(baseURL+"/api/files/:file_id/content", wrapper.GetFileContent)
+	router.GET(baseURL+"/api/finance/budgets", wrapper.ListFinanceBudgets)
+	router.POST(baseURL+"/api/finance/budgets", wrapper.SaveFinanceBudget)
+	router.GET(baseURL+"/api/finance/categories", wrapper.ListFinanceCategories)
+	router.POST(baseURL+"/api/finance/categories", wrapper.CreateFinanceCategory)
+	router.DELETE(baseURL+"/api/finance/categories/:category_id", wrapper.ArchiveFinanceCategory)
+	router.GET(baseURL+"/api/finance/snapshots", wrapper.ListFinanceSnapshots)
+	router.POST(baseURL+"/api/finance/snapshots", wrapper.SaveFinanceSnapshot)
+	router.GET(baseURL+"/api/finance/transactions", wrapper.ListFinanceTransactions)
+	router.POST(baseURL+"/api/finance/transactions", wrapper.CreateFinanceTransaction)
+	router.DELETE(baseURL+"/api/finance/transactions/:transaction_id", wrapper.DeleteFinanceTransaction)
+	router.PUT(baseURL+"/api/finance/transactions/:transaction_id", wrapper.UpdateFinanceTransaction)
 	router.GET(baseURL+"/api/goals", wrapper.ListGoals)
 	router.POST(baseURL+"/api/goals", wrapper.CreateGoal)
 	router.DELETE(baseURL+"/api/goals/:goal_id", wrapper.DeleteGoal)
@@ -2299,9 +3858,34 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.PUT(baseURL+"/api/goals/:goal_id", wrapper.UpdateGoal)
 	router.GET(baseURL+"/api/health/live", wrapper.GetHealthLive)
 	router.GET(baseURL+"/api/health/ready", wrapper.GetHealthReady)
+	router.GET(baseURL+"/api/income-simulations", wrapper.ListIncomeSimulations)
+	router.POST(baseURL+"/api/income-simulations", wrapper.CreateIncomeSimulation)
+	router.POST(baseURL+"/api/income-simulations/compare", wrapper.CompareIncomeSimulations)
+	router.DELETE(baseURL+"/api/income-simulations/:simulation_id", wrapper.DeleteIncomeSimulation)
+	router.GET(baseURL+"/api/income-simulations/:simulation_id", wrapper.GetIncomeSimulation)
+	router.PUT(baseURL+"/api/income-simulations/:simulation_id", wrapper.UpdateIncomeSimulation)
+	router.POST(baseURL+"/api/income-simulations/:simulation_id/duplicate", wrapper.DuplicateIncomeSimulation)
+	router.POST(baseURL+"/api/income-simulator/calculate", wrapper.CalculateIncome)
+	router.GET(baseURL+"/api/knowledge", wrapper.ListKnowledgeItems)
+	router.POST(baseURL+"/api/knowledge", wrapper.CreateKnowledgeItem)
+	router.DELETE(baseURL+"/api/knowledge/:knowledge_id", wrapper.DeleteKnowledgeItem)
+	router.GET(baseURL+"/api/knowledge/:knowledge_id", wrapper.GetKnowledgeItem)
+	router.PUT(baseURL+"/api/knowledge/:knowledge_id", wrapper.UpdateKnowledgeItem)
+	router.GET(baseURL+"/api/learning-sessions", wrapper.ListLearningSessions)
+	router.POST(baseURL+"/api/learning-sessions", wrapper.CreateLearningSession)
+	router.DELETE(baseURL+"/api/learning-sessions/:session_id", wrapper.DeleteLearningSession)
 	router.GET(baseURL+"/api/reviews", wrapper.ListReviews)
 	router.GET(baseURL+"/api/reviews/:review_type/:period_start", wrapper.GetReview)
 	router.PUT(baseURL+"/api/reviews/:review_type/:period_start", wrapper.UpdateReview)
+	router.GET(baseURL+"/api/search", wrapper.Search)
+	router.GET(baseURL+"/api/team/members", wrapper.ListTeamMembers)
+	router.POST(baseURL+"/api/team/members", wrapper.CreateTeamMember)
+	router.DELETE(baseURL+"/api/team/members/:member_id", wrapper.DeleteTeamMember)
+	router.GET(baseURL+"/api/team/members/:member_id", wrapper.GetTeamMember)
+	router.PUT(baseURL+"/api/team/members/:member_id", wrapper.UpdateTeamMember)
+	router.GET(baseURL+"/api/team/snapshots", wrapper.ListTeamSnapshots)
+	router.POST(baseURL+"/api/team/snapshots", wrapper.CreateTeamSnapshot)
+	router.GET(baseURL+"/api/team/snapshots/:snapshot_id", wrapper.GetTeamSnapshot)
 	router.GET(baseURL+"/api/turnover", wrapper.ListTurnovers)
 	router.POST(baseURL+"/api/turnover", wrapper.CreateTurnover)
 	router.DELETE(baseURL+"/api/turnover/:turnover_date", wrapper.DeleteTurnover)

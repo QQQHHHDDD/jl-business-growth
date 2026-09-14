@@ -1039,6 +1039,672 @@ paths:
                 $ref: "#/components/schemas/AnalyticsResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /api/team/members:
+    get:
+      operationId: listTeamMembers
+      tags: [team-knowledge]
+      summary: List the current user's team members
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Team members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMemberListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: createTeamMember
+      tags: [team-knowledge]
+      summary: Create a team member
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamMemberRequest"
+      responses:
+        "201":
+          description: Team member created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMemberResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/team/members/{member_id}:
+    get:
+      operationId: getTeamMember
+      tags: [team-knowledge]
+      summary: Get a team member
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/MemberId"
+      responses:
+        "200":
+          description: Team member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMemberResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    put:
+      operationId: updateTeamMember
+      tags: [team-knowledge]
+      summary: Update a team member
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/MemberId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamMemberRequest"
+      responses:
+        "200":
+          description: Team member updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMemberResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: deleteTeamMember
+      tags: [team-knowledge]
+      summary: Delete a team member
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/MemberId"
+        - $ref: "#/components/parameters/PromoteChildren"
+      responses:
+        "204":
+          description: Team member deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/team/snapshots:
+    get:
+      operationId: listTeamSnapshots
+      tags: [team-knowledge]
+      summary: List team history snapshots
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Team snapshots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamSnapshotListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: createTeamSnapshot
+      tags: [team-knowledge]
+      summary: Capture a manual team snapshot
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamSnapshotRequest"
+      responses:
+        "201":
+          description: Team snapshot created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamSnapshotResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/team/snapshots/{snapshot_id}:
+    get:
+      operationId: getTeamSnapshot
+      tags: [team-knowledge]
+      summary: Get a read-only team snapshot
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/SnapshotId"
+      responses:
+        "200":
+          description: Team snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamSnapshotResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/knowledge:
+    get:
+      operationId: listKnowledgeItems
+      tags: [team-knowledge]
+      summary: List knowledge items
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Knowledge items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeItemListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: createKnowledgeItem
+      tags: [team-knowledge]
+      summary: Create a knowledge item
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeItemRequest"
+      responses:
+        "201":
+          description: Knowledge item created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeItemResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/knowledge/{knowledge_id}:
+    get:
+      operationId: getKnowledgeItem
+      tags: [team-knowledge]
+      summary: Get a knowledge item
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeId"
+      responses:
+        "200":
+          description: Knowledge item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeItemResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    put:
+      operationId: updateKnowledgeItem
+      tags: [team-knowledge]
+      summary: Update a knowledge item
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeItemRequest"
+      responses:
+        "200":
+          description: Knowledge item updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeItemResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: deleteKnowledgeItem
+      tags: [team-knowledge]
+      summary: Delete a knowledge item
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeId"
+      responses:
+        "204":
+          description: Knowledge item deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/learning-sessions:
+    get:
+      operationId: listLearningSessions
+      tags: [team-knowledge]
+      summary: List learning sessions
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+      responses:
+        "200":
+          description: Learning sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningSessionListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: createLearningSession
+      tags: [team-knowledge]
+      summary: Record an item or unallocated learning session
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LearningSessionRequest"
+      responses:
+        "201":
+          description: Learning session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningSessionResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/learning-sessions/{session_id}:
+    delete:
+      operationId: deleteLearningSession
+      tags: [team-knowledge]
+      summary: Delete a learning session
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204":
+          description: Learning session deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/files:
+    get:
+      operationId: listFiles
+      tags: [team-knowledge]
+      summary: List uploaded files
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Uploaded files
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: uploadFile
+      tags: [team-knowledge]
+      summary: Upload an allowed file without parsing its contents
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                category:
+                  type: string
+                  enum: [DREAM_IMAGE, KNOWLEDGE_DOCUMENT, KNOWLEDGE_IMAGE]
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/files/{file_id}:
+    delete:
+      operationId: deleteFile
+      tags: [team-knowledge]
+      summary: Delete an uploaded file
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+      responses:
+        "204":
+          description: File deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/files/{file_id}/content:
+    get:
+      operationId: getFileContent
+      tags: [team-knowledge]
+      summary: Preview or download an uploaded file
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+        - name: disposition
+          in: query
+          schema:
+            type: string
+            enum: [inline, attachment]
+            default: inline
+      responses:
+        "200":
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/search:
+    get:
+      operationId: search
+      tags: [team-knowledge]
+      summary: Search user-owned business records
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/finance/categories:
+    get:
+      operationId: listFinanceCategories
+      tags: [finance-income]
+      summary: List system and user finance categories
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Finance categories
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceCategoryListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: createFinanceCategory
+      tags: [finance-income]
+      summary: Create a finance category
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinanceCategoryRequest" }
+      responses:
+        "201":
+          description: Finance category created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceCategoryResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/finance/categories/{category_id}:
+    delete:
+      operationId: archiveFinanceCategory
+      tags: [finance-income]
+      summary: Archive a user finance category
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/CategoryId" }]
+      responses:
+        "204": { description: Finance category archived }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/finance/transactions:
+    get:
+      operationId: listFinanceTransactions
+      tags: [finance-income]
+      summary: List financial transactions
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+      responses:
+        "200":
+          description: Financial transactions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceTransactionListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: createFinanceTransaction
+      tags: [finance-income]
+      summary: Create a financial transaction
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinanceTransactionRequest" }
+      responses:
+        "201":
+          description: Financial transaction created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceTransactionResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/finance/transactions/{transaction_id}:
+    put:
+      operationId: updateFinanceTransaction
+      tags: [finance-income]
+      summary: Update a financial transaction
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/TransactionId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinanceTransactionRequest" }
+      responses:
+        "200":
+          description: Financial transaction updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceTransactionResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    delete:
+      operationId: deleteFinanceTransaction
+      tags: [finance-income]
+      summary: Delete a financial transaction
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/TransactionId" }]
+      responses:
+        "204": { description: Financial transaction deleted }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/finance/budgets:
+    get:
+      operationId: listFinanceBudgets
+      tags: [finance-income]
+      summary: List monthly budgets
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Budgets
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceBudgetListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: saveFinanceBudget
+      tags: [finance-income]
+      summary: Create or replace a monthly budget
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinanceBudgetRequest" }
+      responses:
+        "200":
+          description: Budget saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceBudgetResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/finance/snapshots:
+    get:
+      operationId: listFinanceSnapshots
+      tags: [finance-income]
+      summary: List savings and emergency-fund snapshots
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Financial snapshots
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceSnapshotListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: saveFinanceSnapshot
+      tags: [finance-income]
+      summary: Create or replace a financial snapshot
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinanceSnapshotRequest" }
+      responses:
+        "200":
+          description: Snapshot saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceSnapshotResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/income-simulator/calculate:
+    post:
+      operationId: calculateIncome
+      tags: [finance-income]
+      summary: Calculate income using the Excel-compatible V1 rules without saving
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IncomeSimulationInput" }
+      responses:
+        "200":
+          description: Income calculation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeCalculationResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/income-simulations:
+    get:
+      operationId: listIncomeSimulations
+      tags: [finance-income]
+      summary: List saved income simulations
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Saved simulations
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSimulationListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: createIncomeSimulation
+      tags: [finance-income]
+      summary: Save an income simulation snapshot
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IncomeSimulationRequest" }
+      responses:
+        "201":
+          description: Simulation saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSimulationResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/income-simulations/compare:
+    post:
+      operationId: compareIncomeSimulations
+      tags: [finance-income]
+      summary: Compare saved income simulations
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids: { type: array, minItems: 1, maxItems: 10, items: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Simulation comparison
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSimulationListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/income-simulations/{simulation_id}:
+    get:
+      operationId: getIncomeSimulation
+      tags: [finance-income]
+      summary: Get a saved income simulation
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/SimulationId" }]
+      responses:
+        "200":
+          description: Saved simulation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSimulationResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    put:
+      operationId: updateIncomeSimulation
+      tags: [finance-income]
+      summary: Update a saved income simulation
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/SimulationId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IncomeSimulationRequest" }
+      responses:
+        "200":
+          description: Simulation updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSimulationResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    delete:
+      operationId: deleteIncomeSimulation
+      tags: [finance-income]
+      summary: Delete a saved income simulation
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/SimulationId" }]
+      responses:
+        "204": { description: Simulation deleted }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/income-simulations/{simulation_id}/duplicate:
+    post:
+      operationId: duplicateIncomeSimulation
+      tags: [finance-income]
+      summary: Duplicate a saved income simulation
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/SimulationId" }]
+      responses:
+        "201":
+          description: Simulation duplicated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSimulationResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
 components:
   securitySchemes:
     sessionCookie:
@@ -1164,6 +1830,69 @@ components:
       schema:
         type: string
         enum: [day, week, month]
+    MemberId:
+      name: member_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SnapshotId:
+      name: snapshot_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    KnowledgeId:
+      name: knowledge_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    FileId:
+      name: file_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PromoteChildren:
+      name: promote_children
+      in: query
+      schema:
+        type: boolean
+        default: false
+    FileDisposition:
+      name: disposition
+      in: query
+      schema:
+        type: string
+        enum: [inline, attachment]
+        default: inline
+    CategoryId:
+      name: category_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    TransactionId:
+      name: transaction_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SimulationId:
+      name: simulation_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
   responses:
     ErrorResponse:
       description: Request failed
@@ -2247,3 +2976,463 @@ components:
           $ref: "#/components/schemas/AnalyticsData"
         request_id:
           type: string
+    TeamMember:
+      type: object
+      required: [id, name, status, sort_order, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        parent_id: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        joined_on: { type: string, format: date, nullable: true }
+        rank: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        note: { type: string, nullable: true }
+        sort_order: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    TeamMemberRequest:
+      type: object
+      required: [name]
+      properties:
+        parent_id: { type: string, format: uuid, nullable: true }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        joined_on: { type: string, format: date, nullable: true }
+        rank: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        status: { type: string, enum: [ACTIVE, INACTIVE], default: ACTIVE }
+        note: { type: string, nullable: true }
+        sort_order: { type: integer, default: 0 }
+    TeamMemberResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/TeamMember" }
+        request_id: { type: string }
+    TeamMemberListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/TeamMember" }
+        request_id: { type: string }
+    TeamSnapshotMember:
+      type: object
+      required: [id, original_member_id, name, status, sort_order]
+      properties:
+        id: { type: string, format: uuid }
+        original_member_id: { type: string, format: uuid }
+        parent_id: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        joined_on: { type: string, format: date, nullable: true }
+        rank: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        note: { type: string, nullable: true }
+        sort_order: { type: integer }
+    TeamSnapshot:
+      type: object
+      required: [id, snapshot_month, snapshot_type, captured_at, captured_late, members]
+      properties:
+        id: { type: string, format: uuid }
+        snapshot_month: { type: string, format: date }
+        snapshot_type: { type: string, enum: [AUTO, MANUAL] }
+        captured_at: { type: string, format: date-time }
+        captured_late: { type: boolean }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/TeamSnapshotMember" }
+    TeamSnapshotRequest:
+      type: object
+      properties:
+        snapshot_month: { type: string, format: date }
+        snapshot_type: { type: string, enum: [AUTO, MANUAL], default: MANUAL }
+        captured_late: { type: boolean, default: false }
+    TeamSnapshotResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/TeamSnapshot" }
+        request_id: { type: string }
+    TeamSnapshotListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/TeamSnapshot" }
+        request_id: { type: string }
+    KnowledgeItem:
+      type: object
+      required: [id, title, type, status, tags, file_ids, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        type: { type: string, enum: [AUDIO, VIDEO, BOOK, EVENT, MEETING, PHP, MENTOR, PRODUCT, OTHER] }
+        raw_text: { type: string, nullable: true }
+        summary: { type: string, nullable: true }
+        understanding: { type: string, nullable: true }
+        action_items: { type: string, nullable: true }
+        source_url: { type: string, nullable: true }
+        learned_on: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [NOT_STARTED, IN_PROGRESS, COMPLETED] }
+        progress_current: { type: number, nullable: true }
+        progress_total: { type: number, nullable: true }
+        progress_unit: { type: string, nullable: true }
+        tags: { type: array, items: { type: string } }
+        file_ids: { type: array, items: { type: string, format: uuid } }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    KnowledgeItemRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        type: { type: string, enum: [AUDIO, VIDEO, BOOK, EVENT, MEETING, PHP, MENTOR, PRODUCT, OTHER], default: OTHER }
+        raw_text: { type: string, nullable: true }
+        summary: { type: string, nullable: true }
+        understanding: { type: string, nullable: true }
+        action_items: { type: string, nullable: true }
+        source_url: { type: string, nullable: true }
+        learned_on: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [NOT_STARTED, IN_PROGRESS, COMPLETED], default: NOT_STARTED }
+        progress_current: { type: number, nullable: true }
+        progress_total: { type: number, nullable: true }
+        progress_unit: { type: string, nullable: true }
+        tags: { type: array, items: { type: string } }
+        file_ids: { type: array, items: { type: string, format: uuid } }
+    KnowledgeItemResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/KnowledgeItem" }
+        request_id: { type: string }
+    KnowledgeItemListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/KnowledgeItem" }
+        request_id: { type: string }
+    LearningSession:
+      type: object
+      required: [id, activity_type, activity_date, minutes, source, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        knowledge_item_id: { type: string, format: uuid, nullable: true }
+        activity_type: { type: string, enum: [READING, AUDIO] }
+        activity_date: { type: string, format: date }
+        minutes: { type: integer, minimum: 0 }
+        source: { type: string, enum: [ITEM, DAILY_UNALLOCATED] }
+        note: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    LearningSessionRequest:
+      type: object
+      required: [activity_type, activity_date, minutes]
+      properties:
+        knowledge_item_id: { type: string, format: uuid, nullable: true }
+        activity_type: { type: string, enum: [READING, AUDIO] }
+        activity_date: { type: string, format: date }
+        minutes: { type: integer, minimum: 0 }
+        source: { type: string, enum: [ITEM, DAILY_UNALLOCATED], default: ITEM }
+        note: { type: string, nullable: true }
+    LearningSessionResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/LearningSession" }
+        request_id: { type: string }
+    LearningSessionListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/LearningSession" }
+        request_id: { type: string }
+    FileAsset:
+      type: object
+      required: [id, category, original_name, mime_type, size_bytes, sha256, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        category: { type: string, enum: [DREAM_IMAGE, KNOWLEDGE_DOCUMENT, KNOWLEDGE_IMAGE] }
+        original_name: { type: string }
+        mime_type: { type: string }
+        size_bytes: { type: integer, format: int64 }
+        sha256: { type: string }
+        created_at: { type: string, format: date-time }
+    FileResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/FileAsset" }
+        request_id: { type: string }
+    FileListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/FileAsset" }
+        request_id: { type: string }
+    SearchResult:
+      type: object
+      required: [module, id, title, snippet, updated_at, score]
+      properties:
+        module: { type: string }
+        id: { type: string, format: uuid }
+        title: { type: string }
+        snippet: { type: string }
+        updated_at: { type: string, format: date-time }
+        score: { type: number }
+    SearchResponse:
+      type: object
+      required: [data, meta, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/SearchResult" }
+        meta: { $ref: "#/components/schemas/PaginationMeta" }
+        request_id: { type: string }
+    FinanceCategory:
+      type: object
+      required: [id, type, name]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [INCOME, EXPENSE] }
+        name: { type: string }
+        archived_at: { type: string, format: date-time, nullable: true }
+        system_default: { type: boolean }
+    FinanceCategoryRequest:
+      type: object
+      required: [type, name]
+      properties:
+        type: { type: string, enum: [INCOME, EXPENSE] }
+        name: { type: string, minLength: 1, maxLength: 100 }
+    FinanceCategoryResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/FinanceCategory" }
+        request_id: { type: string }
+    FinanceCategoryListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/FinanceCategory" } }
+        request_id: { type: string }
+    FinanceTransaction:
+      type: object
+      required: [id, occurred_on, type, category_id, amount, source, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        occurred_on: { type: string, format: date }
+        type: { type: string, enum: [INCOME, EXPENSE] }
+        category_id: { type: string, format: uuid }
+        amount: { type: number, minimum: 0 }
+        description: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        source: { type: string, enum: [MANUAL, IMPORT] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    FinanceTransactionRequest:
+      type: object
+      required: [occurred_on, type, category_id, amount]
+      properties:
+        occurred_on: { type: string, format: date }
+        type: { type: string, enum: [INCOME, EXPENSE] }
+        category_id: { type: string, format: uuid }
+        amount: { type: number, minimum: 0 }
+        description: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        source: { type: string, enum: [MANUAL, IMPORT], default: MANUAL }
+    FinanceTransactionResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/FinanceTransaction" }
+        request_id: { type: string }
+    FinanceTransactionListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/FinanceTransaction" } }
+        request_id: { type: string }
+    FinanceBudget:
+      type: object
+      required: [id, month, amount, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        month: { type: string, format: date }
+        category_id: { type: string, format: uuid, nullable: true }
+        amount: { type: number, minimum: 0 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    FinanceBudgetRequest:
+      type: object
+      required: [month, amount]
+      properties:
+        month: { type: string, format: date }
+        category_id: { type: string, format: uuid, nullable: true }
+        amount: { type: number, minimum: 0 }
+    FinanceBudgetResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/FinanceBudget" }
+        request_id: { type: string }
+    FinanceBudgetListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/FinanceBudget" } }
+        request_id: { type: string }
+    FinanceSnapshot:
+      type: object
+      required: [id, snapshot_date, kind, amount, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        snapshot_date: { type: string, format: date }
+        kind: { type: string, enum: [SAVINGS, EMERGENCY_FUND] }
+        amount: { type: number, minimum: 0 }
+        note: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    FinanceSnapshotRequest:
+      type: object
+      required: [snapshot_date, kind, amount]
+      properties:
+        snapshot_date: { type: string, format: date }
+        kind: { type: string, enum: [SAVINGS, EMERGENCY_FUND] }
+        amount: { type: number, minimum: 0 }
+        note: { type: string, nullable: true }
+    FinanceSnapshotResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/FinanceSnapshot" }
+        request_id: { type: string }
+    FinanceSnapshotListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/FinanceSnapshot" } }
+        request_id: { type: string }
+    IncomeSimulationInput:
+      type: object
+      required: [personal_use_pv, customer_pv, markets, annual_growth_status, annual_growth_qualified_months, bfi_period_eligible, bbi_period_eligible, double_year_mode]
+      properties:
+        personal_use_pv: { type: number, minimum: 0 }
+        customer_pv: { type: number, minimum: 0 }
+        markets: { type: array, minItems: 12, maxItems: 12, items: { type: number, minimum: 0 } }
+        annual_growth_status: { type: string, enum: [KEEP, GROWTH, NOT_QUALIFIED] }
+        annual_growth_qualified_months: { type: integer, minimum: 0, maximum: 12 }
+        bfi_period_eligible: { type: boolean }
+        bbi_period_eligible: { type: boolean }
+        double_year_mode: { type: string, enum: [NONE, FIRST, REPEAT] }
+        double_year_rank: { type: string, nullable: true }
+    IncomeSimulationResult:
+      type: object
+      required: [personal_sales_bonus, coupon_6_percent, differential_bonus, monthly_marketing_star_bonus, annual_growth_bonus, ruby_bonus, bfi_bonus, bbi_bonus, excel_total_income, double_year_bonus, monthly_income, annual_or_one_time_income, combined_income]
+      properties:
+        personal_sales_bonus: { type: number }
+        coupon_6_percent: { type: number }
+        differential_bonus: { type: number }
+        monthly_marketing_star_bonus: { type: number }
+        annual_growth_bonus: { type: number }
+        ruby_bonus: { type: number }
+        bfi_bonus: { type: number }
+        bbi_bonus: { type: number }
+        excel_total_income: { type: number }
+        double_year_bonus: { type: number }
+        monthly_income: { type: number }
+        annual_or_one_time_income: { type: number }
+        combined_income: { type: number }
+    IncomeCalculationResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [rule_version, input, result]
+          properties:
+            rule_version: { type: string }
+            input: { $ref: "#/components/schemas/IncomeSimulationInput" }
+            result: { $ref: "#/components/schemas/IncomeSimulationResult" }
+        request_id: { type: string }
+    IncomeSimulation:
+      type: object
+      required: [id, name, rule_version, input, result, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        rule_version: { type: string }
+        input: { $ref: "#/components/schemas/IncomeSimulationInput" }
+        result: { $ref: "#/components/schemas/IncomeSimulationResult" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    IncomeSimulationRequest:
+      type: object
+      required: [name, input]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        input: { $ref: "#/components/schemas/IncomeSimulationInput" }
+    IncomeSimulationResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/IncomeSimulation" }
+        request_id: { type: string }
+    IncomeSimulationListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/IncomeSimulation" } }
+        request_id: { type: string }

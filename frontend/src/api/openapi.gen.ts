@@ -670,6 +670,414 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/team/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current user's team members */
+        get: operations["listTeamMembers"];
+        put?: never;
+        /** Create a team member */
+        post: operations["createTeamMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/team/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a team member */
+        get: operations["getTeamMember"];
+        /** Update a team member */
+        put: operations["updateTeamMember"];
+        post?: never;
+        /** Delete a team member */
+        delete: operations["deleteTeamMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/team/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List team history snapshots */
+        get: operations["listTeamSnapshots"];
+        put?: never;
+        /** Capture a manual team snapshot */
+        post: operations["createTeamSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/team/snapshots/{snapshot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a read-only team snapshot */
+        get: operations["getTeamSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List knowledge items */
+        get: operations["listKnowledgeItems"];
+        put?: never;
+        /** Create a knowledge item */
+        post: operations["createKnowledgeItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/{knowledge_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a knowledge item */
+        get: operations["getKnowledgeItem"];
+        /** Update a knowledge item */
+        put: operations["updateKnowledgeItem"];
+        post?: never;
+        /** Delete a knowledge item */
+        delete: operations["deleteKnowledgeItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/learning-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List learning sessions */
+        get: operations["listLearningSessions"];
+        put?: never;
+        /** Record an item or unallocated learning session */
+        post: operations["createLearningSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/learning-sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a learning session */
+        delete: operations["deleteLearningSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List uploaded files */
+        get: operations["listFiles"];
+        put?: never;
+        /** Upload an allowed file without parsing its contents */
+        post: operations["uploadFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/files/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an uploaded file */
+        delete: operations["deleteFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/files/{file_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview or download an uploaded file */
+        get: operations["getFileContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search user-owned business records */
+        get: operations["search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List system and user finance categories */
+        get: operations["listFinanceCategories"];
+        put?: never;
+        /** Create a finance category */
+        post: operations["createFinanceCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Archive a user finance category */
+        delete: operations["archiveFinanceCategory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List financial transactions */
+        get: operations["listFinanceTransactions"];
+        put?: never;
+        /** Create a financial transaction */
+        post: operations["createFinanceTransaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/transactions/{transaction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a financial transaction */
+        put: operations["updateFinanceTransaction"];
+        post?: never;
+        /** Delete a financial transaction */
+        delete: operations["deleteFinanceTransaction"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List monthly budgets */
+        get: operations["listFinanceBudgets"];
+        put?: never;
+        /** Create or replace a monthly budget */
+        post: operations["saveFinanceBudget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List savings and emergency-fund snapshots */
+        get: operations["listFinanceSnapshots"];
+        put?: never;
+        /** Create or replace a financial snapshot */
+        post: operations["saveFinanceSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/income-simulator/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate income using the Excel-compatible V1 rules without saving */
+        post: operations["calculateIncome"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/income-simulations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List saved income simulations */
+        get: operations["listIncomeSimulations"];
+        put?: never;
+        /** Save an income simulation snapshot */
+        post: operations["createIncomeSimulation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/income-simulations/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compare saved income simulations */
+        post: operations["compareIncomeSimulations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/income-simulations/{simulation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a saved income simulation */
+        get: operations["getIncomeSimulation"];
+        /** Update a saved income simulation */
+        put: operations["updateIncomeSimulation"];
+        post?: never;
+        /** Delete a saved income simulation */
+        delete: operations["deleteIncomeSimulation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/income-simulations/{simulation_id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duplicate a saved income simulation */
+        post: operations["duplicateIncomeSimulation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1189,6 +1597,439 @@ export interface components {
             data: components["schemas"]["AnalyticsData"];
             request_id: string;
         };
+        TeamMember: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parent_id?: string | null;
+            name: string;
+            /** Format: date */
+            joined_on?: string | null;
+            rank?: string | null;
+            city?: string | null;
+            /** @enum {string} */
+            status: "ACTIVE" | "INACTIVE";
+            note?: string | null;
+            sort_order: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        TeamMemberRequest: {
+            /** Format: uuid */
+            parent_id?: string | null;
+            name: string;
+            /** Format: date */
+            joined_on?: string | null;
+            rank?: string | null;
+            city?: string | null;
+            /**
+             * @default ACTIVE
+             * @enum {string}
+             */
+            status: "ACTIVE" | "INACTIVE";
+            note?: string | null;
+            /** @default 0 */
+            sort_order: number;
+        };
+        TeamMemberResponse: {
+            data: components["schemas"]["TeamMember"];
+            request_id: string;
+        };
+        TeamMemberListResponse: {
+            data: {
+                items: components["schemas"]["TeamMember"][];
+            };
+            request_id: string;
+        };
+        TeamSnapshotMember: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            original_member_id: string;
+            /** Format: uuid */
+            parent_id?: string | null;
+            name: string;
+            /** Format: date */
+            joined_on?: string | null;
+            rank?: string | null;
+            city?: string | null;
+            /** @enum {string} */
+            status: "ACTIVE" | "INACTIVE";
+            note?: string | null;
+            sort_order: number;
+        };
+        TeamSnapshot: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            snapshot_month: string;
+            /** @enum {string} */
+            snapshot_type: "AUTO" | "MANUAL";
+            /** Format: date-time */
+            captured_at: string;
+            captured_late: boolean;
+            members: components["schemas"]["TeamSnapshotMember"][];
+        };
+        TeamSnapshotRequest: {
+            /** Format: date */
+            snapshot_month?: string;
+            /**
+             * @default MANUAL
+             * @enum {string}
+             */
+            snapshot_type: "AUTO" | "MANUAL";
+            /** @default false */
+            captured_late: boolean;
+        };
+        TeamSnapshotResponse: {
+            data: components["schemas"]["TeamSnapshot"];
+            request_id: string;
+        };
+        TeamSnapshotListResponse: {
+            data: {
+                items: components["schemas"]["TeamSnapshot"][];
+            };
+            request_id: string;
+        };
+        KnowledgeItem: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** @enum {string} */
+            type: "AUDIO" | "VIDEO" | "BOOK" | "EVENT" | "MEETING" | "PHP" | "MENTOR" | "PRODUCT" | "OTHER";
+            raw_text?: string | null;
+            summary?: string | null;
+            understanding?: string | null;
+            action_items?: string | null;
+            source_url?: string | null;
+            /** Format: date */
+            learned_on?: string | null;
+            /** @enum {string} */
+            status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+            progress_current?: number | null;
+            progress_total?: number | null;
+            progress_unit?: string | null;
+            tags: string[];
+            file_ids: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        KnowledgeItemRequest: {
+            title: string;
+            /**
+             * @default OTHER
+             * @enum {string}
+             */
+            type: "AUDIO" | "VIDEO" | "BOOK" | "EVENT" | "MEETING" | "PHP" | "MENTOR" | "PRODUCT" | "OTHER";
+            raw_text?: string | null;
+            summary?: string | null;
+            understanding?: string | null;
+            action_items?: string | null;
+            source_url?: string | null;
+            /** Format: date */
+            learned_on?: string | null;
+            /**
+             * @default NOT_STARTED
+             * @enum {string}
+             */
+            status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+            progress_current?: number | null;
+            progress_total?: number | null;
+            progress_unit?: string | null;
+            tags?: string[];
+            file_ids?: string[];
+        };
+        KnowledgeItemResponse: {
+            data: components["schemas"]["KnowledgeItem"];
+            request_id: string;
+        };
+        KnowledgeItemListResponse: {
+            data: {
+                items: components["schemas"]["KnowledgeItem"][];
+            };
+            request_id: string;
+        };
+        LearningSession: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            knowledge_item_id?: string | null;
+            /** @enum {string} */
+            activity_type: "READING" | "AUDIO";
+            /** Format: date */
+            activity_date: string;
+            minutes: number;
+            /** @enum {string} */
+            source: "ITEM" | "DAILY_UNALLOCATED";
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        LearningSessionRequest: {
+            /** Format: uuid */
+            knowledge_item_id?: string | null;
+            /** @enum {string} */
+            activity_type: "READING" | "AUDIO";
+            /** Format: date */
+            activity_date: string;
+            minutes: number;
+            /**
+             * @default ITEM
+             * @enum {string}
+             */
+            source: "ITEM" | "DAILY_UNALLOCATED";
+            note?: string | null;
+        };
+        LearningSessionResponse: {
+            data: components["schemas"]["LearningSession"];
+            request_id: string;
+        };
+        LearningSessionListResponse: {
+            data: {
+                items: components["schemas"]["LearningSession"][];
+            };
+            request_id: string;
+        };
+        FileAsset: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            category: "DREAM_IMAGE" | "KNOWLEDGE_DOCUMENT" | "KNOWLEDGE_IMAGE";
+            original_name: string;
+            mime_type: string;
+            /** Format: int64 */
+            size_bytes: number;
+            sha256: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        FileResponse: {
+            data: components["schemas"]["FileAsset"];
+            request_id: string;
+        };
+        FileListResponse: {
+            data: {
+                items: components["schemas"]["FileAsset"][];
+            };
+            request_id: string;
+        };
+        SearchResult: {
+            module: string;
+            /** Format: uuid */
+            id: string;
+            title: string;
+            snippet: string;
+            /** Format: date-time */
+            updated_at: string;
+            score: number;
+        };
+        SearchResponse: {
+            data: {
+                items: components["schemas"]["SearchResult"][];
+            };
+            meta: components["schemas"]["PaginationMeta"];
+            request_id: string;
+        };
+        FinanceCategory: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            type: "INCOME" | "EXPENSE";
+            name: string;
+            /** Format: date-time */
+            archived_at?: string | null;
+            system_default?: boolean;
+        };
+        FinanceCategoryRequest: {
+            /** @enum {string} */
+            type: "INCOME" | "EXPENSE";
+            name: string;
+        };
+        FinanceCategoryResponse: {
+            data: components["schemas"]["FinanceCategory"];
+            request_id: string;
+        };
+        FinanceCategoryListResponse: {
+            data: {
+                items: components["schemas"]["FinanceCategory"][];
+            };
+            request_id: string;
+        };
+        FinanceTransaction: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            occurred_on: string;
+            /** @enum {string} */
+            type: "INCOME" | "EXPENSE";
+            /** Format: uuid */
+            category_id: string;
+            amount: number;
+            description?: string | null;
+            note?: string | null;
+            /** @enum {string} */
+            source: "MANUAL" | "IMPORT";
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        FinanceTransactionRequest: {
+            /** Format: date */
+            occurred_on: string;
+            /** @enum {string} */
+            type: "INCOME" | "EXPENSE";
+            /** Format: uuid */
+            category_id: string;
+            amount: number;
+            description?: string | null;
+            note?: string | null;
+            /**
+             * @default MANUAL
+             * @enum {string}
+             */
+            source: "MANUAL" | "IMPORT";
+        };
+        FinanceTransactionResponse: {
+            data: components["schemas"]["FinanceTransaction"];
+            request_id: string;
+        };
+        FinanceTransactionListResponse: {
+            data: {
+                items: components["schemas"]["FinanceTransaction"][];
+            };
+            request_id: string;
+        };
+        FinanceBudget: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            month: string;
+            /** Format: uuid */
+            category_id?: string | null;
+            amount: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        FinanceBudgetRequest: {
+            /** Format: date */
+            month: string;
+            /** Format: uuid */
+            category_id?: string | null;
+            amount: number;
+        };
+        FinanceBudgetResponse: {
+            data: components["schemas"]["FinanceBudget"];
+            request_id: string;
+        };
+        FinanceBudgetListResponse: {
+            data: {
+                items: components["schemas"]["FinanceBudget"][];
+            };
+            request_id: string;
+        };
+        FinanceSnapshot: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            snapshot_date: string;
+            /** @enum {string} */
+            kind: "SAVINGS" | "EMERGENCY_FUND";
+            amount: number;
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        FinanceSnapshotRequest: {
+            /** Format: date */
+            snapshot_date: string;
+            /** @enum {string} */
+            kind: "SAVINGS" | "EMERGENCY_FUND";
+            amount: number;
+            note?: string | null;
+        };
+        FinanceSnapshotResponse: {
+            data: components["schemas"]["FinanceSnapshot"];
+            request_id: string;
+        };
+        FinanceSnapshotListResponse: {
+            data: {
+                items: components["schemas"]["FinanceSnapshot"][];
+            };
+            request_id: string;
+        };
+        IncomeSimulationInput: {
+            personal_use_pv: number;
+            customer_pv: number;
+            markets: number[];
+            /** @enum {string} */
+            annual_growth_status: "KEEP" | "GROWTH" | "NOT_QUALIFIED";
+            annual_growth_qualified_months: number;
+            bfi_period_eligible: boolean;
+            bbi_period_eligible: boolean;
+            /** @enum {string} */
+            double_year_mode: "NONE" | "FIRST" | "REPEAT";
+            double_year_rank?: string | null;
+        };
+        IncomeSimulationResult: {
+            personal_sales_bonus: number;
+            coupon_6_percent: number;
+            differential_bonus: number;
+            monthly_marketing_star_bonus: number;
+            annual_growth_bonus: number;
+            ruby_bonus: number;
+            bfi_bonus: number;
+            bbi_bonus: number;
+            excel_total_income: number;
+            double_year_bonus: number;
+            monthly_income: number;
+            annual_or_one_time_income: number;
+            combined_income: number;
+        };
+        IncomeCalculationResponse: {
+            data: {
+                rule_version: string;
+                input: components["schemas"]["IncomeSimulationInput"];
+                result: components["schemas"]["IncomeSimulationResult"];
+            };
+            request_id: string;
+        };
+        IncomeSimulation: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            rule_version: string;
+            input: components["schemas"]["IncomeSimulationInput"];
+            result: components["schemas"]["IncomeSimulationResult"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        IncomeSimulationRequest: {
+            name: string;
+            input: components["schemas"]["IncomeSimulationInput"];
+        };
+        IncomeSimulationResponse: {
+            data: components["schemas"]["IncomeSimulation"];
+            request_id: string;
+        };
+        IncomeSimulationListResponse: {
+            data: {
+                items: components["schemas"]["IncomeSimulation"][];
+            };
+            request_id: string;
+        };
     };
     responses: {
         /** @description Request failed */
@@ -1219,6 +2060,16 @@ export interface components {
         ReviewType: "DAILY" | "WEEKLY" | "MONTHLY";
         ReviewPeriodStart: string;
         AnalyticsGranularity: "day" | "week" | "month";
+        MemberId: string;
+        SnapshotId: string;
+        KnowledgeId: string;
+        SessionId: string;
+        FileId: string;
+        PromoteChildren: boolean;
+        FileDisposition: "inline" | "attachment";
+        CategoryId: string;
+        TransactionId: string;
+        SimulationId: string;
     };
     requestBodies: never;
     headers: never;
@@ -2601,6 +3452,951 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnalyticsResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listTeamMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Team members */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMemberListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createTeamMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Team member created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMemberResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getTeamMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: components["parameters"]["MemberId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Team member */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMemberResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateTeamMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: components["parameters"]["MemberId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Team member updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMemberResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteTeamMember: {
+        parameters: {
+            query?: {
+                promote_children?: components["parameters"]["PromoteChildren"];
+            };
+            header?: never;
+            path: {
+                member_id: components["parameters"]["MemberId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Team member deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listTeamSnapshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Team snapshots */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSnapshotListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createTeamSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamSnapshotRequest"];
+            };
+        };
+        responses: {
+            /** @description Team snapshot created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSnapshotResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getTeamSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshot_id: components["parameters"]["SnapshotId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Team snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSnapshotResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listKnowledgeItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Knowledge items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeItemListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createKnowledgeItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Knowledge item created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeItemResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getKnowledgeItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                knowledge_id: components["parameters"]["KnowledgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Knowledge item */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeItemResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateKnowledgeItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                knowledge_id: components["parameters"]["KnowledgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Knowledge item updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeItemResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteKnowledgeItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                knowledge_id: components["parameters"]["KnowledgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Knowledge item deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listLearningSessions: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Learning sessions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningSessionListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createLearningSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LearningSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Learning session created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningSessionResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteLearningSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Learning session deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Uploaded files */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    uploadFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @enum {string} */
+                    category?: "DREAM_IMAGE" | "KNOWLEDGE_DOCUMENT" | "KNOWLEDGE_IMAGE";
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description File uploaded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getFileContent: {
+        parameters: {
+            query?: {
+                disposition?: "inline" | "attachment";
+            };
+            header?: never;
+            path: {
+                file_id: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    search: {
+        parameters: {
+            query: {
+                q: string;
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Search results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listFinanceCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finance categories */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceCategoryListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createFinanceCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description Finance category created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceCategoryResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    archiveFinanceCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: components["parameters"]["CategoryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finance category archived */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listFinanceTransactions: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Financial transactions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceTransactionListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createFinanceTransaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceTransactionRequest"];
+            };
+        };
+        responses: {
+            /** @description Financial transaction created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceTransactionResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateFinanceTransaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: components["parameters"]["TransactionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceTransactionRequest"];
+            };
+        };
+        responses: {
+            /** @description Financial transaction updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceTransactionResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteFinanceTransaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: components["parameters"]["TransactionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Financial transaction deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listFinanceBudgets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Budgets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceBudgetListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    saveFinanceBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceBudgetRequest"];
+            };
+        };
+        responses: {
+            /** @description Budget saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceBudgetResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listFinanceSnapshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Financial snapshots */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceSnapshotListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    saveFinanceSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceSnapshotRequest"];
+            };
+        };
+        responses: {
+            /** @description Snapshot saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceSnapshotResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    calculateIncome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncomeSimulationInput"];
+            };
+        };
+        responses: {
+            /** @description Income calculation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeCalculationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listIncomeSimulations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved simulations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeSimulationListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createIncomeSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncomeSimulationRequest"];
+            };
+        };
+        responses: {
+            /** @description Simulation saved */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeSimulationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    compareIncomeSimulations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    ids: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Simulation comparison */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeSimulationListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getIncomeSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                simulation_id: components["parameters"]["SimulationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved simulation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeSimulationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateIncomeSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                simulation_id: components["parameters"]["SimulationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncomeSimulationRequest"];
+            };
+        };
+        responses: {
+            /** @description Simulation updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeSimulationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteIncomeSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                simulation_id: components["parameters"]["SimulationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Simulation deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    duplicateIncomeSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                simulation_id: components["parameters"]["SimulationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Simulation duplicated */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeSimulationResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
