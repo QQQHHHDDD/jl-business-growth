@@ -122,7 +122,8 @@ None known in the source tree or required host acceptance. Database credentials 
 - Node/npm are provided by the local Node 24 toolchain rather than the system PATH.
 - Development HTTP uses `bos_session` / `bos_csrf`; secure production deployments use the required `__Host-bos_session` / `__Host-bos_csrf` cookies.
 - The current implementation uses the locally available Go 1.27.0 toolchain for validation; the host default Go remains unchanged.
-- `npm install` reports 2 moderate audit findings and an esbuild install-script approval warning; no forced audit upgrade was applied because it could change unrelated dependency versions.
+- Frontend dependency audit is clean after upgrading Vitest to 4.1.11; `esbuild@0.25.12` is explicitly pinned in `allowScripts` for its required build binary install script.
+- Frontend build now lazy-loads the calendar/goals/team pages and separates stable runtime dependencies; the largest emitted JavaScript chunk is below 500 kB.
 
 ## Host Validation Commands
 

@@ -20,6 +20,21 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === "INVALID_ANNOTATION" && warning.id?.includes("/node_modules/zod/")) return;
+        warn(warning);
+      },
+      output: {
+        manualChunks: {
+          "router-runtime": ["react-router", "react-router-dom"],
+          "forms-runtime": ["react-hook-form", "@hookform/resolvers", "zod"],
+          "query-runtime": ["@tanstack/react-query"],
+        },
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     globals: true,

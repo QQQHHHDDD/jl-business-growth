@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { getLiveHealth, getMe, logout, type AuthResponse } from "@/api/client";
 import { AppShell } from "@/components/layout/navigation";
@@ -8,19 +8,20 @@ import { AdminAdminsPage, AdminHomePage, AdminInvitationsPage, AdminUsersPage } 
 import { AuthPage } from "@/features/auth/auth-page";
 import { SettingsPage } from "@/features/auth/settings-page";
 import { AnalyticsPage } from "@/features/analytics/analytics-page";
-import { CalendarPage } from "@/features/calendar/calendar-page";
 import { DashboardPage } from "@/features/dashboard/dashboard-page";
-import { GoalsPage } from "@/features/goals/goals-page";
 import { PlaceholderPage } from "@/features/placeholder/placeholder-page";
 import { ReviewsPage } from "@/features/reviews/reviews-page";
 import { SearchPage } from "@/features/search/search-page";
-import { TeamPage } from "@/features/team/team-page";
 import { TurnoverPage } from "@/features/turnover/turnover-page";
 import { WorklogPage } from "@/features/worklog/worklog-page";
 import { KnowledgePage } from "@/features/knowledge/knowledge-page";
 import { FinancePage } from "@/features/finance/finance-page";
 import { IncomePage } from "@/features/income/income-page";
 import { roleHome } from "@/lib/utils";
+
+const CalendarPage = lazy(() => import("@/features/calendar/calendar-page").then((module) => ({ default: module.CalendarPage })));
+const GoalsPage = lazy(() => import("@/features/goals/goals-page").then((module) => ({ default: module.GoalsPage })));
+const TeamPage = lazy(() => import("@/features/team/team-page").then((module) => ({ default: module.TeamPage })));
 
 const userRoutes = [
   ["/app/goals", "梦想与目标", "建立梦想和目标之间的清晰路径。"],
@@ -39,6 +40,10 @@ const userRoutes = [
 
 type MeQuery = ReturnType<typeof useQuery<AuthResponse | null>>;
 type HealthQuery = ReturnType<typeof useQuery<Awaited<ReturnType<typeof getLiveHealth>>>>;
+
+function DeferredPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<LoadingState label="正在加载页面" />}>{children}</Suspense>;
+}
 
 function ProtectedRoute({ meQuery, children }: { meQuery: MeQuery; children?: ReactNode }) {
   const location = useLocation();
@@ -82,7 +87,7 @@ function UserDashboardRoute({ meQuery }: { meQuery: MeQuery }) {
 }
 
 function UserGoalsRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <GoalsPage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? <DeferredPage><GoalsPage authResponse={meQuery.data} /></DeferredPage> : null;
 }
 
 function UserWorklogRoute({ meQuery }: { meQuery: MeQuery }) {
@@ -94,7 +99,7 @@ function UserTurnoverRoute({ meQuery }: { meQuery: MeQuery }) {
 }
 
 function UserCalendarRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <CalendarPage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? <DeferredPage><CalendarPage authResponse={meQuery.data} /></DeferredPage> : null;
 }
 
 function UserReviewsRoute({ meQuery }: { meQuery: MeQuery }) {
@@ -106,7 +111,7 @@ function UserAnalyticsRoute({ meQuery }: { meQuery: MeQuery }) {
 }
 
 function UserTeamRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <TeamPage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? <DeferredPage><TeamPage authResponse={meQuery.data} /></DeferredPage> : null;
 }
 
 function UserKnowledgeRoute({ meQuery }: { meQuery: MeQuery }) {
