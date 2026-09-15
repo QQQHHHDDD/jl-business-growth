@@ -6,7 +6,7 @@ BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 
 .PHONY: dev generate generate-openapi generate-sqlc generate-frontend lint lint-backend lint-frontend \
-	test test-backend test-integration test-frontend test-e2e build build-backend build-jobs build-frontend reset-superadmin-password \
+	test test-backend test-integration test-performance test-frontend test-e2e build build-backend build-jobs build-frontend reset-superadmin-password \
 	migrate-up migrate-status migrate-test-up migrate-test-status check-test-database check
 
 dev:
@@ -43,6 +43,10 @@ test-backend:
 test-integration:
 	$(MAKE) check-test-database
 	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^TestPhase[123456]APIIntegration$$'
+
+test-performance:
+	$(MAKE) check-test-database
+	cd $(BACKEND_DIR) && PHASE7_PERFORMANCE=1 /usr/bin/time -v $(GO) test -v ./cmd/jl-business-api -run '^TestPhase7Performance$$' -count=1
 
 test-frontend:
 	$(NPM) --prefix $(FRONTEND_DIR) run test

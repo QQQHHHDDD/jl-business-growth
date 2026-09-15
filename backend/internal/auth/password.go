@@ -20,7 +20,12 @@ const (
 	argonParallelism  = 2
 	argonKeyLength    = 32
 	argonSaltLength   = 16
+	// A single derivation reserves 64 MiB. Bound concurrent login and password
+	// change work so a burst cannot exhaust the process heap.
+	argonMaxConcurrent = 4
 )
+
+var argonDerivations = make(chan struct{}, argonMaxConcurrent)
 
 func ValidatePassword(password string) error {
 	length := utf8.RuneCountInString(password)
@@ -38,7 +43,7 @@ func HashPassword(password string) (string, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return "", fmt.Errorf("generate password salt: %w", err)
 	}
-	key := argon2.IDKey([]byte(password), salt, argonIterations, argonMemory, argonParallelism, argonKeyLength)
+	key := deriveArgon2IDKey([]byte(password), salt, argonIterations, argonMemory, argonParallelism, argonKeyLength)
 	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", argonMemory, argonIterations, argonParallelism,
 		base64.RawStdEncoding.EncodeToString(salt), base64.RawStdEncoding.EncodeToString(key)), nil
 }
@@ -60,8 +65,14 @@ func CheckPassword(password, encoded string) bool {
 	if err != nil || len(expected) == 0 {
 		return false
 	}
-	actual := argon2.IDKey([]byte(password), salt, iterations, memory, uint8(parallelism), uint32(len(expected)))
+	actual := deriveArgon2IDKey([]byte(password), salt, iterations, memory, uint8(parallelism), uint32(len(expected)))
 	return subtle.ConstantTimeCompare(actual, expected) == 1
+}
+
+func deriveArgon2IDKey(password, salt []byte, iterations, memory uint32, parallelism uint8, keyLength uint32) []byte {
+	argonDerivations <- struct{}{}
+	defer func() { <-argonDerivations }()
+	return argon2.IDKey(password, salt, iterations, memory, parallelism, keyLength)
 }
 
 func ValidateUsername(username string) error {

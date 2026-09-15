@@ -39,7 +39,7 @@ func (s *Service) Worklogs(ctx context.Context, userID uuid.UUID, from, to time.
 	if err := validRange(from, to, granularity); err != nil {
 		return Result{}, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT work_date,open_conversation_count+deep_conversation_count+buffer_count+story_share_count+screening_count+opportunity_count+meeting_count+customer_followup_count,reading_minutes,audio_minutes FROM daily_worklogs WHERE user_id=$1 AND work_date >= $2 AND work_date < $3 ORDER BY work_date`, auth.ToPGUUID(userID), from, to)
+	rows, err := s.pool.Query(ctx, `SELECT w.work_date,(w.open_conversation_count+w.deep_conversation_count+w.buffer_count+w.story_share_count+w.screening_count+w.opportunity_count+w.meeting_count+w.customer_followup_count)::bigint,COALESCE((SELECT ls.minutes FROM learning_sessions ls WHERE ls.user_id=w.user_id AND ls.activity_date=w.work_date AND ls.activity_type='READING' AND ls.source='DAILY_UNALLOCATED'),0)::bigint,COALESCE((SELECT ls.minutes FROM learning_sessions ls WHERE ls.user_id=w.user_id AND ls.activity_date=w.work_date AND ls.activity_type='AUDIO' AND ls.source='DAILY_UNALLOCATED'),0)::bigint FROM daily_worklogs w WHERE w.user_id=$1 AND w.work_date >= $2 AND w.work_date < $3 ORDER BY w.work_date`, auth.ToPGUUID(userID), from, to)
 	if err != nil {
 		return Result{}, err
 	}

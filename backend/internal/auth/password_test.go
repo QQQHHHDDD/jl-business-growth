@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -21,6 +22,29 @@ func TestHashPasswordUsesArgon2idAndVerifies(t *testing.T) {
 	}
 	if CheckPassword("wrong password", hash) {
 		t.Fatal("CheckPassword() accepted a wrong password")
+	}
+}
+
+func TestCheckPasswordHandlesConcurrentVerifications(t *testing.T) {
+	hash, err := HashPassword("correct horse battery")
+	if err != nil {
+		t.Fatalf("HashPassword() error = %v", err)
+	}
+	var group sync.WaitGroup
+	errCh := make(chan error, argonMaxConcurrent*2)
+	for index := 0; index < argonMaxConcurrent*2; index++ {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			if !CheckPassword("correct horse battery", hash) {
+				errCh <- errors.New("CheckPassword() rejected the original password")
+			}
+		}()
+	}
+	group.Wait()
+	close(errCh)
+	for err := range errCh {
+		t.Fatal(err)
 	}
 }
 
