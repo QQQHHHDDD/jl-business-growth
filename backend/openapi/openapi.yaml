@@ -1050,6 +1050,40 @@ paths:
                 $ref: "#/components/schemas/AnalyticsResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /api/analytics/finance:
+    get:
+      operationId: getFinanceAnalytics
+      tags: [finance-income]
+      summary: Aggregate finance transactions by day, week, or month
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - $ref: "#/components/parameters/AnalyticsGranularity"
+      responses:
+        "200":
+          description: Finance analytics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalyticsResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/analytics/team:
+    get:
+      operationId: getTeamAnalytics
+      tags: [team-knowledge]
+      summary: Aggregate team membership by day, week, or month
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - $ref: "#/components/parameters/AnalyticsGranularity"
+      responses:
+        "200":
+          description: Team analytics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalyticsResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
   /api/team/members:
     get:
       operationId: listTeamMembers
@@ -2106,6 +2140,9 @@ components:
         validation_summary:
           type: object
           additionalProperties: true
+        warnings:
+          type: array
+          items: { type: string }
         expires_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
         rows:
@@ -2113,13 +2150,16 @@ components:
           items: { $ref: "#/components/schemas/ImportPreviewRow" }
     ImportPreviewRow:
       type: object
-      required: [row_number, values, errors]
+      required: [row_number, values, errors, warnings]
       properties:
         row_number: { type: integer, minimum: 2 }
         values:
           type: object
           additionalProperties: { type: string }
         errors:
+          type: array
+          items: { type: string }
+        warnings:
           type: array
           items: { type: string }
     ImportJobResponse:
@@ -2466,7 +2506,8 @@ components:
           type: number
           nullable: true
         turnover_net_amount:
-          type: number
+          type: string
+          pattern: '^\\d+(?:\\.\\d{1,2})?$'
           nullable: true
         note:
           type: string
@@ -2521,8 +2562,8 @@ components:
           minimum: 0
           nullable: true
         turnover_net_amount:
-          type: number
-          minimum: 0
+          type: string
+          pattern: '^\\d+(?:\\.\\d{1,2})?$'
           nullable: true
         note:
           type: string
@@ -2563,8 +2604,8 @@ components:
           type: number
           minimum: 0
         net_amount:
-          type: number
-          minimum: 0
+          type: string
+          pattern: '^\\d+(?:\\.\\d{1,2})?$'
         note:
           type: string
           nullable: true
@@ -2586,8 +2627,8 @@ components:
           minimum: 0
           nullable: true
         net_amount:
-          type: number
-          minimum: 0
+          type: string
+          pattern: '^\\d+(?:\\.\\d{1,2})?$'
           nullable: true
         note:
           type: string
@@ -2616,7 +2657,7 @@ components:
           type: string
     Dream:
       type: object
-      required: [id, title, goal_ids, sort_order, created_at, updated_at]
+      required: [id, title, goal_ids, file_ids, sort_order, created_at, updated_at]
       properties:
         id:
           type: string
@@ -2627,6 +2668,11 @@ components:
           type: string
           nullable: true
         goal_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        file_ids:
           type: array
           items:
             type: string
@@ -2658,6 +2704,11 @@ components:
         sort_order:
           type: integer
           default: 0
+        file_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
     DreamResponse:
       type: object
       required: [data, request_id]
@@ -2846,7 +2897,8 @@ components:
         pv:
           type: number
         net_amount:
-          type: number
+          type: string
+          pattern: '^\\d+(?:\\.\\d{1,2})?$'
     DashboardPeriod:
       type: object
       required: [from, to, worklogs, turnover]
@@ -2863,7 +2915,7 @@ components:
           $ref: "#/components/schemas/TurnoverTotals"
     DashboardData:
       type: object
-      required: [date, today, week, month, active_goals, dreams_count]
+      required: [date, today, week, month, active_goals, dreams_count, upcoming_events, team_summary, learning_summary, finance_summary]
       properties:
         date:
           type: string
@@ -2880,6 +2932,43 @@ components:
             $ref: "#/components/schemas/Goal"
         dreams_count:
           type: integer
+        upcoming_events:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardUpcomingEvent"
+        team_summary:
+          $ref: "#/components/schemas/DashboardTeamSummary"
+        learning_summary:
+          $ref: "#/components/schemas/DashboardLearningSummary"
+        finance_summary:
+          $ref: "#/components/schemas/DashboardFinanceSummary"
+    DashboardUpcomingEvent:
+      type: object
+      required: [id, title, start_at, end_at]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+    DashboardTeamSummary:
+      type: object
+      required: [total_members, active_members]
+      properties:
+        total_members: { type: integer }
+        active_members: { type: integer }
+    DashboardLearningSummary:
+      type: object
+      required: [reading_minutes, audio_minutes]
+      properties:
+        reading_minutes: { type: integer }
+        audio_minutes: { type: integer }
+    DashboardFinanceSummary:
+      type: object
+      required: [income, expense, net_cash_flow]
+      properties:
+        income: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
+        expense: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
+        net_cash_flow: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
     DashboardResponse:
       type: object
       required: [data, request_id]
@@ -3056,7 +3145,8 @@ components:
         turnover_pv:
           type: number
         turnover_net_amount:
-          type: number
+          type: string
+          pattern: '^\\d+(?:\\.\\d{1,2})?$'
     Review:
       type: object
       required: [type, period_start, good, problems, improvements, next_focus, totals]
@@ -3135,7 +3225,21 @@ components:
         pv:
           type: number
         net_amount:
-          type: number
+          type: string
+          pattern: '^\\d+(?:\\.\\d{1,2})?$'
+        income_amount:
+          type: string
+          pattern: '^\\d+(?:\\.\\d{1,2})?$'
+        expense_amount:
+          type: string
+          pattern: '^\\d+(?:\\.\\d{1,2})?$'
+        net_cash_flow:
+          type: string
+          pattern: '^-?\\d+(?:\\.\\d{1,2})?$'
+        member_count:
+          type: integer
+        active_member_count:
+          type: integer
         goal_count:
           type: integer
         completed_count:
@@ -3169,9 +3273,10 @@ components:
           type: string
     TeamMember:
       type: object
-      required: [id, name, status, sort_order, created_at, updated_at]
+      required: [id, member_code, name, status, sort_order, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
+        member_code: { type: string, minLength: 1, maxLength: 100 }
         parent_id: { type: string, format: uuid, nullable: true }
         name: { type: string }
         joined_on: { type: string, format: date, nullable: true }
@@ -3186,6 +3291,7 @@ components:
       type: object
       required: [name]
       properties:
+        member_code: { type: string, minLength: 1, maxLength: 100 }
         parent_id: { type: string, format: uuid, nullable: true }
         name: { type: string, minLength: 1, maxLength: 200 }
         joined_on: { type: string, format: date, nullable: true }
@@ -3451,7 +3557,7 @@ components:
         occurred_on: { type: string, format: date }
         type: { type: string, enum: [INCOME, EXPENSE] }
         category_id: { type: string, format: uuid }
-        amount: { type: number, minimum: 0 }
+        amount: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
         description: { type: string, nullable: true }
         note: { type: string, nullable: true }
         source: { type: string, enum: [MANUAL, IMPORT] }
@@ -3464,7 +3570,7 @@ components:
         occurred_on: { type: string, format: date }
         type: { type: string, enum: [INCOME, EXPENSE] }
         category_id: { type: string, format: uuid }
-        amount: { type: number, minimum: 0 }
+        amount: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
         description: { type: string, nullable: true }
         note: { type: string, nullable: true }
         source: { type: string, enum: [MANUAL, IMPORT], default: MANUAL }
@@ -3491,7 +3597,7 @@ components:
         id: { type: string, format: uuid }
         month: { type: string, format: date }
         category_id: { type: string, format: uuid, nullable: true }
-        amount: { type: number, minimum: 0 }
+        amount: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     FinanceBudgetRequest:
@@ -3500,7 +3606,7 @@ components:
       properties:
         month: { type: string, format: date }
         category_id: { type: string, format: uuid, nullable: true }
-        amount: { type: number, minimum: 0 }
+        amount: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
     FinanceBudgetResponse:
       type: object
       required: [data, request_id]
@@ -3524,7 +3630,7 @@ components:
         id: { type: string, format: uuid }
         snapshot_date: { type: string, format: date }
         kind: { type: string, enum: [SAVINGS, EMERGENCY_FUND] }
-        amount: { type: number, minimum: 0 }
+        amount: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
         note: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -3534,7 +3640,7 @@ components:
       properties:
         snapshot_date: { type: string, format: date }
         kind: { type: string, enum: [SAVINGS, EMERGENCY_FUND] }
-        amount: { type: number, minimum: 0 }
+        amount: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
         note: { type: string, nullable: true }
     FinanceSnapshotResponse:
       type: object
@@ -3569,19 +3675,19 @@ components:
       type: object
       required: [personal_sales_bonus, coupon_6_percent, differential_bonus, monthly_marketing_star_bonus, annual_growth_bonus, ruby_bonus, bfi_bonus, bbi_bonus, excel_total_income, double_year_bonus, monthly_income, annual_or_one_time_income, combined_income]
       properties:
-        personal_sales_bonus: { type: number }
-        coupon_6_percent: { type: number }
-        differential_bonus: { type: number }
-        monthly_marketing_star_bonus: { type: number }
-        annual_growth_bonus: { type: number }
-        ruby_bonus: { type: number }
-        bfi_bonus: { type: number }
-        bbi_bonus: { type: number }
-        excel_total_income: { type: number }
-        double_year_bonus: { type: number }
-        monthly_income: { type: number }
-        annual_or_one_time_income: { type: number }
-        combined_income: { type: number }
+        personal_sales_bonus: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        coupon_6_percent: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        differential_bonus: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        monthly_marketing_star_bonus: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        annual_growth_bonus: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        ruby_bonus: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        bfi_bonus: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        bbi_bonus: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        excel_total_income: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        double_year_bonus: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        monthly_income: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        annual_or_one_time_income: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
+        combined_income: { type: string, pattern: '^-?\\d+(?:\\.\\d{1,2})?$' }
     IncomeCalculationResponse:
       type: object
       required: [data, request_id]

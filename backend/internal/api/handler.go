@@ -25,6 +25,7 @@ import (
 	"jl-business-growth/backend/internal/invitation"
 	"jl-business-growth/backend/internal/knowledge"
 	"jl-business-growth/backend/internal/mail"
+	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
 	"jl-business-growth/backend/internal/reviews"
 	"jl-business-growth/backend/internal/search"
@@ -392,12 +393,17 @@ func (h *Handler) deleteAccount(ctx echo.Context, accountID AccountId, administr
 	if administrator && actor.Role != auth.RoleSuperAdmin {
 		return problem.New("FORBIDDEN", http.StatusForbidden, "only the super administrator can manage administrators")
 	}
-	if administrator {
-		err = h.admin.DeleteAdmin(ctx.Request().Context(), accountID)
-	} else {
-		err = h.admin.DeleteUser(ctx.Request().Context(), accountID)
-	}
+	target, err := h.admin.Account(ctx.Request().Context(), accountID)
 	if err != nil {
+		return err
+	}
+	if administrator && target.Role != auth.RoleAdmin {
+		return problem.New("FORBIDDEN", http.StatusForbidden, "only ordinary administrators can be deleted here")
+	}
+	if !administrator && target.Role != auth.RoleUser {
+		return problem.New("FORBIDDEN", http.StatusForbidden, "only normal users can be deleted here")
+	}
+	if err := h.imports.DeleteAccount(ctx.Request().Context(), accountID); err != nil {
 		return err
 	}
 	h.audit(ctx, "account_deleted", actor.ID, uuid.Nil, accountID)
@@ -547,7 +553,11 @@ func (h *Handler) GetDashboard(ctx echo.Context, params GetDashboardParams) erro
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, DashboardResponse{Data: DashboardData{Date: apiDate(dashboard.Date), Today: dashboardPeriodDTO(dashboard.Today), Week: dashboardPeriodDTO(dashboard.Week), Month: dashboardPeriodDTO(dashboard.Month), ActiveGoals: goalsDTO(dashboard.ActiveGoals), DreamsCount: int(dashboard.DreamsCount)}, RequestId: requestID(ctx)})
+	events := make([]DashboardUpcomingEvent, 0, len(dashboard.UpcomingEvents))
+	for _, event := range dashboard.UpcomingEvents {
+		events = append(events, DashboardUpcomingEvent{Id: event.ID, Title: event.Title, StartAt: event.StartAt, EndAt: event.EndAt})
+	}
+	return ctx.JSON(http.StatusOK, DashboardResponse{Data: DashboardData{Date: apiDate(dashboard.Date), Today: dashboardPeriodDTO(dashboard.Today), Week: dashboardPeriodDTO(dashboard.Week), Month: dashboardPeriodDTO(dashboard.Month), ActiveGoals: goalsDTO(dashboard.ActiveGoals), DreamsCount: int(dashboard.DreamsCount), UpcomingEvents: events, TeamSummary: DashboardTeamSummary{TotalMembers: int(dashboard.TeamSummary.TotalMembers), ActiveMembers: int(dashboard.TeamSummary.ActiveMembers)}, LearningSummary: DashboardLearningSummary{ReadingMinutes: int(dashboard.LearningSummary.ReadingMinutes), AudioMinutes: int(dashboard.LearningSummary.AudioMinutes)}, FinanceSummary: DashboardFinanceSummary{Income: money.Format(dashboard.FinanceSummary.Income), Expense: money.Format(dashboard.FinanceSummary.Expense), NetCashFlow: money.Format(dashboard.FinanceSummary.NetCashFlow)}}, RequestId: requestID(ctx)})
 }
 
 func (h *Handler) ListWorklogs(ctx echo.Context, params ListWorklogsParams) error {
@@ -1010,6 +1020,18 @@ func (h *Handler) GetGoalAnalytics(ctx echo.Context, params GetGoalAnalyticsPara
 	})
 }
 
+func (h *Handler) GetFinanceAnalytics(ctx echo.Context, params GetFinanceAnalyticsParams) error {
+	return h.analyticsResponse(ctx, string(params.Granularity), params.From, params.To, func(from, to time.Time, granularity string, userID uuid.UUID) (analytics.Result, error) {
+		return h.analytics.Finance(ctx.Request().Context(), userID, from, to, granularity)
+	})
+}
+
+func (h *Handler) GetTeamAnalytics(ctx echo.Context, params GetTeamAnalyticsParams) error {
+	return h.analyticsResponse(ctx, string(params.Granularity), params.From, params.To, func(from, to time.Time, granularity string, userID uuid.UUID) (analytics.Result, error) {
+		return h.analytics.Team(ctx.Request().Context(), userID, from, to, granularity)
+	})
+}
+
 func (h *Handler) analyticsResponse(ctx echo.Context, granularity string, fromParam, toParam *openapi_types.Date, query func(time.Time, time.Time, string, uuid.UUID) (analytics.Result, error)) error {
 	userID, _, err := h.dailyUser(ctx)
 	if err != nil {
@@ -1023,7 +1045,9 @@ func (h *Handler) analyticsResponse(ctx echo.Context, granularity string, fromPa
 	}
 	buckets := make([]AnalyticsBucket, 0, len(result.Buckets))
 	for _, item := range result.Buckets {
-		buckets = append(buckets, AnalyticsBucket{Period: item.Period, ActionCount: int(item.ActionCount), ReadingMinutes: int(item.ReadingMinutes), AudioMinutes: int(item.AudioMinutes), Pv: float32(item.PV), NetAmount: float32(item.NetAmount), GoalCount: int(item.GoalCount), CompletedCount: int(item.CompletedCount)})
+		memberCount, activeMemberCount := int(item.MemberCount), int(item.ActiveMemberCount)
+		income, expense, netCashFlow := money.Format(item.IncomeAmount), money.Format(item.ExpenseAmount), money.Format(item.NetCashFlow)
+		buckets = append(buckets, AnalyticsBucket{Period: item.Period, ActionCount: int(item.ActionCount), ReadingMinutes: int(item.ReadingMinutes), AudioMinutes: int(item.AudioMinutes), Pv: float32(item.PV), NetAmount: money.Format(item.NetAmount), IncomeAmount: &income, ExpenseAmount: &expense, NetCashFlow: &netCashFlow, MemberCount: &memberCount, ActiveMemberCount: &activeMemberCount, GoalCount: int(item.GoalCount), CompletedCount: int(item.CompletedCount)})
 	}
 	return ctx.JSON(http.StatusOK, AnalyticsResponse{Data: AnalyticsData{Metric: result.Metric, Granularity: AnalyticsDataGranularity(result.Granularity), From: apiDate(result.From), To: apiDate(result.To), Buckets: buckets}, RequestId: requestID(ctx)})
 }
@@ -1040,28 +1064,22 @@ func (h *Handler) dailyUser(ctx echo.Context) (uuid.UUID, *auth.Session, error) 
 }
 
 func worklogInput(value WorklogRequest) daily.WorklogInput {
-	var pv, netAmount *float64
+	var pv *float64
 	if value.TurnoverPv != nil {
 		converted := float64(*value.TurnoverPv)
 		pv = &converted
 	}
-	if value.TurnoverNetAmount != nil {
-		converted := float64(*value.TurnoverNetAmount)
-		netAmount = &converted
-	}
+	netAmount := moneyPointer(value.TurnoverNetAmount)
 	return daily.WorklogInput{WorkDate: value.WorkDate.Time, OpenConversationCount: int32(value.OpenConversationCount), DeepConversationCount: int32(value.DeepConversationCount), BufferCount: int32(value.BufferCount), StoryShareCount: int32(value.StoryShareCount), ScreeningCount: int32(value.ScreeningCount), OpportunityCount: int32(value.OpportunityCount), MeetingCount: int32(value.MeetingCount), CustomerFollowupCount: int32(value.CustomerFollowupCount), ReadingMinutes: int32(value.ReadingMinutes), AudioMinutes: int32(value.AudioMinutes), TurnoverPV: pv, TurnoverNetAmount: netAmount, Note: value.Note}
 }
 
 func turnoverInput(value TurnoverRequest) daily.TurnoverInput {
-	var pv, netAmount *float64
+	var pv *float64
 	if value.Pv != nil {
 		converted := float64(*value.Pv)
 		pv = &converted
 	}
-	if value.NetAmount != nil {
-		converted := float64(*value.NetAmount)
-		netAmount = &converted
-	}
+	netAmount := moneyPointer(value.NetAmount)
 	return daily.TurnoverInput{TurnoverDate: value.TurnoverDate.Time, PV: pv, NetAmount: netAmount, Note: value.Note}
 }
 
@@ -1072,11 +1090,17 @@ func dreamInput(value DreamRequest) daily.DreamInput {
 			goalIDs = append(goalIDs, uuid.UUID(id))
 		}
 	}
+	fileIDs := []uuid.UUID{}
+	if value.FileIds != nil {
+		for _, id := range *value.FileIds {
+			fileIDs = append(fileIDs, uuid.UUID(id))
+		}
+	}
 	sortOrder := 0
 	if value.SortOrder != nil {
 		sortOrder = *value.SortOrder
 	}
-	return daily.DreamInput{Title: value.Title, Description: value.Description, GoalIDs: goalIDs, SortOrder: int32(sortOrder)}
+	return daily.DreamInput{Title: value.Title, Description: value.Description, GoalIDs: goalIDs, FileIDs: fileIDs, SortOrder: int32(sortOrder)}
 }
 
 func goalInput(value GoalRequest) daily.GoalInput {
@@ -1129,7 +1153,7 @@ func dailyDate(value time.Time) time.Time {
 }
 
 func worklogDTO(value daily.Worklog) Worklog {
-	return Worklog{Id: value.ID, WorkDate: apiDate(value.WorkDate), OpenConversationCount: int(value.OpenConversationCount), DeepConversationCount: int(value.DeepConversationCount), BufferCount: int(value.BufferCount), StoryShareCount: int(value.StoryShareCount), ScreeningCount: int(value.ScreeningCount), OpportunityCount: int(value.OpportunityCount), MeetingCount: int(value.MeetingCount), CustomerFollowupCount: int(value.CustomerFollowupCount), ReadingMinutes: value.ReadingMinutes, AudioMinutes: value.AudioMinutes, TurnoverPv: float32Pointer(value.TurnoverPV), TurnoverNetAmount: float32Pointer(value.TurnoverNetAmount), Note: value.Note, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return Worklog{Id: value.ID, WorkDate: apiDate(value.WorkDate), OpenConversationCount: int(value.OpenConversationCount), DeepConversationCount: int(value.DeepConversationCount), BufferCount: int(value.BufferCount), StoryShareCount: int(value.StoryShareCount), ScreeningCount: int(value.ScreeningCount), OpportunityCount: int(value.OpportunityCount), MeetingCount: int(value.MeetingCount), CustomerFollowupCount: int(value.CustomerFollowupCount), ReadingMinutes: value.ReadingMinutes, AudioMinutes: value.AudioMinutes, TurnoverPv: float32Pointer(value.TurnoverPV), TurnoverNetAmount: moneyPointerString(value.TurnoverNetAmount), Note: value.Note, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func worklogsDTO(values []daily.Worklog) []Worklog {
@@ -1141,7 +1165,7 @@ func worklogsDTO(values []daily.Worklog) []Worklog {
 }
 
 func turnoverDTO(value daily.Turnover) Turnover {
-	return Turnover{Id: value.ID, TurnoverDate: apiDate(value.TurnoverDate), Pv: float32(value.PV), NetAmount: float32(value.NetAmount), Note: value.Note, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return Turnover{Id: value.ID, TurnoverDate: apiDate(value.TurnoverDate), Pv: float32(value.PV), NetAmount: money.Format(value.NetAmount), Note: value.Note, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 func turnoversDTO(values []daily.Turnover) []Turnover {
 	result := make([]Turnover, 0, len(values))
@@ -1156,7 +1180,11 @@ func dreamDTO(value daily.Dream) Dream {
 	for _, id := range value.GoalIDs {
 		ids = append(ids, id)
 	}
-	return Dream{Id: value.ID, Title: value.Title, Description: value.Description, GoalIds: ids, SortOrder: int(value.SortOrder), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	fileIDs := make([]openapi_types.UUID, 0, len(value.FileIDs))
+	for _, id := range value.FileIDs {
+		fileIDs = append(fileIDs, openapi_types.UUID(id))
+	}
+	return Dream{Id: value.ID, Title: value.Title, Description: value.Description, GoalIds: ids, FileIds: fileIDs, SortOrder: int(value.SortOrder), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 func dreamsDTO(values []daily.Dream) []Dream {
 	result := make([]Dream, 0, len(values))
@@ -1187,7 +1215,7 @@ func goalsDTO(values []daily.Goal) []Goal {
 }
 
 func dashboardPeriodDTO(value daily.Period) DashboardPeriod {
-	return DashboardPeriod{From: apiDate(value.From), To: apiDate(value.To), Worklogs: WorklogTotals{OpenConversationCount: int(value.Worklogs.OpenConversationCount), DeepConversationCount: int(value.Worklogs.DeepConversationCount), BufferCount: int(value.Worklogs.BufferCount), StoryShareCount: int(value.Worklogs.StoryShareCount), ScreeningCount: int(value.Worklogs.ScreeningCount), OpportunityCount: int(value.Worklogs.OpportunityCount), MeetingCount: int(value.Worklogs.MeetingCount), CustomerFollowupCount: int(value.Worklogs.CustomerFollowupCount), ReadingMinutes: int(value.Worklogs.ReadingMinutes), AudioMinutes: int(value.Worklogs.AudioMinutes)}, Turnover: TurnoverTotals{Pv: float32(value.Turnover.PV), NetAmount: float32(value.Turnover.NetAmount)}}
+	return DashboardPeriod{From: apiDate(value.From), To: apiDate(value.To), Worklogs: WorklogTotals{OpenConversationCount: int(value.Worklogs.OpenConversationCount), DeepConversationCount: int(value.Worklogs.DeepConversationCount), BufferCount: int(value.Worklogs.BufferCount), StoryShareCount: int(value.Worklogs.StoryShareCount), ScreeningCount: int(value.Worklogs.ScreeningCount), OpportunityCount: int(value.Worklogs.OpportunityCount), MeetingCount: int(value.Worklogs.MeetingCount), CustomerFollowupCount: int(value.Worklogs.CustomerFollowupCount), ReadingMinutes: int(value.Worklogs.ReadingMinutes), AudioMinutes: int(value.Worklogs.AudioMinutes)}, Turnover: TurnoverTotals{Pv: float32(value.Turnover.PV), NetAmount: money.Format(value.Turnover.NetAmount)}}
 }
 
 func float32Pointer(value *float64) *float32 {
@@ -1196,6 +1224,25 @@ func float32Pointer(value *float64) *float32 {
 	}
 	converted := float32(*value)
 	return &converted
+}
+
+func moneyPointer(value *string) *money.Cents {
+	if value == nil {
+		return nil
+	}
+	parsed, err := money.Parse(*value)
+	if err != nil {
+		return nil
+	}
+	return &parsed
+}
+
+func moneyPointerString(value *money.Cents) *string {
+	if value == nil {
+		return nil
+	}
+	formatted := money.Format(*value)
+	return &formatted
 }
 
 func calendarInput(value CalendarEventRequest) calendar.Input {
@@ -1252,7 +1299,7 @@ func reviewDTO(value reviews.Review) Review {
 		converted := openapi_types.UUID(value.ID)
 		id = &converted
 	}
-	return Review{Id: id, Type: ReviewType(value.Type), PeriodStart: apiDate(value.PeriodStart), Good: stringPointerValue(value.Good), Problems: stringPointerValue(value.Problems), Improvements: stringPointerValue(value.Improvements), NextFocus: stringPointerValue(value.NextFocus), Summary: value.Summary, Totals: ReviewPeriodTotals{WorklogActionCount: int(value.WorklogActionCount), TurnoverPv: float32(value.TurnoverPV), TurnoverNetAmount: float32(value.TurnoverNetAmount)}}
+	return Review{Id: id, Type: ReviewType(value.Type), PeriodStart: apiDate(value.PeriodStart), Good: stringPointerValue(value.Good), Problems: stringPointerValue(value.Problems), Improvements: stringPointerValue(value.Improvements), NextFocus: stringPointerValue(value.NextFocus), Summary: value.Summary, Totals: ReviewPeriodTotals{WorklogActionCount: int(value.WorklogActionCount), TurnoverPv: float32(value.TurnoverPV), TurnoverNetAmount: formatFloatMoney(value.TurnoverNetAmount)}}
 }
 
 func stringPointerValue(value *string) string {
@@ -1260,6 +1307,14 @@ func stringPointerValue(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func formatFloatMoney(value float64) string {
+	parsed, err := money.FromFloat(value)
+	if err != nil {
+		return "0.00"
+	}
+	return money.Format(parsed)
 }
 
 func datePointer(value *time.Time) *openapi_types.Date {

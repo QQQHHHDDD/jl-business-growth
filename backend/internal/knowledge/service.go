@@ -155,7 +155,10 @@ func (s *Service) SaveItem(ctx context.Context, userID, id uuid.UUID, input Item
 	}
 	for _, fileID := range input.FileIDs {
 		var owned bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM file_assets WHERE id=$1 AND user_id=$2)`, fileID, userID).Scan(&owned); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(
+			SELECT 1 FROM file_assets
+			WHERE id=$1 AND user_id=$2 AND category IN ('KNOWLEDGE_DOCUMENT','KNOWLEDGE_IMAGE')
+		)`, fileID, userID).Scan(&owned); err != nil {
 			return Item{}, err
 		}
 		if !owned {

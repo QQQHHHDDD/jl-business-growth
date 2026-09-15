@@ -16,6 +16,7 @@ import (
 
 	"jl-business-growth/backend/db/generated"
 	"jl-business-growth/backend/internal/auth"
+	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
 )
 
@@ -58,7 +59,7 @@ type WorklogInput struct {
 	ReadingMinutes        int32
 	AudioMinutes          int32
 	TurnoverPV            *float64
-	TurnoverNetAmount     *float64
+	TurnoverNetAmount     *money.Cents
 	Note                  *string
 }
 
@@ -77,7 +78,7 @@ type Worklog struct {
 	ReadingMinutes        int
 	AudioMinutes          int
 	TurnoverPV            *float64
-	TurnoverNetAmount     *float64
+	TurnoverNetAmount     *money.Cents
 	Note                  *string
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
@@ -86,7 +87,7 @@ type Worklog struct {
 type TurnoverInput struct {
 	TurnoverDate time.Time
 	PV           *float64
-	NetAmount    *float64
+	NetAmount    *money.Cents
 	Note         *string
 }
 
@@ -95,7 +96,7 @@ type Turnover struct {
 	UserID       uuid.UUID
 	TurnoverDate time.Time
 	PV           float64
-	NetAmount    float64
+	NetAmount    money.Cents
 	Note         *string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -105,6 +106,7 @@ type DreamInput struct {
 	Title       string
 	Description *string
 	GoalIDs     []uuid.UUID
+	FileIDs     []uuid.UUID
 	SortOrder   int32
 }
 
@@ -114,6 +116,7 @@ type Dream struct {
 	Title       string
 	Description *string
 	GoalIDs     []uuid.UUID
+	FileIDs     []uuid.UUID
 	SortOrder   int32
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -177,7 +180,7 @@ type WorklogTotals struct {
 
 type TurnoverTotals struct {
 	PV        float64
-	NetAmount float64
+	NetAmount money.Cents
 }
 
 type Period struct {
@@ -188,13 +191,26 @@ type Period struct {
 }
 
 type Dashboard struct {
-	Date        time.Time
-	Today       Period
-	Week        Period
-	Month       Period
-	ActiveGoals []Goal
-	DreamsCount int64
+	Date            time.Time
+	Today           Period
+	Week            Period
+	Month           Period
+	ActiveGoals     []Goal
+	DreamsCount     int64
+	UpcomingEvents  []UpcomingEvent
+	TeamSummary     DashboardTeamSummary
+	LearningSummary DashboardLearningSummary
+	FinanceSummary  DashboardFinanceSummary
 }
+
+type UpcomingEvent struct {
+	ID             uuid.UUID
+	Title          string
+	StartAt, EndAt time.Time
+}
+type DashboardTeamSummary struct{ TotalMembers, ActiveMembers int64 }
+type DashboardLearningSummary struct{ ReadingMinutes, AudioMinutes int64 }
+type DashboardFinanceSummary struct{ Income, Expense, NetCashFlow money.Cents }
 
 func (s *Service) ListWorklogs(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]Worklog, error) {
 	from, to = normalizeRange(from, to)
@@ -277,7 +293,7 @@ func (s *Service) SaveWorklog(ctx context.Context, userID uuid.UUID, input Workl
 		if err != nil {
 			return Worklog{}, err
 		}
-		if _, err := queries.UpsertTurnover(ctx, generated.UpsertTurnoverParams{ID: auth.ToPGUUID(uuid.New()), UserID: auth.ToPGUUID(userID), TurnoverDate: toPGDate(input.WorkDate), Pv: numericValue(pv), NetAmount: numericValue(netAmount), Note: textValue(input.Note)}); err != nil {
+		if _, err := queries.UpsertTurnover(ctx, generated.UpsertTurnoverParams{ID: auth.ToPGUUID(uuid.New()), UserID: auth.ToPGUUID(userID), TurnoverDate: toPGDate(input.WorkDate), Pv: numericValue(pv), NetAmount: money.Numeric(netAmount), Note: textValue(input.Note)}); err != nil {
 			return Worklog{}, err
 		}
 	}
@@ -338,7 +354,7 @@ func (s *Service) SaveTurnover(ctx context.Context, userID uuid.UUID, input Turn
 	if err != nil {
 		return Turnover{}, err
 	}
-	row, err := s.queries.UpsertTurnover(ctx, generated.UpsertTurnoverParams{ID: auth.ToPGUUID(uuid.New()), UserID: auth.ToPGUUID(userID), TurnoverDate: toPGDate(input.TurnoverDate), Pv: numericValue(pv), NetAmount: numericValue(netAmount), Note: textValue(input.Note)})
+	row, err := s.queries.UpsertTurnover(ctx, generated.UpsertTurnoverParams{ID: auth.ToPGUUID(uuid.New()), UserID: auth.ToPGUUID(userID), TurnoverDate: toPGDate(input.TurnoverDate), Pv: numericValue(pv), NetAmount: money.Numeric(netAmount), Note: textValue(input.Note)})
 	if err != nil {
 		return Turnover{}, err
 	}
@@ -405,6 +421,23 @@ func (s *Service) SaveDream(ctx context.Context, userID, dreamID uuid.UUID, inpu
 	}
 	for _, goalID := range input.GoalIDs {
 		if err := queries.AddDreamGoalLink(ctx, generated.AddDreamGoalLinkParams{DreamID: auth.ToPGUUID(dreamID), GoalID: auth.ToPGUUID(goalID)}); err != nil {
+			return Dream{}, err
+		}
+	}
+	if len(input.FileIDs) > 0 {
+		var count int
+		if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM file_assets WHERE user_id=$1 AND id=ANY($2::uuid[]) AND category='DREAM_IMAGE'`, userID, input.FileIDs).Scan(&count); err != nil {
+			return Dream{}, err
+		}
+		if count != len(input.FileIDs) {
+			return Dream{}, problem.New("FORBIDDEN", http.StatusForbidden, "dream files must belong to the current user")
+		}
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM dream_files WHERE dream_id=$1`, dreamID); err != nil {
+		return Dream{}, err
+	}
+	for index, fileID := range input.FileIDs {
+		if _, err := tx.Exec(ctx, `INSERT INTO dream_files (dream_id,file_id,sort_order) VALUES ($1,$2,$3)`, dreamID, fileID, index); err != nil {
 			return Dream{}, err
 		}
 	}
@@ -551,7 +584,48 @@ func (s *Service) Dashboard(ctx context.Context, userID uuid.UUID, date time.Tim
 	if err != nil {
 		return Dashboard{}, err
 	}
-	return Dashboard{Date: date, Today: today, Week: week, Month: month, ActiveGoals: active, DreamsCount: dreamsCount}, nil
+	upcoming, err := s.dashboardEvents(ctx, userID, date)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	var teamSummary DashboardTeamSummary
+	if err := s.pool.QueryRow(ctx, `SELECT COUNT(*), COUNT(*) FILTER (WHERE status='ACTIVE') FROM team_members WHERE user_id=$1`, userID).Scan(&teamSummary.TotalMembers, &teamSummary.ActiveMembers); err != nil {
+		return Dashboard{}, err
+	}
+	var learning DashboardLearningSummary
+	if err := s.pool.QueryRow(ctx, `SELECT COALESCE(SUM(minutes) FILTER (WHERE activity_type='READING'),0), COALESCE(SUM(minutes) FILTER (WHERE activity_type='AUDIO'),0) FROM learning_sessions WHERE user_id=$1 AND activity_date >= $2 AND activity_date < $3`, userID, monthFrom, monthFrom.AddDate(0, 1, 0)).Scan(&learning.ReadingMinutes, &learning.AudioMinutes); err != nil {
+		return Dashboard{}, err
+	}
+	var incomeRaw, expenseRaw string
+	if err := s.pool.QueryRow(ctx, `SELECT COALESCE(SUM(amount) FILTER (WHERE type='INCOME'),0)::text, COALESCE(SUM(amount) FILTER (WHERE type='EXPENSE'),0)::text FROM financial_transactions WHERE user_id=$1 AND occurred_on >= $2 AND occurred_on < $3`, userID, monthFrom, monthFrom.AddDate(0, 1, 0)).Scan(&incomeRaw, &expenseRaw); err != nil {
+		return Dashboard{}, err
+	}
+	income, err := money.Parse(incomeRaw)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	expense, err := money.Parse(expenseRaw)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	return Dashboard{Date: date, Today: today, Week: week, Month: month, ActiveGoals: active, DreamsCount: dreamsCount, UpcomingEvents: upcoming, TeamSummary: teamSummary, LearningSummary: learning, FinanceSummary: DashboardFinanceSummary{Income: income, Expense: expense, NetCashFlow: income - expense}}, nil
+}
+
+func (s *Service) dashboardEvents(ctx context.Context, userID uuid.UUID, date time.Time) ([]UpcomingEvent, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id,title,start_at,end_at FROM calendar_events WHERE user_id=$1 AND start_at >= $2 AND start_at < $3 ORDER BY start_at LIMIT 5`, userID, date, date.AddDate(0, 0, 7))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]UpcomingEvent, 0)
+	for rows.Next() {
+		var item UpcomingEvent
+		if err := rows.Scan(&item.ID, &item.Title, &item.StartAt, &item.EndAt); err != nil {
+			return nil, err
+		}
+		result = append(result, item)
+	}
+	return result, rows.Err()
 }
 
 func (s *Service) period(ctx context.Context, userID uuid.UUID, from, to time.Time) (Period, error) {
@@ -563,7 +637,7 @@ func (s *Service) period(ctx context.Context, userID uuid.UUID, from, to time.Ti
 	if err != nil {
 		return Period{}, err
 	}
-	return Period{From: dateOnly(from), To: dateOnly(to), Worklogs: WorklogTotals{OpenConversationCount: worklogs.OpenConversationCount, DeepConversationCount: worklogs.DeepConversationCount, BufferCount: worklogs.BufferCount, StoryShareCount: worklogs.StoryShareCount, ScreeningCount: worklogs.ScreeningCount, OpportunityCount: worklogs.OpportunityCount, MeetingCount: worklogs.MeetingCount, CustomerFollowupCount: worklogs.CustomerFollowupCount, ReadingMinutes: worklogs.ReadingMinutes, AudioMinutes: worklogs.AudioMinutes}, Turnover: TurnoverTotals{PV: numericFloat(turnover.Pv), NetAmount: numericFloat(turnover.NetAmount)}}, nil
+	return Period{From: dateOnly(from), To: dateOnly(to), Worklogs: WorklogTotals{OpenConversationCount: worklogs.OpenConversationCount, DeepConversationCount: worklogs.DeepConversationCount, BufferCount: worklogs.BufferCount, StoryShareCount: worklogs.StoryShareCount, ScreeningCount: worklogs.ScreeningCount, OpportunityCount: worklogs.OpportunityCount, MeetingCount: worklogs.MeetingCount, CustomerFollowupCount: worklogs.CustomerFollowupCount, ReadingMinutes: worklogs.ReadingMinutes, AudioMinutes: worklogs.AudioMinutes}, Turnover: TurnoverTotals{PV: numericFloat(turnover.Pv), NetAmount: numericMoney(turnover.NetAmount)}}, nil
 }
 
 func (s *Service) metricsForGoals(ctx context.Context, rows []generated.Goal) (map[uuid.UUID][]GoalMetric, error) {
@@ -603,7 +677,7 @@ func (s *Service) goalFromRow(ctx context.Context, row generated.Goal, metrics [
 		return Goal{}, err
 	}
 	totals := WorklogTotals{OpenConversationCount: worklogs.OpenConversationCount, DeepConversationCount: worklogs.DeepConversationCount, BufferCount: worklogs.BufferCount, StoryShareCount: worklogs.StoryShareCount, ScreeningCount: worklogs.ScreeningCount, OpportunityCount: worklogs.OpportunityCount, MeetingCount: worklogs.MeetingCount, CustomerFollowupCount: worklogs.CustomerFollowupCount, ReadingMinutes: worklogs.ReadingMinutes, AudioMinutes: worklogs.AudioMinutes}
-	turnoverTotals := TurnoverTotals{PV: numericFloat(turnover.Pv), NetAmount: numericFloat(turnover.NetAmount)}
+	turnoverTotals := TurnoverTotals{PV: numericFloat(turnover.Pv), NetAmount: numericMoney(turnover.NetAmount)}
 	progress := 0.0
 	if len(metrics) > 0 {
 		for index := range metrics {
@@ -636,7 +710,23 @@ func (s *Service) dreamFromRow(ctx context.Context, row generated.Dream) (Dream,
 	for _, id := range ids {
 		goalIDs = append(goalIDs, uuidFromPG(id))
 	}
-	return Dream{ID: uuidFromPG(row.ID), UserID: uuidFromPG(row.UserID), Title: row.Title, Description: textPointer(row.Description), GoalIDs: goalIDs, SortOrder: row.SortOrder, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}, nil
+	fileRows, err := s.pool.Query(ctx, `SELECT file_id FROM dream_files WHERE dream_id=$1 ORDER BY sort_order,file_id`, row.ID)
+	if err != nil {
+		return Dream{}, err
+	}
+	defer fileRows.Close()
+	fileIDs := make([]uuid.UUID, 0)
+	for fileRows.Next() {
+		var id uuid.UUID
+		if err := fileRows.Scan(&id); err != nil {
+			return Dream{}, err
+		}
+		fileIDs = append(fileIDs, id)
+	}
+	if err := fileRows.Err(); err != nil {
+		return Dream{}, err
+	}
+	return Dream{ID: uuidFromPG(row.ID), UserID: uuidFromPG(row.UserID), Title: row.Title, Description: textPointer(row.Description), GoalIDs: goalIDs, FileIDs: fileIDs, SortOrder: row.SortOrder, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}, nil
 }
 
 func (s *Service) validateGoalIDs(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error {
@@ -717,7 +807,7 @@ func metricActual(code string, worklogs WorklogTotals, turnover TurnoverTotals) 
 	case "turnover_pv":
 		return turnover.PV
 	case "turnover_net_amount":
-		return turnover.NetAmount
+		return float64(turnover.NetAmount) / 100
 	default:
 		return 0
 	}
@@ -733,19 +823,21 @@ func validateWorklog(input WorklogInput) error {
 	return nil
 }
 
-func normalizeTurnover(pv, netAmount *float64) (float64, float64, error) {
+func normalizeTurnover(pv *float64, netAmount *money.Cents) (float64, money.Cents, error) {
 	if pv == nil && netAmount == nil {
 		return 0, 0, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "pv or net amount is required")
 	}
-	if pv != nil && (*pv < 0 || math.IsNaN(*pv) || math.IsInf(*pv, 0)) || netAmount != nil && (*netAmount < 0 || math.IsNaN(*netAmount) || math.IsInf(*netAmount, 0)) {
+	if pv != nil && (*pv < 0 || math.IsNaN(*pv) || math.IsInf(*pv, 0)) || netAmount != nil && *netAmount < 0 {
 		return 0, 0, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "turnover values must be non-negative numbers")
 	}
 	if pv == nil {
-		value := roundMoney(*netAmount / pvToNetAmount)
-		return value, roundMoney(*netAmount), nil
+		return float64(*netAmount) / (pvToNetAmount * 100), *netAmount, nil
 	}
-	calculated := roundMoney(*pv * pvToNetAmount)
-	if netAmount != nil && math.Abs(calculated-roundMoney(*netAmount)) > 0.01 {
+	calculated, err := money.FromFloat(*pv * pvToNetAmount)
+	if err != nil {
+		return 0, 0, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "turnover values must be finite")
+	}
+	if netAmount != nil && calculated != *netAmount {
 		return 0, 0, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "pv and net amount do not match")
 	}
 	return roundMoney(*pv), calculated, nil
@@ -765,16 +857,24 @@ func numericFloat(value pgtype.Numeric) float64 {
 	return result.Float64
 }
 
+func numericMoney(value pgtype.Numeric) money.Cents {
+	result, err := money.FromNumeric(value)
+	if err != nil {
+		return 0
+	}
+	return result
+}
+
 func worklogFromListRow(row generated.ListWorklogsRow) (Worklog, error) {
-	return Worklog{ID: uuidFromPG(row.ID), UserID: uuidFromPG(row.UserID), WorkDate: dateOnly(row.WorkDate.Time), OpenConversationCount: row.OpenConversationCount, DeepConversationCount: row.DeepConversationCount, BufferCount: row.BufferCount, StoryShareCount: row.StoryShareCount, ScreeningCount: row.ScreeningCount, OpportunityCount: row.OpportunityCount, MeetingCount: row.MeetingCount, CustomerFollowupCount: row.CustomerFollowupCount, ReadingMinutes: int(row.ReadingMinutes), AudioMinutes: int(row.AudioMinutes), TurnoverPV: optionalNumeric(row.TurnoverPv), TurnoverNetAmount: optionalNumeric(row.TurnoverNetAmount), Note: textPointer(row.Note), CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}, nil
+	return Worklog{ID: uuidFromPG(row.ID), UserID: uuidFromPG(row.UserID), WorkDate: dateOnly(row.WorkDate.Time), OpenConversationCount: row.OpenConversationCount, DeepConversationCount: row.DeepConversationCount, BufferCount: row.BufferCount, StoryShareCount: row.StoryShareCount, ScreeningCount: row.ScreeningCount, OpportunityCount: row.OpportunityCount, MeetingCount: row.MeetingCount, CustomerFollowupCount: row.CustomerFollowupCount, ReadingMinutes: int(row.ReadingMinutes), AudioMinutes: int(row.AudioMinutes), TurnoverPV: optionalNumeric(row.TurnoverPv), TurnoverNetAmount: optionalMoney(row.TurnoverNetAmount), Note: textPointer(row.Note), CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}, nil
 }
 
 func worklogFromGetRow(row generated.GetWorklogRow) (Worklog, error) {
-	return Worklog{ID: uuidFromPG(row.ID), UserID: uuidFromPG(row.UserID), WorkDate: dateOnly(row.WorkDate.Time), OpenConversationCount: row.OpenConversationCount, DeepConversationCount: row.DeepConversationCount, BufferCount: row.BufferCount, StoryShareCount: row.StoryShareCount, ScreeningCount: row.ScreeningCount, OpportunityCount: row.OpportunityCount, MeetingCount: row.MeetingCount, CustomerFollowupCount: row.CustomerFollowupCount, ReadingMinutes: int(row.ReadingMinutes), AudioMinutes: int(row.AudioMinutes), TurnoverPV: optionalNumeric(row.TurnoverPv), TurnoverNetAmount: optionalNumeric(row.TurnoverNetAmount), Note: textPointer(row.Note), CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}, nil
+	return Worklog{ID: uuidFromPG(row.ID), UserID: uuidFromPG(row.UserID), WorkDate: dateOnly(row.WorkDate.Time), OpenConversationCount: row.OpenConversationCount, DeepConversationCount: row.DeepConversationCount, BufferCount: row.BufferCount, StoryShareCount: row.StoryShareCount, ScreeningCount: row.ScreeningCount, OpportunityCount: row.OpportunityCount, MeetingCount: row.MeetingCount, CustomerFollowupCount: row.CustomerFollowupCount, ReadingMinutes: int(row.ReadingMinutes), AudioMinutes: int(row.AudioMinutes), TurnoverPV: optionalNumeric(row.TurnoverPv), TurnoverNetAmount: optionalMoney(row.TurnoverNetAmount), Note: textPointer(row.Note), CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}, nil
 }
 
 func turnoverFromRow(row generated.DailyTurnover) (Turnover, error) {
-	return Turnover{ID: uuidFromPG(row.ID), UserID: uuidFromPG(row.UserID), TurnoverDate: dateOnly(row.TurnoverDate.Time), PV: numericFloat(row.Pv), NetAmount: numericFloat(row.NetAmount), Note: textPointer(row.Note), CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}, nil
+	return Turnover{ID: uuidFromPG(row.ID), UserID: uuidFromPG(row.UserID), TurnoverDate: dateOnly(row.TurnoverDate.Time), PV: numericFloat(row.Pv), NetAmount: numericMoney(row.NetAmount), Note: textPointer(row.Note), CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}, nil
 }
 
 func optionalNumeric(value pgtype.Numeric) *float64 {
@@ -782,6 +882,14 @@ func optionalNumeric(value pgtype.Numeric) *float64 {
 		return nil
 	}
 	result := numericFloat(value)
+	return &result
+}
+
+func optionalMoney(value pgtype.Numeric) *money.Cents {
+	if !value.Valid {
+		return nil
+	}
+	result := numericMoney(value)
 	return &result
 }
 

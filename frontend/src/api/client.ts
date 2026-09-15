@@ -374,6 +374,14 @@ export function getAnalytics(metric: "worklogs" | "turnover" | "goals", from: st
   return request(`/api/analytics/${metric}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&granularity=${granularity}`);
 }
 
+export function getFinanceAnalytics(from: string, to: string, granularity: "day" | "week" | "month"): Promise<AnalyticsResponse> {
+  return request(`/api/analytics/finance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&granularity=${granularity}`);
+}
+
+export function getTeamAnalytics(from: string, to: string, granularity: "day" | "week" | "month"): Promise<AnalyticsResponse> {
+  return request(`/api/analytics/team?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&granularity=${granularity}`);
+}
+
 export function deleteGoal(csrfToken: string, id: string): Promise<void> {
   return request(`/api/goals/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE"));
 }

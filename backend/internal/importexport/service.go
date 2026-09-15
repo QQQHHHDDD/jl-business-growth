@@ -4,12 +4,13 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"mime/multipart"
 	"net/http"
@@ -21,12 +22,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jl-business-growth/backend/db/generated"
 	"jl-business-growth/backend/internal/auth"
 	"jl-business-growth/backend/internal/config"
+	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
 )
 
@@ -59,6 +62,7 @@ type PreviewRow struct {
 	RowNumber int               `json:"row_number"`
 	Values    map[string]string `json:"values"`
 	Errors    []string          `json:"errors"`
+	Warnings  []string          `json:"warnings"`
 }
 
 type Job struct {
@@ -72,17 +76,21 @@ type Job struct {
 	ExpiresAt         time.Time
 	CreatedAt         time.Time
 	Rows              []PreviewRow
+	Warnings          []string
 }
 
 type validationSummary struct {
-	Headers []string     `json:"headers"`
-	Rows    []PreviewRow `json:"rows"`
+	Headers  []string     `json:"headers"`
+	Rows     []PreviewRow `json:"rows"`
+	Warnings []string     `json:"warnings,omitempty"`
 }
 
 type parsedRow struct {
-	Preview PreviewRow
-	Date    time.Time
-	Values  map[string]string
+	Preview     PreviewRow
+	Date        time.Time
+	Values      map[string]string
+	Skip        bool
+	Fingerprint string
 }
 
 func (s *Service) Template(ctx context.Context, kind string) ([]byte, string, error) {
@@ -133,6 +141,21 @@ func (s *Service) createFromBytes(ctx context.Context, userID uuid.UUID, kind st
 	if validationErr != nil {
 		return Job{}, validationErr
 	}
+	if err := s.validateDatabase(ctx, userID, kind, parsed); err != nil {
+		return Job{}, err
+	}
+	preview = previewRows(parsed)
+	digest := sha256.Sum256(data)
+	fileHash := hex.EncodeToString(digest[:])
+	var duplicateID uuid.UUID
+	duplicateErr := s.pool.QueryRow(ctx, `SELECT id FROM import_jobs WHERE user_id=$1 AND type=$2 AND file_sha256=$3 AND status='COMMITTED' ORDER BY committed_at DESC LIMIT 1`, userID, kind, fileHash).Scan(&duplicateID)
+	if duplicateErr != nil && !errors.Is(duplicateErr, pgx.ErrNoRows) {
+		return Job{}, duplicateErr
+	}
+	warnings := make([]string, 0, 1)
+	if duplicateErr == nil {
+		warnings = append(warnings, "same file was successfully imported before")
+	}
 	jobID := uuid.New()
 	importsRoot := filepath.Join(s.root, "imports")
 	if err := os.MkdirAll(importsRoot, 0o700); err != nil {
@@ -142,13 +165,13 @@ func (s *Service) createFromBytes(ctx context.Context, userID uuid.UUID, kind st
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return Job{}, err
 	}
-	summary := validationSummary{Headers: importColumns[kind], Rows: preview}
+	summary := validationSummary{Headers: importColumns[kind], Rows: preview, Warnings: warnings}
 	encoded, err := json.Marshal(summary)
 	if err != nil {
 		_ = os.Remove(path)
 		return Job{}, err
 	}
-	row, err := s.queries.CreateImportJob(ctx, generated.CreateImportJobParams{ID: auth.ToPGUUID(jobID), UserID: auth.ToPGUUID(userID), Type: generated.ImportJobType(kind), TempFilePath: path, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true}})
+	row, err := s.queries.CreateImportJob(ctx, generated.CreateImportJobParams{ID: auth.ToPGUUID(jobID), UserID: auth.ToPGUUID(userID), Type: generated.ImportJobType(kind), TempFilePath: path, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true}, FileSha256: pgtype.Text{String: fileHash, Valid: true}})
 	if err != nil {
 		_ = os.Remove(path)
 		return Job{}, err
@@ -199,7 +222,15 @@ func (s *Service) Validate(ctx context.Context, userID, id uuid.UUID) (Job, erro
 	if validationErr != nil {
 		return Job{}, validationErr
 	}
-	encoded, err := json.Marshal(validationSummary{Headers: importColumns[string(row.Type)], Rows: preview})
+	if err := s.validateDatabase(ctx, userID, string(row.Type), parsed); err != nil {
+		return Job{}, err
+	}
+	preview = previewRows(parsed)
+	existingSummary, err := decodeSummary(row.ValidationSummary)
+	if err != nil {
+		return Job{}, err
+	}
+	encoded, err := json.Marshal(validationSummary{Headers: importColumns[string(row.Type)], Rows: preview, Warnings: existingSummary.Warnings})
 	if err != nil {
 		return Job{}, err
 	}
@@ -225,6 +256,16 @@ func (s *Service) Commit(ctx context.Context, userID, id uuid.UUID) (Job, error)
 	if row.Status != generated.ImportJobStatusVALIDATED {
 		return Job{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "only a valid import can be confirmed")
 	}
+	if row.FileSha256.Valid {
+		var previousID uuid.UUID
+		duplicateErr := s.pool.QueryRow(ctx, `SELECT id FROM import_jobs WHERE user_id=$1 AND type=$2 AND file_sha256=$3 AND status='COMMITTED' AND id<>$4 LIMIT 1`, userID, row.Type, row.FileSha256, row.ID).Scan(&previousID)
+		if duplicateErr == nil {
+			return Job{}, problem.New("CONFLICT", http.StatusConflict, "same file was successfully imported before")
+		}
+		if !errors.Is(duplicateErr, pgx.ErrNoRows) {
+			return Job{}, duplicateErr
+		}
+	}
 	if !row.ExpiresAt.Valid || !row.ExpiresAt.Time.After(time.Now()) {
 		return Job{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "import job has expired")
 	}
@@ -241,6 +282,9 @@ func (s *Service) Commit(ctx context.Context, userID, id uuid.UUID) (Job, error)
 	if validationErr != nil {
 		return Job{}, validationErr
 	}
+	if err := s.validateDatabase(ctx, userID, string(row.Type), parsed); err != nil {
+		return Job{}, err
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Job{}, err
@@ -254,6 +298,10 @@ func (s *Service) Commit(ctx context.Context, userID, id uuid.UUID) (Job, error)
 		return Job{}, problem.New("CONFLICT", http.StatusConflict, "import job was already committed")
 	}
 	if err != nil {
+		var constraintErr *pgconn.PgError
+		if errors.As(err, &constraintErr) && constraintErr.ConstraintName == "import_jobs_success_hash_idx" {
+			return Job{}, problem.New("CONFLICT", http.StatusConflict, "same file was successfully imported before")
+		}
 		return Job{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -323,7 +371,11 @@ func (s *Service) CleanupOrphanFiles(ctx context.Context) error {
 		if _, ok := known[entry.Name()]; ok {
 			continue
 		}
-		if err := os.Remove(filepath.Join(s.root, entry.Name())); err != nil && !errors.Is(err, os.ErrNotExist) {
+		path, pathErr := s.storagePath(entry.Name())
+		if pathErr != nil {
+			continue
+		}
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
 	}
@@ -334,6 +386,15 @@ func (s *Service) CleanupOrphanFiles(ctx context.Context) error {
 // removing physical files. A failed physical removal is logged for the
 // cleanup job to retry; database rows are never retained after this point.
 func (s *Service) DeleteAccount(ctx context.Context, accountID uuid.UUID) error {
+	// Commit the deleting state first so session loading rejects new writes while
+	// the dependent rows and physical files are being removed.
+	result, err := s.pool.Exec(ctx, `UPDATE accounts SET status='DELETING', updated_at=now() WHERE id=$1 AND status <> 'DELETING'`, accountID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return problem.New("CONFLICT", http.StatusConflict, "account is already being deleted")
+	}
 	rows, err := s.pool.Query(ctx, `SELECT storage_name FROM file_assets WHERE user_id=$1`, accountID)
 	if err != nil {
 		return err
@@ -367,14 +428,62 @@ func (s *Service) DeleteAccount(ctx context.Context, accountID uuid.UUID) error 
 		return err
 	}
 	for _, name := range storageNames {
-		if err := os.Remove(filepath.Join(s.root, name)); err != nil && !errors.Is(err, os.ErrNotExist) {
-			// The database deletion is already complete. The scheduled file
-			// cleanup scans for files without a matching file_assets row.
-			log.Printf("account file cleanup deferred: storage_name=%s error=%v", name, err)
+		path, pathErr := s.storagePath(name)
+		if pathErr != nil {
+			_ = s.recordFileCleanupFailure(ctx, nil, name, pathErr)
 			continue
+		}
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			_ = s.recordFileCleanupFailure(ctx, nil, name, err)
 		}
 	}
 	return nil
+}
+
+func (s *Service) storagePath(name string) (string, error) {
+	if name == "" || filepath.Base(name) != name || strings.Contains(name, string(filepath.Separator)) {
+		return "", errors.New("unsafe storage name")
+	}
+	path := filepath.Join(s.root, name)
+	if filepath.Dir(path) != filepath.Clean(s.root) {
+		return "", errors.New("unsafe storage path")
+	}
+	return path, nil
+}
+
+func (s *Service) recordFileCleanupFailure(ctx context.Context, userID *uuid.UUID, name string, cause error) error {
+	_, err := s.pool.Exec(ctx, `INSERT INTO file_cleanup_failures (user_id,storage_name,error_message,attempts,next_attempt_at) VALUES ($1,$2,$3,1,now()+interval '5 minutes') ON CONFLICT (storage_name) WHERE resolved_at IS NULL DO UPDATE SET error_message=EXCLUDED.error_message,attempts=file_cleanup_failures.attempts+1,next_attempt_at=now()+interval '5 minutes'`, userID, name, cause.Error())
+	return err
+}
+
+func (s *Service) RetryFileCleanup(ctx context.Context) error {
+	rows, err := s.pool.Query(ctx, `SELECT id,storage_name FROM file_cleanup_failures WHERE resolved_at IS NULL AND next_attempt_at <= now() ORDER BY created_at LIMIT 100`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id uuid.UUID
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return err
+		}
+		path, pathErr := s.storagePath(name)
+		if pathErr == nil {
+			pathErr = os.Remove(path)
+			if errors.Is(pathErr, os.ErrNotExist) {
+				pathErr = nil
+			}
+		}
+		if pathErr == nil {
+			if _, err := s.pool.Exec(ctx, `UPDATE file_cleanup_failures SET resolved_at=now() WHERE id=$1`, id); err != nil {
+				return err
+			}
+		} else if _, err := s.pool.Exec(ctx, `UPDATE file_cleanup_failures SET error_message=$2,attempts=attempts+1,next_attempt_at=now()+interval '1 hour' WHERE id=$1`, id, pathErr.Error()); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
 }
 
 func toJob(row generated.ImportJob) Job {
@@ -386,7 +495,8 @@ func toJob(row generated.ImportJob) Job {
 	if row.CreatedAt.Valid {
 		result.CreatedAt = row.CreatedAt.Time
 	}
-	result.ValidationSummary = map[string]interface{}{"headers": summary.Headers, "row_count": result.RowCount, "valid_count": result.ValidCount, "invalid_count": result.InvalidCount}
+	result.Warnings = summary.Warnings
+	result.ValidationSummary = map[string]interface{}{"headers": summary.Headers, "row_count": result.RowCount, "valid_count": result.ValidCount, "invalid_count": result.InvalidCount, "warnings": summary.Warnings}
 	return result
 }
 
@@ -446,48 +556,155 @@ func validateRows(kind string, rows [][]string) ([]PreviewRow, []parsedRow, erro
 	}
 	if kind == ImportTeam {
 		codes := make(map[string]struct{}, len(parsed))
-		for _, item := range parsed {
-			code := item.Values["member_code"]
+		for index := range parsed {
+			code := parsed[index].Values["member_code"]
 			if code == "" {
 				continue
 			}
 			if _, exists := codes[code]; exists {
-				for index := range preview {
-					if preview[index].RowNumber == item.Preview.RowNumber {
-						preview[index].Errors = append(preview[index].Errors, "member_code must be unique within this file")
-					}
-				}
+				parsed[index].Preview.Errors = append(parsed[index].Preview.Errors, "member_code must be unique within this file")
 			}
 			codes[code] = struct{}{}
 		}
-		for index := range preview {
-			parent := preview[index].Values["parent_member_code"]
+		for index := range parsed {
+			parent := parsed[index].Values["parent_member_code"]
 			if parent == "" {
 				continue
 			}
-			if parent == preview[index].Values["member_code"] {
-				preview[index].Errors = append(preview[index].Errors, "parent_member_code cannot reference the same member")
+			if parent == parsed[index].Values["member_code"] {
+				parsed[index].Preview.Errors = append(parsed[index].Preview.Errors, "parent_member_code cannot reference the same member")
 				continue
 			}
-			if _, exists := codes[parent]; !exists {
-				preview[index].Errors = append(preview[index].Errors, "parent_member_code must reference a member in this file")
-			}
+			// A parent may be supplied by a prior export and therefore already
+			// exist in the account. Database-aware validation handles that case.
 		}
+		preview = previewRows(parsed)
 	}
 	return preview, parsed, nil
 }
 
+func previewRows(rows []parsedRow) []PreviewRow {
+	result := make([]PreviewRow, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, row.Preview)
+	}
+	return result
+}
+
+// validateDatabase performs the checks that cannot be decided from a workbook
+// alone. Warnings are deliberately non-blocking: they describe an UPDATE or
+// SKIP that the commit step will perform.
+func (s *Service) validateDatabase(ctx context.Context, userID uuid.UUID, kind string, rows []parsedRow) error {
+	seenFinance := make(map[string]struct{})
+	for index := range rows {
+		row := &rows[index]
+		if len(row.Preview.Errors) > 0 {
+			continue
+		}
+		v := row.Values
+		switch kind {
+		case ImportFinance:
+			var categoryID uuid.UUID
+			err := s.pool.QueryRow(ctx, `SELECT id FROM finance_categories WHERE (user_id=$1 OR user_id IS NULL) AND type=$2 AND lower(btrim(name))=lower(btrim($3)) AND archived_at IS NULL ORDER BY user_id NULLS LAST LIMIT 1`, userID, v["type"], v["category"]).Scan(&categoryID)
+			if errors.Is(err, pgx.ErrNoRows) {
+				row.Preview.Errors = append(row.Preview.Errors, "finance category does not exist")
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			amount, err := money.Parse(v["amount"])
+			if err != nil {
+				row.Preview.Errors = append(row.Preview.Errors, "amount must have at most two decimal places")
+				continue
+			}
+			row.Fingerprint = financeFingerprint(row.Date, v["type"], categoryID, amount, v["description"], v["note"])
+			if _, duplicate := seenFinance[row.Fingerprint]; duplicate {
+				row.Skip = true
+				row.Preview.Warnings = append(row.Preview.Warnings, "duplicate finance row in this file will be skipped")
+				continue
+			}
+			seenFinance[row.Fingerprint] = struct{}{}
+			var exists bool
+			if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM financial_transactions WHERE user_id=$1 AND import_fingerprint=$2)`, userID, row.Fingerprint).Scan(&exists); err != nil {
+				return err
+			}
+			if exists {
+				row.Skip = true
+				row.Preview.Warnings = append(row.Preview.Warnings, "duplicate finance transaction will be skipped")
+			}
+		case ImportTeam:
+			var existing uuid.UUID
+			err := s.pool.QueryRow(ctx, `SELECT id FROM team_members WHERE user_id=$1 AND member_code=$2`, userID, v["member_code"]).Scan(&existing)
+			if err == nil {
+				row.Preview.Warnings = append(row.Preview.Warnings, "existing member_code will be updated")
+			} else if !errors.Is(err, pgx.ErrNoRows) {
+				return err
+			}
+		case ImportWorklog:
+			var exists bool
+			if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM daily_worklogs WHERE user_id=$1 AND work_date=$2)`, userID, row.Date).Scan(&exists); err != nil {
+				return err
+			}
+			if exists {
+				row.Preview.Warnings = append(row.Preview.Warnings, "existing date will be updated")
+			}
+		case ImportTurnover:
+			var exists bool
+			if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM daily_turnovers WHERE user_id=$1 AND turnover_date=$2)`, userID, row.Date).Scan(&exists); err != nil {
+				return err
+			}
+			if exists {
+				row.Preview.Warnings = append(row.Preview.Warnings, "existing date will be updated")
+			}
+		}
+	}
+	if kind == ImportTeam {
+		codes := make(map[string]struct{}, len(rows))
+		for _, row := range rows {
+			if row.Values["member_code"] != "" {
+				codes[row.Values["member_code"]] = struct{}{}
+			}
+		}
+		for index := range rows {
+			parent := rows[index].Values["parent_member_code"]
+			if parent == "" {
+				continue
+			}
+			if _, ok := codes[parent]; ok {
+				continue
+			}
+			var exists bool
+			if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM team_members WHERE user_id=$1 AND member_code=$2)`, userID, parent).Scan(&exists); err != nil {
+				return err
+			}
+			if !exists {
+				rows[index].Preview.Errors = append(rows[index].Preview.Errors, "parent_member_code does not exist for this account")
+			}
+		}
+	}
+	return nil
+}
+
+func financeFingerprint(date time.Time, typ string, categoryID uuid.UUID, amount money.Cents, description, note string) string {
+	value := fmt.Sprintf("%s|%s|%s|%d|%s|%s", date.Format("2006-01-02"), strings.ToUpper(strings.TrimSpace(typ)), categoryID.String(), amount, strings.TrimSpace(description), strings.TrimSpace(note))
+	digest := sha256.Sum256([]byte(value))
+	return fmt.Sprintf("%x", digest[:])
+}
+
 func validateParsed(kind string, item *parsedRow) {
 	value := func(key string) string { return item.Values[key] }
-	if value("date") != "" {
-		date, err := time.Parse("2006-01-02", value("date"))
-		if err != nil {
-			item.Preview.Errors = append(item.Preview.Errors, "date must use YYYY-MM-DD")
+	if kind != ImportTeam {
+		if value("date") != "" {
+			date, err := time.Parse("2006-01-02", value("date"))
+			if err != nil {
+				item.Preview.Errors = append(item.Preview.Errors, "date must use YYYY-MM-DD")
+			} else {
+				item.Date = date
+			}
 		} else {
-			item.Date = date
+			item.Preview.Errors = append(item.Preview.Errors, "date is required")
 		}
-	} else {
-		item.Preview.Errors = append(item.Preview.Errors, "date is required")
 	}
 	positiveInt := func(key string) {
 		raw := value(key)
@@ -508,8 +725,17 @@ func validateParsed(kind string, item *parsedRow) {
 			}
 			return
 		}
-		parsed, err := strconv.ParseFloat(raw, 64)
-		if err != nil || parsed < 0 || math.IsNaN(parsed) || math.IsInf(parsed, 0) {
+		var err error
+		if key == "turnover_pv" || key == "pv" {
+			var parsed float64
+			parsed, err = strconv.ParseFloat(raw, 64)
+			if err == nil && (parsed < 0 || math.IsNaN(parsed) || math.IsInf(parsed, 0)) {
+				err = errors.New("invalid")
+			}
+		} else {
+			_, err = money.Parse(raw)
+		}
+		if err != nil {
 			item.Preview.Errors = append(item.Preview.Errors, key+" must be a non-negative number")
 		}
 	}
@@ -526,8 +752,9 @@ func validateParsed(kind string, item *parsedRow) {
 		positiveMoney("turnover_net_amount", false)
 		if pv != "" && net != "" {
 			pvValue, _ := strconv.ParseFloat(pv, 64)
-			netValue, _ := strconv.ParseFloat(net, 64)
-			if math.Abs(netValue-pvValue*12.5) > 0.01 {
+			netValue, _ := money.Parse(net)
+			calculated, _ := money.FromFloat(pvValue * 12.5)
+			if calculated != netValue {
 				item.Preview.Errors = append(item.Preview.Errors, "turnover_net_amount must equal turnover_pv × 12.5")
 			}
 		}
@@ -558,8 +785,9 @@ func validateParsed(kind string, item *parsedRow) {
 		positiveMoney("net_amount", true)
 		if value("pv") != "" && value("net_amount") != "" {
 			pv, _ := strconv.ParseFloat(value("pv"), 64)
-			net, _ := strconv.ParseFloat(value("net_amount"), 64)
-			if math.Abs(net-pv*12.5) > 0.01 {
+			net, _ := money.Parse(value("net_amount"))
+			calculated, _ := money.FromFloat(pv * 12.5)
+			if calculated != net {
 				item.Preview.Errors = append(item.Preview.Errors, "net_amount must equal pv × 12.5")
 			}
 		}
@@ -570,6 +798,9 @@ func commitRows(ctx context.Context, tx pgx.Tx, userID uuid.UUID, kind string, r
 	switch kind {
 	case ImportWorklog:
 		for _, item := range rows {
+			if item.Skip {
+				continue
+			}
 			v := item.Values
 			if _, err := tx.Exec(ctx, `INSERT INTO daily_worklogs (id,user_id,work_date,open_conversation_count,deep_conversation_count,buffer_count,story_share_count,screening_count,opportunity_count,meeting_count,customer_followup_count,note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (user_id,work_date) DO UPDATE SET open_conversation_count=EXCLUDED.open_conversation_count,deep_conversation_count=EXCLUDED.deep_conversation_count,buffer_count=EXCLUDED.buffer_count,story_share_count=EXCLUDED.story_share_count,screening_count=EXCLUDED.screening_count,opportunity_count=EXCLUDED.opportunity_count,meeting_count=EXCLUDED.meeting_count,customer_followup_count=EXCLUDED.customer_followup_count,note=EXCLUDED.note,updated_at=now()`, uuid.New(), userID, item.Date, mustInt(v["open_conversation_count"]), mustInt(v["deep_conversation_count"]), mustInt(v["buffer_count"]), mustInt(v["story_share_count"]), mustInt(v["screening_count"]), mustInt(v["opportunity_count"]), mustInt(v["meeting_count"]), mustInt(v["customer_followup_count"]), nullableText(v["note"])); err != nil {
 				return err
@@ -581,20 +812,34 @@ func commitRows(ctx context.Context, tx pgx.Tx, userID uuid.UUID, kind string, r
 				}
 			}
 			if v["turnover_pv"] != "" {
-				if _, err := tx.Exec(ctx, `INSERT INTO daily_turnovers (id,user_id,turnover_date,pv,net_amount,note) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (user_id,turnover_date) DO UPDATE SET pv=EXCLUDED.pv,net_amount=EXCLUDED.net_amount,note=EXCLUDED.note,updated_at=now()`, uuid.New(), userID, item.Date, mustFloat(v["turnover_pv"]), mustFloat(v["turnover_net_amount"]), nullableText(v["note"])); err != nil {
+				amount, err := money.Parse(v["turnover_net_amount"])
+				if err != nil {
+					return err
+				}
+				if _, err := tx.Exec(ctx, `INSERT INTO daily_turnovers (id,user_id,turnover_date,pv,net_amount,note) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (user_id,turnover_date) DO UPDATE SET pv=EXCLUDED.pv,net_amount=EXCLUDED.net_amount,note=EXCLUDED.note,updated_at=now()`, uuid.New(), userID, item.Date, mustFloat(v["turnover_pv"]), money.Format(amount), nullableText(v["note"])); err != nil {
 					return err
 				}
 			}
 		}
 	case ImportTurnover:
 		for _, item := range rows {
+			if item.Skip {
+				continue
+			}
 			v := item.Values
-			if _, err := tx.Exec(ctx, `INSERT INTO daily_turnovers (id,user_id,turnover_date,pv,net_amount,note) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (user_id,turnover_date) DO UPDATE SET pv=EXCLUDED.pv,net_amount=EXCLUDED.net_amount,note=EXCLUDED.note,updated_at=now()`, uuid.New(), userID, item.Date, mustFloat(v["pv"]), mustFloat(v["net_amount"]), nullableText(v["note"])); err != nil {
+			amount, err := money.Parse(v["net_amount"])
+			if err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `INSERT INTO daily_turnovers (id,user_id,turnover_date,pv,net_amount,note) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (user_id,turnover_date) DO UPDATE SET pv=EXCLUDED.pv,net_amount=EXCLUDED.net_amount,note=EXCLUDED.note,updated_at=now()`, uuid.New(), userID, item.Date, mustFloat(v["pv"]), money.Format(amount), nullableText(v["note"])); err != nil {
 				return err
 			}
 		}
 	case ImportFinance:
 		for _, item := range rows {
+			if item.Skip {
+				continue
+			}
 			v := item.Values
 			var categoryID uuid.UUID
 			if err := tx.QueryRow(ctx, `SELECT id FROM finance_categories WHERE (user_id=$1 OR user_id IS NULL) AND type=$2 AND lower(name)=lower($3) AND archived_at IS NULL ORDER BY user_id NULLS LAST LIMIT 1`, userID, v["type"], v["category"]).Scan(&categoryID); err != nil {
@@ -603,33 +848,51 @@ func commitRows(ctx context.Context, tx pgx.Tx, userID uuid.UUID, kind string, r
 				}
 				return err
 			}
-			if _, err := tx.Exec(ctx, `INSERT INTO financial_transactions (id,user_id,occurred_on,type,category_id,amount,description,note,source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'IMPORT')`, uuid.New(), userID, item.Date, v["type"], categoryID, mustFloat(v["amount"]), nullableText(v["description"]), nullableText(v["note"])); err != nil {
+			amount, err := money.Parse(v["amount"])
+			if err != nil {
+				return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "finance amount is invalid")
+			}
+			fingerprint := item.Fingerprint
+			if fingerprint == "" {
+				fingerprint = financeFingerprint(item.Date, v["type"], categoryID, amount, v["description"], v["note"])
+			}
+			if _, err := tx.Exec(ctx, `INSERT INTO financial_transactions (id,user_id,occurred_on,type,category_id,amount,description,note,source,import_fingerprint) SELECT $1,$2,$3,$4,$5,$6,$7,$8,'IMPORT',$9 WHERE NOT EXISTS (SELECT 1 FROM financial_transactions WHERE user_id=$2 AND import_fingerprint=$9)`, uuid.New(), userID, item.Date, v["type"], categoryID, money.Format(amount), nullableText(v["description"]), nullableText(v["note"]), fingerprint); err != nil {
 				return err
 			}
 		}
 	case ImportTeam:
 		ids := make(map[string]uuid.UUID, len(rows))
 		for _, item := range rows {
+			if item.Skip {
+				continue
+			}
 			v := item.Values
-			id := uuid.New()
-			ids[v["member_code"]] = id
+			var id uuid.UUID
 			var joined interface{}
 			if v["joined_on"] != "" {
 				joined = itemDate(v["joined_on"])
 			}
-			if _, err := tx.Exec(ctx, `INSERT INTO team_members (id,user_id,name,joined_on,rank,city,status,note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, id, userID, v["name"], joined, nullableText(v["rank"]), nullableText(v["city"]), v["status"], nullableText(v["note"])); err != nil {
+			if err := tx.QueryRow(ctx, `INSERT INTO team_members (id,user_id,member_code,name,joined_on,rank,city,status,note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (user_id,member_code) DO UPDATE SET name=EXCLUDED.name,joined_on=EXCLUDED.joined_on,rank=EXCLUDED.rank,city=EXCLUDED.city,status=EXCLUDED.status,note=EXCLUDED.note,updated_at=now() RETURNING id`, uuid.New(), userID, v["member_code"], v["name"], joined, nullableText(v["rank"]), nullableText(v["city"]), v["status"], nullableText(v["note"])).Scan(&id); err != nil {
 				return err
 			}
+			ids[v["member_code"]] = id
 		}
 		for _, item := range rows {
+			if item.Skip {
+				continue
+			}
 			if parent := item.Values["parent_member_code"]; parent != "" {
 				parentID, ok := ids[parent]
 				if !ok {
-					return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "parent_member_code does not exist in this file")
+					if err := tx.QueryRow(ctx, `SELECT id FROM team_members WHERE user_id=$1 AND member_code=$2`, userID, parent).Scan(&parentID); err != nil {
+						return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "parent_member_code does not exist")
+					}
 				}
 				if _, err := tx.Exec(ctx, `UPDATE team_members SET parent_member_id=$1 WHERE id=$2 AND user_id=$3`, parentID, ids[item.Values["member_code"]], userID); err != nil {
 					return err
 				}
+			} else if _, err := tx.Exec(ctx, `UPDATE team_members SET parent_member_id=NULL WHERE id=$1 AND user_id=$2`, ids[item.Values["member_code"]], userID); err != nil {
+				return err
 			}
 		}
 	}
@@ -728,7 +991,7 @@ func (s *Service) structuredRows(ctx context.Context, userID uuid.UUID, kind str
 		"WORKLOG":  {importColumns[ImportWorklog], `SELECT w.work_date,w.open_conversation_count,w.deep_conversation_count,w.buffer_count,w.story_share_count,w.screening_count,w.opportunity_count,w.meeting_count,w.customer_followup_count,COALESCE((SELECT minutes FROM learning_sessions WHERE user_id=w.user_id AND activity_date=w.work_date AND activity_type='READING' AND source='DAILY_UNALLOCATED'),0),COALESCE((SELECT minutes FROM learning_sessions WHERE user_id=w.user_id AND activity_date=w.work_date AND activity_type='AUDIO' AND source='DAILY_UNALLOCATED'),0),t.pv,t.net_amount,w.note FROM daily_worklogs w LEFT JOIN daily_turnovers t ON t.user_id=w.user_id AND t.turnover_date=w.work_date WHERE w.user_id=$1 ORDER BY w.work_date`},
 		"TURNOVER": {importColumns[ImportTurnover], `SELECT turnover_date,pv,net_amount,note FROM daily_turnovers WHERE user_id=$1 ORDER BY turnover_date`},
 		"FINANCE":  {importColumns[ImportFinance], `SELECT t.occurred_on,t.type,c.name,t.amount,t.description,t.note FROM financial_transactions t JOIN finance_categories c ON c.id=t.category_id WHERE t.user_id=$1 ORDER BY t.occurred_on,t.created_at`},
-		"TEAM":     {importColumns[ImportTeam], `SELECT id::text,name,NULL::text,joined_on,rank,city,status,note FROM team_members WHERE user_id=$1 ORDER BY sort_order,created_at`},
+		"TEAM":     {importColumns[ImportTeam], `SELECT m.member_code,m.name,COALESCE(parent.member_code,''),m.joined_on,m.rank,m.city,m.status,m.note FROM team_members m LEFT JOIN team_members parent ON parent.id=m.parent_member_id AND parent.user_id=m.user_id WHERE m.user_id=$1 ORDER BY m.sort_order,m.created_at`},
 	}
 	definition := queries[kind]
 	rows, err := queryRows(ctx, s.pool, definition.sql, userID, len(definition.headers))

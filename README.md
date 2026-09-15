@@ -1,6 +1,6 @@
 # JL团队生意成长管理系统
 
-JL 团队内部使用的个人生意成长与经营管理系统。正式产品和技术规则在 [docs/00-文档索引.md](docs/00-文档索引.md)。当前仓库已完成 Phase 0 工程基线和 Phase 1 身份、管理员、邀请码实现；Phase 2 业务闭环尚未开始。
+JL 团队内部使用的个人生意成长与经营管理系统。正式产品和技术规则在 [docs/00-文档索引.md](docs/00-文档索引.md)。当前仓库已完成 Phase 0-6 主体开发和 V1 收口修复，已具备进入第 7 阶段综合测试的条件；本仓库不在本次收口任务中执行第 7 阶段或生产部署。
 
 ## Technology
 
@@ -48,5 +48,10 @@ make check
 ```
 
 Health endpoints: `GET /api/health/live` and `GET /api/health/ready`.
+
+The current schema is migration version 8. V1 business money fields use decimal
+strings in JSON and integer cents inside the Go money boundary; PostgreSQL
+continues to use exact `numeric(14,2)` columns. `make test-integration` covers
+Phase 1-6 API acceptance only.
 
 `SUPERADMIN_INITIAL_PASSWORD` is used only when the fixed super administrator is first created. If the development or test database already contains that account and the configured password needs to be recovered, update the local environment file and run `make reset-superadmin-password`. This command refuses production and invalidates the super administrator's existing sessions.

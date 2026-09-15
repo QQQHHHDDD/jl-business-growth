@@ -11,8 +11,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
 )
 
@@ -34,7 +36,7 @@ type Transaction struct {
 	ID, UserID, CategoryID uuid.UUID
 	OccurredOn             time.Time
 	Type                   string
-	Amount                 float64
+	Amount                 money.Cents
 	Description, Note      *string
 	Source                 string
 	CreatedAt, UpdatedAt   time.Time
@@ -43,7 +45,7 @@ type TransactionInput struct {
 	OccurredOn        time.Time
 	Type              string
 	CategoryID        uuid.UUID
-	Amount            float64
+	Amount            money.Cents
 	Description, Note *string
 	Source            string
 }
@@ -51,26 +53,26 @@ type Budget struct {
 	ID, UserID           uuid.UUID
 	Month                time.Time
 	CategoryID           *uuid.UUID
-	Amount               float64
+	Amount               money.Cents
 	CreatedAt, UpdatedAt time.Time
 }
 type BudgetInput struct {
 	Month      time.Time
 	CategoryID *uuid.UUID
-	Amount     float64
+	Amount     money.Cents
 }
 type Snapshot struct {
 	ID, UserID           uuid.UUID
 	SnapshotDate         time.Time
 	Kind                 string
-	Amount               float64
+	Amount               money.Cents
 	Note                 *string
 	CreatedAt, UpdatedAt time.Time
 }
 type SnapshotInput struct {
 	SnapshotDate time.Time
 	Kind         string
-	Amount       float64
+	Amount       money.Cents
 	Note         *string
 }
 
@@ -87,19 +89,24 @@ type Input struct {
 }
 
 type Result struct {
-	PersonalSalesBonus        float64 `json:"personal_sales_bonus"`
-	Coupon6Percent            float64 `json:"coupon_6_percent"`
-	DifferentialBonus         float64 `json:"differential_bonus"`
-	MonthlyMarketingStarBonus float64 `json:"monthly_marketing_star_bonus"`
-	AnnualGrowthBonus         float64 `json:"annual_growth_bonus"`
-	RubyBonus                 float64 `json:"ruby_bonus"`
-	BFIBonus                  float64 `json:"bfi_bonus"`
-	BBIBonus                  float64 `json:"bbi_bonus"`
-	ExcelTotalIncome          float64 `json:"excel_total_income"`
-	DoubleYearBonus           float64 `json:"double_year_bonus"`
-	MonthlyIncome             float64 `json:"monthly_income"`
-	AnnualOrOneTimeIncome     float64 `json:"annual_or_one_time_income"`
-	CombinedIncome            float64 `json:"combined_income"`
+	PersonalSalesBonus        money.Cents `json:"personal_sales_bonus"`
+	Coupon6Percent            money.Cents `json:"coupon_6_percent"`
+	DifferentialBonus         money.Cents `json:"differential_bonus"`
+	MonthlyMarketingStarBonus money.Cents `json:"monthly_marketing_star_bonus"`
+	AnnualGrowthBonus         money.Cents `json:"annual_growth_bonus"`
+	RubyBonus                 money.Cents `json:"ruby_bonus"`
+	BFIBonus                  money.Cents `json:"bfi_bonus"`
+	BBIBonus                  money.Cents `json:"bbi_bonus"`
+	ExcelTotalIncome          money.Cents `json:"excel_total_income"`
+	DoubleYearBonus           money.Cents `json:"double_year_bonus"`
+	MonthlyIncome             money.Cents `json:"monthly_income"`
+	AnnualOrOneTimeIncome     money.Cents `json:"annual_or_one_time_income"`
+	CombinedIncome            money.Cents `json:"combined_income"`
+}
+
+type calculatedResult struct {
+	PersonalSalesBonus, Coupon6Percent, DifferentialBonus, MonthlyMarketingStarBonus float64
+	AnnualGrowthBonus, RubyBonus, BFIBonus, BBIBonus, DoubleYearBonus                float64
 }
 
 type Simulation struct {
@@ -216,12 +223,7 @@ func Calculate(input Input) (Result, error) {
 		annual = (personalSales + ruby + differential) * .3
 	}
 	doubleYear := doubleYearBonus(input.DoubleYearMode, input.DoubleYearRank)
-	result := Result{PersonalSalesBonus: personalSales, Coupon6Percent: coupon, DifferentialBonus: differential, MonthlyMarketingStarBonus: star, AnnualGrowthBonus: annual, RubyBonus: ruby, BFIBonus: bfi, BBIBonus: bbi, DoubleYearBonus: doubleYear}
-	result.ExcelTotalIncome = personalSales + coupon + differential + star + annual + ruby + bfi + bbi
-	result.MonthlyIncome = personalSales + coupon + differential + star + ruby + bfi + bbi
-	result.AnnualOrOneTimeIncome = annual + doubleYear
-	result.CombinedIncome = result.MonthlyIncome + result.AnnualOrOneTimeIncome
-	return roundResult(result), nil
+	return roundResult(calculatedResult{PersonalSalesBonus: personalSales, Coupon6Percent: coupon, DifferentialBonus: differential, MonthlyMarketingStarBonus: star, AnnualGrowthBonus: annual, RubyBonus: ruby, BFIBonus: bfi, BBIBonus: bbi, DoubleYearBonus: doubleYear}), nil
 }
 
 func globalRate(e10, marketTotal float64) float64 {
@@ -320,21 +322,21 @@ func validDoubleYearRank(rank string) bool {
 	}
 }
 func round(value float64) float64 { return math.Round(value*100) / 100 }
-func roundResult(value Result) Result {
-	value.PersonalSalesBonus = round(value.PersonalSalesBonus)
-	value.Coupon6Percent = round(value.Coupon6Percent)
-	value.DifferentialBonus = round(value.DifferentialBonus)
-	value.MonthlyMarketingStarBonus = round(value.MonthlyMarketingStarBonus)
-	value.AnnualGrowthBonus = round(value.AnnualGrowthBonus)
-	value.RubyBonus = round(value.RubyBonus)
-	value.BFIBonus = round(value.BFIBonus)
-	value.BBIBonus = round(value.BBIBonus)
-	value.DoubleYearBonus = round(value.DoubleYearBonus)
-	value.ExcelTotalIncome = round(value.PersonalSalesBonus + value.Coupon6Percent + value.DifferentialBonus + value.MonthlyMarketingStarBonus + value.AnnualGrowthBonus + value.RubyBonus + value.BFIBonus + value.BBIBonus)
-	value.MonthlyIncome = round(value.PersonalSalesBonus + value.Coupon6Percent + value.DifferentialBonus + value.MonthlyMarketingStarBonus + value.RubyBonus + value.BFIBonus + value.BBIBonus)
-	value.AnnualOrOneTimeIncome = round(value.AnnualGrowthBonus + value.DoubleYearBonus)
-	value.CombinedIncome = round(value.MonthlyIncome + value.AnnualOrOneTimeIncome)
-	return value
+func roundResult(value calculatedResult) Result {
+	result := Result{PersonalSalesBonus: resultCents(value.PersonalSalesBonus), Coupon6Percent: resultCents(value.Coupon6Percent), DifferentialBonus: resultCents(value.DifferentialBonus), MonthlyMarketingStarBonus: resultCents(value.MonthlyMarketingStarBonus), AnnualGrowthBonus: resultCents(value.AnnualGrowthBonus), RubyBonus: resultCents(value.RubyBonus), BFIBonus: resultCents(value.BFIBonus), BBIBonus: resultCents(value.BBIBonus), DoubleYearBonus: resultCents(value.DoubleYearBonus)}
+	result.ExcelTotalIncome = result.PersonalSalesBonus + result.Coupon6Percent + result.DifferentialBonus + result.MonthlyMarketingStarBonus + result.AnnualGrowthBonus + result.RubyBonus + result.BFIBonus + result.BBIBonus
+	result.MonthlyIncome = result.PersonalSalesBonus + result.Coupon6Percent + result.DifferentialBonus + result.MonthlyMarketingStarBonus + result.RubyBonus + result.BFIBonus + result.BBIBonus
+	result.AnnualOrOneTimeIncome = result.AnnualGrowthBonus + result.DoubleYearBonus
+	result.CombinedIncome = result.MonthlyIncome + result.AnnualOrOneTimeIncome
+	return result
+}
+
+func resultCents(value float64) money.Cents {
+	parsed, err := money.FromFloat(round(value))
+	if err != nil {
+		return 0
+	}
+	return parsed
 }
 
 func (s *Service) ListCategories(ctx context.Context, userID uuid.UUID) ([]Category, error) {
@@ -384,7 +386,12 @@ func (s *Service) ListTransactions(ctx context.Context, userID uuid.UUID, from, 
 	items := make([]Transaction, 0)
 	for rows.Next() {
 		var item Transaction
-		if err := rows.Scan(&item.ID, &item.UserID, &item.OccurredOn, &item.Type, &item.CategoryID, &item.Amount, &item.Description, &item.Note, &item.Source, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		var amount pgtype.Numeric
+		if err := rows.Scan(&item.ID, &item.UserID, &item.OccurredOn, &item.Type, &item.CategoryID, &amount, &item.Description, &item.Note, &item.Source, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		item.Amount, err = money.FromNumeric(amount)
+		if err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -415,14 +422,18 @@ func (s *Service) SaveTransaction(ctx context.Context, userID, id uuid.UUID, inp
 		id = uuid.New()
 	}
 	var item Transaction
-	r, err := s.pool.Exec(ctx, `INSERT INTO financial_transactions (id,user_id,occurred_on,type,category_id,amount,description,note,source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO UPDATE SET occurred_on=EXCLUDED.occurred_on,type=EXCLUDED.type,category_id=EXCLUDED.category_id,amount=EXCLUDED.amount,description=EXCLUDED.description,note=EXCLUDED.note,source=EXCLUDED.source,updated_at=now() WHERE financial_transactions.user_id=$2`, id, userID, input.OccurredOn, input.Type, input.CategoryID, input.Amount, input.Description, input.Note, input.Source)
+	r, err := s.pool.Exec(ctx, `INSERT INTO financial_transactions (id,user_id,occurred_on,type,category_id,amount,description,note,source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO UPDATE SET occurred_on=EXCLUDED.occurred_on,type=EXCLUDED.type,category_id=EXCLUDED.category_id,amount=EXCLUDED.amount,description=EXCLUDED.description,note=EXCLUDED.note,source=EXCLUDED.source,updated_at=now() WHERE financial_transactions.user_id=$2`, id, userID, input.OccurredOn, input.Type, input.CategoryID, money.Format(input.Amount), input.Description, input.Note, input.Source)
 	if err != nil {
 		return Transaction{}, err
 	}
 	if r.RowsAffected() != 1 {
 		return Transaction{}, problem.New("NOT_FOUND", http.StatusNotFound, "financial transaction not found")
 	}
-	err = s.pool.QueryRow(ctx, `SELECT id,user_id,occurred_on,type,category_id,amount,description,note,source,created_at,updated_at FROM financial_transactions WHERE id=$1 AND user_id=$2`, id, userID).Scan(&item.ID, &item.UserID, &item.OccurredOn, &item.Type, &item.CategoryID, &item.Amount, &item.Description, &item.Note, &item.Source, &item.CreatedAt, &item.UpdatedAt)
+	var amount pgtype.Numeric
+	err = s.pool.QueryRow(ctx, `SELECT id,user_id,occurred_on,type,category_id,amount,description,note,source,created_at,updated_at FROM financial_transactions WHERE id=$1 AND user_id=$2`, id, userID).Scan(&item.ID, &item.UserID, &item.OccurredOn, &item.Type, &item.CategoryID, &amount, &item.Description, &item.Note, &item.Source, &item.CreatedAt, &item.UpdatedAt)
+	if err == nil {
+		item.Amount, err = money.FromNumeric(amount)
+	}
 	return item, err
 }
 func (s *Service) DeleteTransaction(ctx context.Context, userID, id uuid.UUID) error {
@@ -445,7 +456,12 @@ func (s *Service) ListBudgets(ctx context.Context, userID uuid.UUID) ([]Budget, 
 	items := make([]Budget, 0)
 	for rows.Next() {
 		var item Budget
-		if err := rows.Scan(&item.ID, &item.UserID, &item.Month, &item.CategoryID, &item.Amount, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		var amount pgtype.Numeric
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Month, &item.CategoryID, &amount, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		item.Amount, err = money.FromNumeric(amount)
+		if err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -469,9 +485,17 @@ func (s *Service) SaveBudget(ctx context.Context, userID uuid.UUID, input Budget
 	month := time.Date(input.Month.Year(), input.Month.Month(), 1, 0, 0, 0, 0, time.UTC)
 	var err error
 	if input.CategoryID == nil {
-		err = s.pool.QueryRow(ctx, `INSERT INTO budgets (id,user_id,month,category_id,amount) VALUES ($1,$2,$3,NULL,$4) ON CONFLICT (user_id,month) WHERE category_id IS NULL DO UPDATE SET amount=EXCLUDED.amount,updated_at=now() RETURNING id,user_id,month,category_id,amount,created_at,updated_at`, uuid.New(), userID, month, input.Amount).Scan(&item.ID, &item.UserID, &item.Month, &item.CategoryID, &item.Amount, &item.CreatedAt, &item.UpdatedAt)
+		var amount pgtype.Numeric
+		err = s.pool.QueryRow(ctx, `INSERT INTO budgets (id,user_id,month,category_id,amount) VALUES ($1,$2,$3,NULL,$4) ON CONFLICT (user_id,month) WHERE category_id IS NULL DO UPDATE SET amount=EXCLUDED.amount,updated_at=now() RETURNING id,user_id,month,category_id,amount,created_at,updated_at`, uuid.New(), userID, month, money.Format(input.Amount)).Scan(&item.ID, &item.UserID, &item.Month, &item.CategoryID, &amount, &item.CreatedAt, &item.UpdatedAt)
+		if err == nil {
+			item.Amount, err = money.FromNumeric(amount)
+		}
 	} else {
-		err = s.pool.QueryRow(ctx, `INSERT INTO budgets (id,user_id,month,category_id,amount) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (user_id,month,category_id) DO UPDATE SET amount=EXCLUDED.amount,updated_at=now() RETURNING id,user_id,month,category_id,amount,created_at,updated_at`, uuid.New(), userID, month, input.CategoryID, input.Amount).Scan(&item.ID, &item.UserID, &item.Month, &item.CategoryID, &item.Amount, &item.CreatedAt, &item.UpdatedAt)
+		var amount pgtype.Numeric
+		err = s.pool.QueryRow(ctx, `INSERT INTO budgets (id,user_id,month,category_id,amount) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (user_id,month,category_id) DO UPDATE SET amount=EXCLUDED.amount,updated_at=now() RETURNING id,user_id,month,category_id,amount,created_at,updated_at`, uuid.New(), userID, month, input.CategoryID, money.Format(input.Amount)).Scan(&item.ID, &item.UserID, &item.Month, &item.CategoryID, &amount, &item.CreatedAt, &item.UpdatedAt)
+		if err == nil {
+			item.Amount, err = money.FromNumeric(amount)
+		}
 	}
 	return item, err
 }
@@ -484,7 +508,12 @@ func (s *Service) ListSnapshots(ctx context.Context, userID uuid.UUID) ([]Snapsh
 	items := make([]Snapshot, 0)
 	for rows.Next() {
 		var item Snapshot
-		if err := rows.Scan(&item.ID, &item.UserID, &item.SnapshotDate, &item.Kind, &item.Amount, &item.Note, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		var amount pgtype.Numeric
+		if err := rows.Scan(&item.ID, &item.UserID, &item.SnapshotDate, &item.Kind, &amount, &item.Note, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		item.Amount, err = money.FromNumeric(amount)
+		if err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -499,7 +528,11 @@ func (s *Service) SaveSnapshot(ctx context.Context, userID uuid.UUID, input Snap
 		return Snapshot{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "snapshot kind is invalid")
 	}
 	var item Snapshot
-	err := s.pool.QueryRow(ctx, `INSERT INTO financial_snapshots (id,user_id,snapshot_date,kind,amount,note) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (user_id,snapshot_date,kind) DO UPDATE SET amount=EXCLUDED.amount,note=EXCLUDED.note,updated_at=now() RETURNING id,user_id,snapshot_date,kind,amount,note,created_at,updated_at`, uuid.New(), userID, input.SnapshotDate, input.Kind, input.Amount, input.Note).Scan(&item.ID, &item.UserID, &item.SnapshotDate, &item.Kind, &item.Amount, &item.Note, &item.CreatedAt, &item.UpdatedAt)
+	var amount pgtype.Numeric
+	err := s.pool.QueryRow(ctx, `INSERT INTO financial_snapshots (id,user_id,snapshot_date,kind,amount,note) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (user_id,snapshot_date,kind) DO UPDATE SET amount=EXCLUDED.amount,note=EXCLUDED.note,updated_at=now() RETURNING id,user_id,snapshot_date,kind,amount,note,created_at,updated_at`, uuid.New(), userID, input.SnapshotDate, input.Kind, money.Format(input.Amount), input.Note).Scan(&item.ID, &item.UserID, &item.SnapshotDate, &item.Kind, &amount, &item.Note, &item.CreatedAt, &item.UpdatedAt)
+	if err == nil {
+		item.Amount, err = money.FromNumeric(amount)
+	}
 	return item, err
 }
 

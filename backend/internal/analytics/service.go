@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jl-business-growth/backend/internal/auth"
+	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
 )
 
@@ -17,7 +18,13 @@ type Bucket struct {
 	ActionCount               int64
 	ReadingMinutes            int64
 	AudioMinutes              int64
-	PV, NetAmount             float64
+	PV                        float64
+	NetAmount                 money.Cents
+	IncomeAmount              money.Cents
+	ExpenseAmount             money.Cents
+	NetCashFlow               money.Cents
+	MemberCount               int64
+	ActiveMemberCount         int64
 	GoalCount, CompletedCount int64
 }
 type Result struct {
@@ -62,11 +69,74 @@ func (s *Service) Turnover(ctx context.Context, userID uuid.UUID, from, to time.
 	for rows.Next() {
 		var date time.Time
 		var b Bucket
-		if err := rows.Scan(&date, &b.PV, &b.NetAmount); err != nil {
+		var amount string
+		if err := rows.Scan(&date, &b.PV, &amount); err != nil {
+			return Result{}, err
+		}
+		b.NetAmount, _ = money.Parse(amount)
+		b.Period = bucketKey(date, granularity)
+		mergeTurnover(&result.Buckets, b)
+	}
+	return result, rows.Err()
+}
+
+func (s *Service) Finance(ctx context.Context, userID uuid.UUID, from, to time.Time, granularity string) (Result, error) {
+	if err := validRange(from, to, granularity); err != nil {
+		return Result{}, err
+	}
+	rows, err := s.pool.Query(ctx, `SELECT occurred_on,type::text,amount FROM financial_transactions WHERE user_id=$1 AND occurred_on >= $2 AND occurred_on < $3 ORDER BY occurred_on`, auth.ToPGUUID(userID), from, to)
+	if err != nil {
+		return Result{}, err
+	}
+	defer rows.Close()
+	result := Result{Metric: "finance", Granularity: granularity, From: from, To: to}
+	for rows.Next() {
+		var date time.Time
+		var typ string
+		var raw string
+		if err := rows.Scan(&date, &typ, &raw); err != nil {
+			return Result{}, err
+		}
+		amount, parseErr := money.Parse(raw)
+		if parseErr != nil {
+			return Result{}, parseErr
+		}
+		b := Bucket{Period: bucketKey(date, granularity)}
+		if typ == "INCOME" {
+			b.IncomeAmount = amount
+		} else {
+			b.ExpenseAmount = amount
+		}
+		b.NetCashFlow = b.IncomeAmount - b.ExpenseAmount
+		mergeFinance(&result.Buckets, b)
+	}
+	return result, rows.Err()
+}
+
+func (s *Service) Team(ctx context.Context, userID uuid.UUID, from, to time.Time, granularity string) (Result, error) {
+	if err := validRange(from, to, granularity); err != nil {
+		return Result{}, err
+	}
+	rows, err := s.pool.Query(ctx, `SELECT COALESCE(joined_on, created_at::date), COUNT(*), COUNT(*) FILTER (WHERE status='ACTIVE') FROM team_members WHERE user_id=$1 AND COALESCE(joined_on, created_at::date) >= $2 AND COALESCE(joined_on, created_at::date) < $3 GROUP BY 1 ORDER BY 1`, auth.ToPGUUID(userID), from, to)
+	if err != nil {
+		return Result{}, err
+	}
+	defer rows.Close()
+	result := Result{Metric: "team", Granularity: granularity, From: from, To: to}
+	for rows.Next() {
+		var date time.Time
+		var b Bucket
+		if err := rows.Scan(&date, &b.MemberCount, &b.ActiveMemberCount); err != nil {
 			return Result{}, err
 		}
 		b.Period = bucketKey(date, granularity)
-		mergeTurnover(&result.Buckets, b)
+		i := bucketIndex(result.Buckets, b.Period)
+		if i < 0 {
+			result.Buckets = append(result.Buckets, b)
+		} else {
+			result.Buckets[i].MemberCount += b.MemberCount
+			result.Buckets[i].ActiveMemberCount += b.ActiveMemberCount
+		}
 	}
 	return result, rows.Err()
 }
@@ -146,4 +216,15 @@ func mergeTurnover(values *[]Bucket, b Bucket) {
 	}
 	(*values)[i].PV += b.PV
 	(*values)[i].NetAmount += b.NetAmount
+}
+
+func mergeFinance(values *[]Bucket, b Bucket) {
+	i := bucketIndex(*values, b.Period)
+	if i < 0 {
+		*values = append(*values, b)
+		return
+	}
+	(*values)[i].IncomeAmount += b.IncomeAmount
+	(*values)[i].ExpenseAmount += b.ExpenseAmount
+	(*values)[i].NetCashFlow += b.NetCashFlow
 }

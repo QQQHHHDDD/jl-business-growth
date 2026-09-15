@@ -1,8 +1,8 @@
 # V1 Implementation Plan
 
-- Status: Phase 6 complete; Phase 0-6 committed
-- Updated: 2026-09-14
-- Source: `docs/00-文档索引.md` and current design documents `01` through `08`
+- Status: V1 closeout P0-01-P0-11 complete; waiting for product-owner acceptance before Phase 7
+- Updated: 2026-09-15
+- Source: `docs/00-文档索引.md`, `docs/11-开发实现差异与V1收口清单-V1.0.md`, and `docs/12-Codex-V1收口修复Prompt-V1.0.md`
 
 ## Environment Detection
 
@@ -113,7 +113,7 @@ Implement calendar/reviews; team/learning/files/search; finance/income simulatio
 
 ## Migration Order
 
-`00001_extensions.sql` (`pgcrypto`, `pg_trgm`), then Phase 1 account/session/invitation schema, followed by each phase's schema. Published migrations are immutable.
+`00001_extensions.sql` (`pgcrypto`, `pg_trgm`), then Phase 1 account/session/invitation schema, followed by each phase's schema and `00008_v1_closure.sql`. Published migrations are immutable.
 
 ## API Order
 
@@ -125,7 +125,10 @@ Go unit tests and PostgreSQL integration tests use only `jl_business_test`; Vite
 
 ## Active Blockers
 
-None known in the source tree or required host acceptance. Database credentials remain outside the checkout by design.
+None known in the source tree. The required Phase 1-6 validation commands use
+the isolated `jl_business_test` database; database credentials remain outside
+the checkout by design. Phase 7 and production deployment are intentionally
+not run by the V1 closeout task.
 
 ## Warnings
 
@@ -217,3 +220,12 @@ The PostgreSQL commands are required for Goose migration, sqlc schema validation
 - Phase 6 host acceptance completed: development and isolated test databases migrated to version 7, Phase 1-6 API integration tests passed, and desktop baseline, Phase 1-6 flow, and mobile shell Playwright tests passed (3 tests).
 - Final Phase 6 regression: the multipart import content-type guard and deterministic XLSX filename E2E fix passed; local `make check`, frontend Playwright test discovery, and `git diff --check` passed.
 - Phase 6 is committed with message `feat: implement phase 6 import export and data governance`; the project specification defines no Phase 7.
+- V1 closeout migration `00008_v1_closure.sql` applied cleanly to the development and isolated test databases; both report schema version 8.
+- P0-01 dashboard now returns upcoming events, team, learning, and finance summaries through the aggregated dashboard response.
+- P0-02 finance/team analytics are backed by live user-scoped queries and rendered with responsive data visualizations; existing analytics metrics remain available.
+- P0-03/P0-04 file associations now support dream images and knowledge attachments with category, ownership, preview, replace, and unlink checks.
+- P0-05 team monthly snapshot month calculation uses each user's IANA timezone, including Asia/Shanghai and DST boundary tests, and records late captures.
+- P0-06 account deletion uses the shared deletion service for self-delete and administrator deletion, invalidates sessions, removes database rows, cleans physical files, and records retryable cleanup failures.
+- P0-07/P0-08/P0-09 Phase 6 integration now covers three-level TEAM export/import restoration, worklog idempotency, file-hash reminders, explicit duplicate commit conflicts, and validation before commit.
+- P0-10 final money values use integer cents in Go and decimal strings in API/JSON; money unit, finance, import/export, and income Golden tests pass without changing the income formula.
+- P0-11 added backend integration and unit coverage for closeout behavior, frontend regression coverage, and the Phase 1-6 Playwright flow. The final closeout command results are recorded in the completion report.

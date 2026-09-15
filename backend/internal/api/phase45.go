@@ -391,10 +391,10 @@ func teamMemberInput(value TeamMemberRequest) team.MemberInput {
 		v := uuid.UUID(*value.ParentId)
 		parent = &v
 	}
-	return team.MemberInput{ParentID: parent, Name: value.Name, JoinedOn: dateValue(value.JoinedOn), Rank: value.Rank, City: value.City, Status: optionalEnum(value.Status, "ACTIVE"), Note: value.Note, SortOrder: optionalInt(value.SortOrder)}
+	return team.MemberInput{MemberCode: stringPointerValue(value.MemberCode), ParentID: parent, Name: value.Name, JoinedOn: dateValue(value.JoinedOn), Rank: value.Rank, City: value.City, Status: optionalEnum(value.Status, "ACTIVE"), Note: value.Note, SortOrder: optionalInt(value.SortOrder)}
 }
 func teamMemberDTO(value team.Member) TeamMember {
-	return TeamMember{Id: value.ID, ParentId: uuidPtr(value.ParentID), Name: value.Name, JoinedOn: datePointer(value.JoinedOn), Rank: value.Rank, City: value.City, Status: TeamMemberStatus(value.Status), Note: value.Note, SortOrder: value.SortOrder, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return TeamMember{Id: value.ID, MemberCode: value.MemberCode, ParentId: uuidPtr(value.ParentID), Name: value.Name, JoinedOn: datePointer(value.JoinedOn), Rank: value.Rank, City: value.City, Status: TeamMemberStatus(value.Status), Note: value.Note, SortOrder: value.SortOrder, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 func teamSnapshotDTO(value team.Snapshot) TeamSnapshot {
 	members := make([]TeamSnapshotMember, 0, len(value.Members))

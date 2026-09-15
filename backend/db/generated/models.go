@@ -60,6 +60,7 @@ type AccountStatus string
 const (
 	AccountStatusACTIVE   AccountStatus = "ACTIVE"
 	AccountStatusDISABLED AccountStatus = "DISABLED"
+	AccountStatusDELETING AccountStatus = "DELETING"
 )
 
 func (e *AccountStatus) Scan(src interface{}) error {
@@ -1121,6 +1122,12 @@ type Dream struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
+type DreamFile struct {
+	DreamID   pgtype.UUID
+	FileID    pgtype.UUID
+	SortOrder int32
+}
+
 type DreamGoalLink struct {
 	DreamID pgtype.UUID
 	GoalID  pgtype.UUID
@@ -1136,6 +1143,17 @@ type FileAsset struct {
 	SizeBytes    int64
 	Sha256       string
 	CreatedAt    pgtype.Timestamptz
+}
+
+type FileCleanupFailure struct {
+	ID            pgtype.UUID
+	UserID        pgtype.UUID
+	StorageName   string
+	ErrorMessage  string
+	Attempts      int32
+	NextAttemptAt pgtype.Timestamptz
+	ResolvedAt    pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
 }
 
 type FinanceCategory struct {
@@ -1158,17 +1176,18 @@ type FinancialSnapshot struct {
 }
 
 type FinancialTransaction struct {
-	ID          pgtype.UUID
-	UserID      pgtype.UUID
-	OccurredOn  pgtype.Date
-	Type        FinanceTransactionType
-	CategoryID  pgtype.UUID
-	Amount      pgtype.Numeric
-	Description pgtype.Text
-	Note        pgtype.Text
-	Source      FinanceTransactionSource
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	ID                pgtype.UUID
+	UserID            pgtype.UUID
+	OccurredOn        pgtype.Date
+	Type              FinanceTransactionType
+	CategoryID        pgtype.UUID
+	Amount            pgtype.Numeric
+	Description       pgtype.Text
+	Note              pgtype.Text
+	Source            FinanceTransactionSource
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	ImportFingerprint pgtype.Text
 }
 
 type Goal struct {
@@ -1205,6 +1224,9 @@ type ImportJob struct {
 	ValidationSummary []byte
 	ExpiresAt         pgtype.Timestamptz
 	CreatedAt         pgtype.Timestamptz
+	FileSha256        pgtype.Text
+	DuplicateOfID     pgtype.UUID
+	CommittedAt       pgtype.Timestamptz
 }
 
 type IncomeSimulation struct {
@@ -1336,6 +1358,7 @@ type TeamMember struct {
 	SortOrder      int32
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
+	MemberCode     string
 }
 
 type TeamSnapshot struct {

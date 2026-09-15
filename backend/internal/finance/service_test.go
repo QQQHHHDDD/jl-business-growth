@@ -1,10 +1,16 @@
 package finance
 
-import "testing"
+import (
+	"testing"
+
+	"jl-business-growth/backend/internal/money"
+)
 
 func baseInput() Input {
 	return Input{Markets: make([]float64, 12), AnnualGrowthStatus: "NOT_QUALIFIED", DoubleYearMode: "NONE"}
 }
+
+func cents(value float64) money.Cents { result, _ := money.FromFloat(value); return result }
 
 func TestCalculateExcelGoldenCases(t *testing.T) {
 	tests := []struct {
@@ -20,27 +26,27 @@ func TestCalculateExcelGoldenCases(t *testing.T) {
 		{
 			name:  "coupon strict greater than one hundred",
 			input: func() Input { value := baseInput(); value.PersonalUsePV = 100.01; return value }(),
-			want:  Result{Coupon6Percent: 75.01, MonthlyIncome: 75.01, CombinedIncome: 75.01, ExcelTotalIncome: 75.01},
+			want:  Result{Coupon6Percent: cents(75.01), MonthlyIncome: cents(75.01), CombinedIncome: cents(75.01), ExcelTotalIncome: cents(75.01)},
 		},
 		{
 			name:  "personal one thousand",
 			input: func() Input { value := baseInput(); value.PersonalUsePV = 1000; return value }(),
-			want:  Result{PersonalSalesBonus: 1125, Coupon6Percent: 750, MonthlyIncome: 1875, CombinedIncome: 1875, ExcelTotalIncome: 1875},
+			want:  Result{PersonalSalesBonus: cents(1125), Coupon6Percent: cents(750), MonthlyIncome: cents(1875), CombinedIncome: cents(1875), ExcelTotalIncome: cents(1875)},
 		},
 		{
 			name:  "market two starts at one hundred",
 			input: func() Input { value := baseInput(); value.PersonalUsePV = 100; value.Markets[1] = 100; return value }(),
-			want:  Result{PersonalSalesBonus: 37.5, MonthlyIncome: 37.5, CombinedIncome: 37.5, ExcelTotalIncome: 37.5},
+			want:  Result{PersonalSalesBonus: cents(37.5), MonthlyIncome: cents(37.5), CombinedIncome: cents(37.5), ExcelTotalIncome: cents(37.5)},
 		},
 		{
 			name:  "six thousand star with high market",
 			input: func() Input { value := baseInput(); value.Markets[0] = 6000; value.Markets[3] = 10000; return value }(),
-			want:  Result{DifferentialBonus: 9000, MonthlyMarketingStarBonus: 975, MonthlyIncome: 9975, CombinedIncome: 9975, ExcelTotalIncome: 9975},
+			want:  Result{DifferentialBonus: cents(9000), MonthlyMarketingStarBonus: cents(975), MonthlyIncome: cents(9975), CombinedIncome: cents(9975), ExcelTotalIncome: cents(9975)},
 		},
 		{
 			name:  "ruby and star cap",
 			input: func() Input { value := baseInput(); value.PersonalUsePV = 20000; return value }(),
-			want:  Result{PersonalSalesBonus: 52500, Coupon6Percent: 15000, MonthlyMarketingStarBonus: 3000, RubyBonus: 5000, MonthlyIncome: 75500, CombinedIncome: 75500, ExcelTotalIncome: 75500},
+			want:  Result{PersonalSalesBonus: cents(52500), Coupon6Percent: cents(15000), MonthlyMarketingStarBonus: cents(3000), RubyBonus: cents(5000), MonthlyIncome: cents(75500), CombinedIncome: cents(75500), ExcelTotalIncome: cents(75500)},
 		},
 		{
 			name: "bfi and bbi gates",
@@ -54,7 +60,7 @@ func TestCalculateExcelGoldenCases(t *testing.T) {
 				value.BBIPeriodEligible = true
 				return value
 			}(),
-			want: Result{PersonalSalesBonus: 2400, Coupon6Percent: 1200, DifferentialBonus: 1012.5, BFIBonus: 1023.75, BBIBonus: 1365, MonthlyIncome: 7001.25, CombinedIncome: 7001.25, ExcelTotalIncome: 7001.25},
+			want: Result{PersonalSalesBonus: cents(2400), Coupon6Percent: cents(1200), DifferentialBonus: cents(1012.5), BFIBonus: cents(1023.75), BBIBonus: cents(1365), MonthlyIncome: cents(7001.25), CombinedIncome: cents(7001.25), ExcelTotalIncome: cents(7001.25)},
 		},
 		{
 			name: "annual growth and double year",
@@ -66,7 +72,7 @@ func TestCalculateExcelGoldenCases(t *testing.T) {
 				value.DoubleYearRank = "高级营销主任"
 				return value
 			}(),
-			want: Result{PersonalSalesBonus: 1125, Coupon6Percent: 750, AnnualGrowthBonus: 393.75, DoubleYearBonus: 12500, MonthlyIncome: 1875, AnnualOrOneTimeIncome: 12893.75, CombinedIncome: 14768.75, ExcelTotalIncome: 2268.75},
+			want: Result{PersonalSalesBonus: cents(1125), Coupon6Percent: cents(750), AnnualGrowthBonus: cents(393.75), DoubleYearBonus: cents(12500), MonthlyIncome: cents(1875), AnnualOrOneTimeIncome: cents(12893.75), CombinedIncome: cents(14768.75), ExcelTotalIncome: cents(2268.75)},
 		},
 	}
 	for _, test := range tests {

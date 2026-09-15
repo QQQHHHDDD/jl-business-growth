@@ -1,4 +1,4 @@
-# AGENTS.md
+# AGENTS.md（建议初始模板）
 
 ## Project
 
@@ -11,7 +11,7 @@ JL团队生意成长管理系统是 JL 团队内部使用的个人生意成长�
 - `docs/00-文档索引.md`
 - 当前阶段对应设计文档
 - `docs/06-收入模拟器公式映射-V1.0.md`（涉及收入计算时）
-- `docs/07-Codex开发与云端发布工作流-V1.2.md`
+- `docs/07-Codex开发与云端发布工作流-V1.0.md`
 
 不要根据常识擅自修改已确定业务规则。
 
@@ -67,14 +67,20 @@ If a command is missing, add it rather than documenting many ad-hoc alternatives
 - Keep SQL explicit and type-safe through sqlc.
 - Add tests for business-rule changes.
 - Income simulator changes require Golden Tests.
-- V1 money fields use decimal strings at API boundaries and integer cents for final Go business values.
-- Current schema migrations end at `00008_v1_closure.sql`; migrations are append-only.
 - Do not commit secrets, `.env`, `.local`, database dumps, or user files.
 
 ## Current execution plan
 
 Use `docs/exec-plans/active/v1-implementation.md`. Keep it updated as implementation progresses.
 
-Phase 0-6 and the V1 P0-01-P0-11 closeout are complete in the current
-implementation. Do not start Phase 7 or production deployment as part of the
-closeout task; wait for product-owner acceptance.
+
+## 当前开发阶段（2026-09-15）
+
+Phase 0–6 主体开发已完成，目前处于 **V1 收口 / Release Candidate 准备**，不是新增功能阶段。
+
+开始修改前优先阅读：
+
+- `docs/11-开发实现差异与V1收口清单-V1.0.md`
+- `docs/12-Codex-V1收口修复Prompt-V1.0.md`
+
+收口期间不得擅自删除已确认需求，也不得为了匹配早期示例目录进行无收益的大规模重构。

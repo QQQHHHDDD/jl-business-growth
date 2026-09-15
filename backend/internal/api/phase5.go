@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"jl-business-growth/backend/internal/finance"
+	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
 )
 
@@ -104,7 +105,11 @@ func (h *Handler) saveFinanceTransaction(ctx echo.Context, id uuid.UUID, status 
 	if request.Source != nil {
 		source = string(*request.Source)
 	}
-	item, err := h.finance.SaveTransaction(ctx.Request().Context(), account.ID, id, finance.TransactionInput{OccurredOn: request.OccurredOn.Time, Type: string(request.Type), CategoryID: uuid.UUID(request.CategoryId), Amount: float64(request.Amount), Description: request.Description, Note: request.Note, Source: source})
+	amount, parseErr := money.Parse(request.Amount)
+	if parseErr != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "amount must be a non-negative decimal")
+	}
+	item, err := h.finance.SaveTransaction(ctx.Request().Context(), account.ID, id, finance.TransactionInput{OccurredOn: request.OccurredOn.Time, Type: string(request.Type), CategoryID: uuid.UUID(request.CategoryId), Amount: amount, Description: request.Description, Note: request.Note, Source: source})
 	if err != nil {
 		return err
 	}
@@ -160,7 +165,11 @@ func (h *Handler) SaveFinanceBudget(ctx echo.Context) error {
 		value := uuid.UUID(*request.CategoryId)
 		categoryID = &value
 	}
-	item, err := h.finance.SaveBudget(ctx.Request().Context(), account.ID, finance.BudgetInput{Month: request.Month.Time, CategoryID: categoryID, Amount: float64(request.Amount)})
+	amount, parseErr := money.Parse(request.Amount)
+	if parseErr != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "amount must be a non-negative decimal")
+	}
+	item, err := h.finance.SaveBudget(ctx.Request().Context(), account.ID, finance.BudgetInput{Month: request.Month.Time, CategoryID: categoryID, Amount: amount})
 	if err != nil {
 		return err
 	}
@@ -197,7 +206,11 @@ func (h *Handler) SaveFinanceSnapshot(ctx echo.Context) error {
 	if err := ctx.Bind(&request); err != nil {
 		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
 	}
-	item, err := h.finance.SaveSnapshot(ctx.Request().Context(), account.ID, finance.SnapshotInput{SnapshotDate: request.SnapshotDate.Time, Kind: string(request.Kind), Amount: float64(request.Amount), Note: request.Note})
+	amount, parseErr := money.Parse(request.Amount)
+	if parseErr != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "amount must be a non-negative decimal")
+	}
+	item, err := h.finance.SaveSnapshot(ctx.Request().Context(), account.ID, finance.SnapshotInput{SnapshotDate: request.SnapshotDate.Time, Kind: string(request.Kind), Amount: amount, Note: request.Note})
 	if err != nil {
 		return err
 	}
@@ -342,15 +355,15 @@ func financeCategoryDTO(value finance.Category) FinanceCategory {
 }
 
 func financeTransactionDTO(value finance.Transaction) FinanceTransaction {
-	return FinanceTransaction{Id: value.ID, OccurredOn: apiDate(value.OccurredOn), Type: FinanceTransactionType(value.Type), CategoryId: value.CategoryID, Amount: float32(value.Amount), Description: value.Description, Note: value.Note, Source: FinanceTransactionSource(value.Source), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return FinanceTransaction{Id: value.ID, OccurredOn: apiDate(value.OccurredOn), Type: FinanceTransactionType(value.Type), CategoryId: value.CategoryID, Amount: money.Format(value.Amount), Description: value.Description, Note: value.Note, Source: FinanceTransactionSource(value.Source), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func financeBudgetDTO(value finance.Budget) FinanceBudget {
-	return FinanceBudget{Id: value.ID, Month: apiDate(value.Month), CategoryId: uuidPtr(value.CategoryID), Amount: float32(value.Amount), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return FinanceBudget{Id: value.ID, Month: apiDate(value.Month), CategoryId: uuidPtr(value.CategoryID), Amount: money.Format(value.Amount), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func financeSnapshotDTO(value finance.Snapshot) FinanceSnapshot {
-	return FinanceSnapshot{Id: value.ID, SnapshotDate: apiDate(value.SnapshotDate), Kind: FinanceSnapshotKind(value.Kind), Amount: float32(value.Amount), Note: value.Note, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return FinanceSnapshot{Id: value.ID, SnapshotDate: apiDate(value.SnapshotDate), Kind: FinanceSnapshotKind(value.Kind), Amount: money.Format(value.Amount), Note: value.Note, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func incomeInput(value IncomeSimulationInput) finance.Input {
@@ -378,7 +391,7 @@ func incomeInputDTO(value finance.Input) IncomeSimulationInput {
 }
 
 func incomeResultDTO(value finance.Result) IncomeSimulationResult {
-	return IncomeSimulationResult{PersonalSalesBonus: float32(value.PersonalSalesBonus), Coupon6Percent: float32(value.Coupon6Percent), DifferentialBonus: float32(value.DifferentialBonus), MonthlyMarketingStarBonus: float32(value.MonthlyMarketingStarBonus), AnnualGrowthBonus: float32(value.AnnualGrowthBonus), RubyBonus: float32(value.RubyBonus), BfiBonus: float32(value.BFIBonus), BbiBonus: float32(value.BBIBonus), ExcelTotalIncome: float32(value.ExcelTotalIncome), DoubleYearBonus: float32(value.DoubleYearBonus), MonthlyIncome: float32(value.MonthlyIncome), AnnualOrOneTimeIncome: float32(value.AnnualOrOneTimeIncome), CombinedIncome: float32(value.CombinedIncome)}
+	return IncomeSimulationResult{PersonalSalesBonus: money.Format(value.PersonalSalesBonus), Coupon6Percent: money.Format(value.Coupon6Percent), DifferentialBonus: money.Format(value.DifferentialBonus), MonthlyMarketingStarBonus: money.Format(value.MonthlyMarketingStarBonus), AnnualGrowthBonus: money.Format(value.AnnualGrowthBonus), RubyBonus: money.Format(value.RubyBonus), BfiBonus: money.Format(value.BFIBonus), BbiBonus: money.Format(value.BBIBonus), ExcelTotalIncome: money.Format(value.ExcelTotalIncome), DoubleYearBonus: money.Format(value.DoubleYearBonus), MonthlyIncome: money.Format(value.MonthlyIncome), AnnualOrOneTimeIncome: money.Format(value.AnnualOrOneTimeIncome), CombinedIncome: money.Format(value.CombinedIncome)}
 }
 
 func incomeSimulationDTO(value finance.Simulation) IncomeSimulation {

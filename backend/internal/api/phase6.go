@@ -133,9 +133,9 @@ func (h *Handler) DeleteCurrentAccount(ctx echo.Context) error {
 func importJobDTO(job importexport.Job) ImportJob {
 	rows := make([]ImportPreviewRow, 0, len(job.Rows))
 	for _, row := range job.Rows {
-		rows = append(rows, ImportPreviewRow{RowNumber: row.RowNumber, Values: row.Values, Errors: row.Errors})
+		rows = append(rows, ImportPreviewRow{RowNumber: row.RowNumber, Values: row.Values, Errors: row.Errors, Warnings: row.Warnings})
 	}
-	return ImportJob{Id: uuid.UUID(job.ID), Type: ImportJobType(job.Type), Status: ImportJobStatus(job.Status), RowCount: job.RowCount, ValidCount: job.ValidCount, InvalidCount: job.InvalidCount, ValidationSummary: job.ValidationSummary, ExpiresAt: job.ExpiresAt, CreatedAt: job.CreatedAt, Rows: rows}
+	return ImportJob{Id: uuid.UUID(job.ID), Type: ImportJobType(job.Type), Status: ImportJobStatus(job.Status), RowCount: job.RowCount, ValidCount: job.ValidCount, InvalidCount: job.InvalidCount, ValidationSummary: job.ValidationSummary, Warnings: &job.Warnings, ExpiresAt: job.ExpiresAt, CreatedAt: job.CreatedAt, Rows: rows}
 }
 
 func download(ctx echo.Context, status int, contentType, filename string, data []byte) error {

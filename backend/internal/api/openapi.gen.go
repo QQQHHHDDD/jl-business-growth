@@ -409,11 +409,25 @@ const (
 	ExportTypeWORKLOG   ExportType = "WORKLOG"
 )
 
+// Defines values for GetFinanceAnalyticsParamsGranularity.
+const (
+	GetFinanceAnalyticsParamsGranularityDay   GetFinanceAnalyticsParamsGranularity = "day"
+	GetFinanceAnalyticsParamsGranularityMonth GetFinanceAnalyticsParamsGranularity = "month"
+	GetFinanceAnalyticsParamsGranularityWeek  GetFinanceAnalyticsParamsGranularity = "week"
+)
+
 // Defines values for GetGoalAnalyticsParamsGranularity.
 const (
 	GetGoalAnalyticsParamsGranularityDay   GetGoalAnalyticsParamsGranularity = "day"
 	GetGoalAnalyticsParamsGranularityMonth GetGoalAnalyticsParamsGranularity = "month"
 	GetGoalAnalyticsParamsGranularityWeek  GetGoalAnalyticsParamsGranularity = "week"
+)
+
+// Defines values for GetTeamAnalyticsParamsGranularity.
+const (
+	GetTeamAnalyticsParamsGranularityDay   GetTeamAnalyticsParamsGranularity = "day"
+	GetTeamAnalyticsParamsGranularityMonth GetTeamAnalyticsParamsGranularity = "month"
+	GetTeamAnalyticsParamsGranularityWeek  GetTeamAnalyticsParamsGranularity = "week"
 )
 
 // Defines values for GetTurnoverAnalyticsParamsGranularity.
@@ -534,14 +548,19 @@ type AccountsResponse struct {
 
 // AnalyticsBucket defines model for AnalyticsBucket.
 type AnalyticsBucket struct {
-	ActionCount    int     `json:"action_count"`
-	AudioMinutes   int     `json:"audio_minutes"`
-	CompletedCount int     `json:"completed_count"`
-	GoalCount      int     `json:"goal_count"`
-	NetAmount      float32 `json:"net_amount"`
-	Period         string  `json:"period"`
-	Pv             float32 `json:"pv"`
-	ReadingMinutes int     `json:"reading_minutes"`
+	ActionCount       int     `json:"action_count"`
+	ActiveMemberCount *int    `json:"active_member_count,omitempty"`
+	AudioMinutes      int     `json:"audio_minutes"`
+	CompletedCount    int     `json:"completed_count"`
+	ExpenseAmount     *string `json:"expense_amount,omitempty"`
+	GoalCount         int     `json:"goal_count"`
+	IncomeAmount      *string `json:"income_amount,omitempty"`
+	MemberCount       *int    `json:"member_count,omitempty"`
+	NetAmount         string  `json:"net_amount"`
+	NetCashFlow       *string `json:"net_cash_flow,omitempty"`
+	Period            string  `json:"period"`
+	Pv                float32 `json:"pv"`
+	ReadingMinutes    int     `json:"reading_minutes"`
 }
 
 // AnalyticsData defines model for AnalyticsData.
@@ -686,12 +705,29 @@ type CsrfResponse struct {
 
 // DashboardData defines model for DashboardData.
 type DashboardData struct {
-	ActiveGoals []Goal             `json:"active_goals"`
-	Date        openapi_types.Date `json:"date"`
-	DreamsCount int                `json:"dreams_count"`
-	Month       DashboardPeriod    `json:"month"`
-	Today       DashboardPeriod    `json:"today"`
-	Week        DashboardPeriod    `json:"week"`
+	ActiveGoals     []Goal                   `json:"active_goals"`
+	Date            openapi_types.Date       `json:"date"`
+	DreamsCount     int                      `json:"dreams_count"`
+	FinanceSummary  DashboardFinanceSummary  `json:"finance_summary"`
+	LearningSummary DashboardLearningSummary `json:"learning_summary"`
+	Month           DashboardPeriod          `json:"month"`
+	TeamSummary     DashboardTeamSummary     `json:"team_summary"`
+	Today           DashboardPeriod          `json:"today"`
+	UpcomingEvents  []DashboardUpcomingEvent `json:"upcoming_events"`
+	Week            DashboardPeriod          `json:"week"`
+}
+
+// DashboardFinanceSummary defines model for DashboardFinanceSummary.
+type DashboardFinanceSummary struct {
+	Expense     string `json:"expense"`
+	Income      string `json:"income"`
+	NetCashFlow string `json:"net_cash_flow"`
+}
+
+// DashboardLearningSummary defines model for DashboardLearningSummary.
+type DashboardLearningSummary struct {
+	AudioMinutes   int `json:"audio_minutes"`
+	ReadingMinutes int `json:"reading_minutes"`
 }
 
 // DashboardPeriod defines model for DashboardPeriod.
@@ -708,10 +744,25 @@ type DashboardResponse struct {
 	RequestId string        `json:"request_id"`
 }
 
+// DashboardTeamSummary defines model for DashboardTeamSummary.
+type DashboardTeamSummary struct {
+	ActiveMembers int `json:"active_members"`
+	TotalMembers  int `json:"total_members"`
+}
+
+// DashboardUpcomingEvent defines model for DashboardUpcomingEvent.
+type DashboardUpcomingEvent struct {
+	EndAt   time.Time          `json:"end_at"`
+	Id      openapi_types.UUID `json:"id"`
+	StartAt time.Time          `json:"start_at"`
+	Title   string             `json:"title"`
+}
+
 // Dream defines model for Dream.
 type Dream struct {
 	CreatedAt   time.Time            `json:"created_at"`
 	Description *string              `json:"description"`
+	FileIds     []openapi_types.UUID `json:"file_ids"`
 	GoalIds     []openapi_types.UUID `json:"goal_ids"`
 	Id          openapi_types.UUID   `json:"id"`
 	SortOrder   int                  `json:"sort_order"`
@@ -730,6 +781,7 @@ type DreamListResponse struct {
 // DreamRequest defines model for DreamRequest.
 type DreamRequest struct {
 	Description *string               `json:"description"`
+	FileIds     *[]openapi_types.UUID `json:"file_ids,omitempty"`
 	GoalIds     *[]openapi_types.UUID `json:"goal_ids,omitempty"`
 	SortOrder   *int                  `json:"sort_order,omitempty"`
 	Title       string                `json:"title"`
@@ -784,7 +836,7 @@ type FileResponse struct {
 
 // FinanceBudget defines model for FinanceBudget.
 type FinanceBudget struct {
-	Amount     float32             `json:"amount"`
+	Amount     string              `json:"amount"`
 	CategoryId *openapi_types.UUID `json:"category_id"`
 	CreatedAt  time.Time           `json:"created_at"`
 	Id         openapi_types.UUID  `json:"id"`
@@ -802,7 +854,7 @@ type FinanceBudgetListResponse struct {
 
 // FinanceBudgetRequest defines model for FinanceBudgetRequest.
 type FinanceBudgetRequest struct {
-	Amount     float32             `json:"amount"`
+	Amount     string              `json:"amount"`
 	CategoryId *openapi_types.UUID `json:"category_id"`
 	Month      openapi_types.Date  `json:"month"`
 }
@@ -850,7 +902,7 @@ type FinanceCategoryResponse struct {
 
 // FinanceSnapshot defines model for FinanceSnapshot.
 type FinanceSnapshot struct {
-	Amount       float32             `json:"amount"`
+	Amount       string              `json:"amount"`
 	CreatedAt    time.Time           `json:"created_at"`
 	Id           openapi_types.UUID  `json:"id"`
 	Kind         FinanceSnapshotKind `json:"kind"`
@@ -872,7 +924,7 @@ type FinanceSnapshotListResponse struct {
 
 // FinanceSnapshotRequest defines model for FinanceSnapshotRequest.
 type FinanceSnapshotRequest struct {
-	Amount       float32                    `json:"amount"`
+	Amount       string                     `json:"amount"`
 	Kind         FinanceSnapshotRequestKind `json:"kind"`
 	Note         *string                    `json:"note"`
 	SnapshotDate openapi_types.Date         `json:"snapshot_date"`
@@ -889,7 +941,7 @@ type FinanceSnapshotResponse struct {
 
 // FinanceTransaction defines model for FinanceTransaction.
 type FinanceTransaction struct {
-	Amount      float32                  `json:"amount"`
+	Amount      string                   `json:"amount"`
 	CategoryId  openapi_types.UUID       `json:"category_id"`
 	CreatedAt   time.Time                `json:"created_at"`
 	Description *string                  `json:"description"`
@@ -917,7 +969,7 @@ type FinanceTransactionListResponse struct {
 
 // FinanceTransactionRequest defines model for FinanceTransactionRequest.
 type FinanceTransactionRequest struct {
-	Amount      float32                          `json:"amount"`
+	Amount      string                           `json:"amount"`
 	CategoryId  openapi_types.UUID               `json:"category_id"`
 	Description *string                          `json:"description"`
 	Note        *string                          `json:"note"`
@@ -1043,6 +1095,7 @@ type ImportJob struct {
 	Type              ImportJobType          `json:"type"`
 	ValidCount        int                    `json:"valid_count"`
 	ValidationSummary map[string]interface{} `json:"validation_summary"`
+	Warnings          *[]string              `json:"warnings,omitempty"`
 }
 
 // ImportJobStatus defines model for ImportJob.Status.
@@ -1062,6 +1115,7 @@ type ImportPreviewRow struct {
 	Errors    []string          `json:"errors"`
 	RowNumber int               `json:"row_number"`
 	Values    map[string]string `json:"values"`
+	Warnings  []string          `json:"warnings"`
 }
 
 // ImportType defines model for ImportType.
@@ -1129,19 +1183,19 @@ type IncomeSimulationResponse struct {
 
 // IncomeSimulationResult defines model for IncomeSimulationResult.
 type IncomeSimulationResult struct {
-	AnnualGrowthBonus         float32 `json:"annual_growth_bonus"`
-	AnnualOrOneTimeIncome     float32 `json:"annual_or_one_time_income"`
-	BbiBonus                  float32 `json:"bbi_bonus"`
-	BfiBonus                  float32 `json:"bfi_bonus"`
-	CombinedIncome            float32 `json:"combined_income"`
-	Coupon6Percent            float32 `json:"coupon_6_percent"`
-	DifferentialBonus         float32 `json:"differential_bonus"`
-	DoubleYearBonus           float32 `json:"double_year_bonus"`
-	ExcelTotalIncome          float32 `json:"excel_total_income"`
-	MonthlyIncome             float32 `json:"monthly_income"`
-	MonthlyMarketingStarBonus float32 `json:"monthly_marketing_star_bonus"`
-	PersonalSalesBonus        float32 `json:"personal_sales_bonus"`
-	RubyBonus                 float32 `json:"ruby_bonus"`
+	AnnualGrowthBonus         string `json:"annual_growth_bonus"`
+	AnnualOrOneTimeIncome     string `json:"annual_or_one_time_income"`
+	BbiBonus                  string `json:"bbi_bonus"`
+	BfiBonus                  string `json:"bfi_bonus"`
+	CombinedIncome            string `json:"combined_income"`
+	Coupon6Percent            string `json:"coupon_6_percent"`
+	DifferentialBonus         string `json:"differential_bonus"`
+	DoubleYearBonus           string `json:"double_year_bonus"`
+	ExcelTotalIncome          string `json:"excel_total_income"`
+	MonthlyIncome             string `json:"monthly_income"`
+	MonthlyMarketingStarBonus string `json:"monthly_marketing_star_bonus"`
+	PersonalSalesBonus        string `json:"personal_sales_bonus"`
+	RubyBonus                 string `json:"ruby_bonus"`
 }
 
 // Invitation defines model for Invitation.
@@ -1348,7 +1402,7 @@ type ReviewListResponse struct {
 
 // ReviewPeriodTotals defines model for ReviewPeriodTotals.
 type ReviewPeriodTotals struct {
-	TurnoverNetAmount  float32 `json:"turnover_net_amount"`
+	TurnoverNetAmount  string  `json:"turnover_net_amount"`
 	TurnoverPv         float32 `json:"turnover_pv"`
 	WorklogActionCount int     `json:"worklog_action_count"`
 }
@@ -1415,17 +1469,18 @@ type StatusRequestStatus string
 
 // TeamMember defines model for TeamMember.
 type TeamMember struct {
-	City      *string             `json:"city"`
-	CreatedAt time.Time           `json:"created_at"`
-	Id        openapi_types.UUID  `json:"id"`
-	JoinedOn  *openapi_types.Date `json:"joined_on"`
-	Name      string              `json:"name"`
-	Note      *string             `json:"note"`
-	ParentId  *openapi_types.UUID `json:"parent_id"`
-	Rank      *string             `json:"rank"`
-	SortOrder int                 `json:"sort_order"`
-	Status    TeamMemberStatus    `json:"status"`
-	UpdatedAt time.Time           `json:"updated_at"`
+	City       *string             `json:"city"`
+	CreatedAt  time.Time           `json:"created_at"`
+	Id         openapi_types.UUID  `json:"id"`
+	JoinedOn   *openapi_types.Date `json:"joined_on"`
+	MemberCode string              `json:"member_code"`
+	Name       string              `json:"name"`
+	Note       *string             `json:"note"`
+	ParentId   *openapi_types.UUID `json:"parent_id"`
+	Rank       *string             `json:"rank"`
+	SortOrder  int                 `json:"sort_order"`
+	Status     TeamMemberStatus    `json:"status"`
+	UpdatedAt  time.Time           `json:"updated_at"`
 }
 
 // TeamMemberStatus defines model for TeamMember.Status.
@@ -1441,14 +1496,15 @@ type TeamMemberListResponse struct {
 
 // TeamMemberRequest defines model for TeamMemberRequest.
 type TeamMemberRequest struct {
-	City      *string                  `json:"city"`
-	JoinedOn  *openapi_types.Date      `json:"joined_on"`
-	Name      string                   `json:"name"`
-	Note      *string                  `json:"note"`
-	ParentId  *openapi_types.UUID      `json:"parent_id"`
-	Rank      *string                  `json:"rank"`
-	SortOrder *int                     `json:"sort_order,omitempty"`
-	Status    *TeamMemberRequestStatus `json:"status,omitempty"`
+	City       *string                  `json:"city"`
+	JoinedOn   *openapi_types.Date      `json:"joined_on"`
+	MemberCode *string                  `json:"member_code,omitempty"`
+	Name       string                   `json:"name"`
+	Note       *string                  `json:"note"`
+	ParentId   *openapi_types.UUID      `json:"parent_id"`
+	Rank       *string                  `json:"rank"`
+	SortOrder  *int                     `json:"sort_order,omitempty"`
+	Status     *TeamMemberRequestStatus `json:"status,omitempty"`
 }
 
 // TeamMemberRequestStatus defines model for TeamMemberRequest.Status.
@@ -1523,7 +1579,7 @@ type TimezoneRequest struct {
 type Turnover struct {
 	CreatedAt    time.Time          `json:"created_at"`
 	Id           openapi_types.UUID `json:"id"`
-	NetAmount    float32            `json:"net_amount"`
+	NetAmount    string             `json:"net_amount"`
 	Note         *string            `json:"note"`
 	Pv           float32            `json:"pv"`
 	TurnoverDate openapi_types.Date `json:"turnover_date"`
@@ -1540,7 +1596,7 @@ type TurnoverListResponse struct {
 
 // TurnoverRequest defines model for TurnoverRequest.
 type TurnoverRequest struct {
-	NetAmount    *float32           `json:"net_amount"`
+	NetAmount    *string            `json:"net_amount"`
 	Note         *string            `json:"note"`
 	Pv           *float32           `json:"pv"`
 	TurnoverDate openapi_types.Date `json:"turnover_date"`
@@ -1554,7 +1610,7 @@ type TurnoverResponse struct {
 
 // TurnoverTotals defines model for TurnoverTotals.
 type TurnoverTotals struct {
-	NetAmount float32 `json:"net_amount"`
+	NetAmount string  `json:"net_amount"`
 	Pv        float32 `json:"pv"`
 }
 
@@ -1588,7 +1644,7 @@ type Worklog struct {
 	ReadingMinutes        int                `json:"reading_minutes"`
 	ScreeningCount        int                `json:"screening_count"`
 	StoryShareCount       int                `json:"story_share_count"`
-	TurnoverNetAmount     *float32           `json:"turnover_net_amount"`
+	TurnoverNetAmount     *string            `json:"turnover_net_amount"`
 	TurnoverPv            *float32           `json:"turnover_pv"`
 	UpdatedAt             time.Time          `json:"updated_at"`
 	WorkDate              openapi_types.Date `json:"work_date"`
@@ -1615,7 +1671,7 @@ type WorklogRequest struct {
 	ReadingMinutes        int                `json:"reading_minutes"`
 	ScreeningCount        int                `json:"screening_count"`
 	StoryShareCount       int                `json:"story_share_count"`
-	TurnoverNetAmount     *float32           `json:"turnover_net_amount"`
+	TurnoverNetAmount     *string            `json:"turnover_net_amount"`
 	TurnoverPv            *float32           `json:"turnover_pv"`
 	WorkDate              openapi_types.Date `json:"work_date"`
 }
@@ -1730,6 +1786,16 @@ type GetAdminUsersParams struct {
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 }
 
+// GetFinanceAnalyticsParams defines parameters for GetFinanceAnalytics.
+type GetFinanceAnalyticsParams struct {
+	From        *DateFrom                            `form:"from,omitempty" json:"from,omitempty"`
+	To          *DateTo                              `form:"to,omitempty" json:"to,omitempty"`
+	Granularity GetFinanceAnalyticsParamsGranularity `form:"granularity" json:"granularity"`
+}
+
+// GetFinanceAnalyticsParamsGranularity defines parameters for GetFinanceAnalytics.
+type GetFinanceAnalyticsParamsGranularity string
+
 // GetGoalAnalyticsParams defines parameters for GetGoalAnalytics.
 type GetGoalAnalyticsParams struct {
 	From        *DateFrom                         `form:"from,omitempty" json:"from,omitempty"`
@@ -1739,6 +1805,16 @@ type GetGoalAnalyticsParams struct {
 
 // GetGoalAnalyticsParamsGranularity defines parameters for GetGoalAnalytics.
 type GetGoalAnalyticsParamsGranularity string
+
+// GetTeamAnalyticsParams defines parameters for GetTeamAnalytics.
+type GetTeamAnalyticsParams struct {
+	From        *DateFrom                         `form:"from,omitempty" json:"from,omitempty"`
+	To          *DateTo                           `form:"to,omitempty" json:"to,omitempty"`
+	Granularity GetTeamAnalyticsParamsGranularity `form:"granularity" json:"granularity"`
+}
+
+// GetTeamAnalyticsParamsGranularity defines parameters for GetTeamAnalytics.
+type GetTeamAnalyticsParamsGranularity string
 
 // GetTurnoverAnalyticsParams defines parameters for GetTurnoverAnalytics.
 type GetTurnoverAnalyticsParams struct {
@@ -2022,9 +2098,15 @@ type ServerInterface interface {
 	// Enable or disable a normal user
 	// (PATCH /api/admin/users/{account_id}/status)
 	PatchAdminUserStatus(ctx echo.Context, accountId AccountId) error
+	// Aggregate finance transactions by day, week, or month
+	// (GET /api/analytics/finance)
+	GetFinanceAnalytics(ctx echo.Context, params GetFinanceAnalyticsParams) error
 	// Aggregate goals by their business start date
 	// (GET /api/analytics/goals)
 	GetGoalAnalytics(ctx echo.Context, params GetGoalAnalyticsParams) error
+	// Aggregate team membership by day, week, or month
+	// (GET /api/analytics/team)
+	GetTeamAnalytics(ctx echo.Context, params GetTeamAnalyticsParams) error
 	// Aggregate turnover by day, week, or month
 	// (GET /api/analytics/turnover)
 	GetTurnoverAnalytics(ctx echo.Context, params GetTurnoverAnalyticsParams) error
@@ -2523,6 +2605,40 @@ func (w *ServerInterfaceWrapper) PatchAdminUserStatus(ctx echo.Context) error {
 	return err
 }
 
+// GetFinanceAnalytics converts echo context to params.
+func (w *ServerInterfaceWrapper) GetFinanceAnalytics(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetFinanceAnalyticsParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// ------------- Required query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "granularity", ctx.QueryParams(), &params.Granularity)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter granularity: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetFinanceAnalytics(ctx, params)
+	return err
+}
+
 // GetGoalAnalytics converts echo context to params.
 func (w *ServerInterfaceWrapper) GetGoalAnalytics(ctx echo.Context) error {
 	var err error
@@ -2554,6 +2670,40 @@ func (w *ServerInterfaceWrapper) GetGoalAnalytics(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetGoalAnalytics(ctx, params)
+	return err
+}
+
+// GetTeamAnalytics converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTeamAnalytics(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTeamAnalyticsParams
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from", ctx.QueryParams(), &params.From)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// ------------- Required query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "granularity", ctx.QueryParams(), &params.Granularity)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter granularity: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTeamAnalytics(ctx, params)
 	return err
 }
 
@@ -4113,7 +4263,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/api/admin/users/:account_id", wrapper.DeleteAdminUser)
 	router.POST(baseURL+"/api/admin/users/:account_id/reset-password", wrapper.PostAdminUserResetPassword)
 	router.PATCH(baseURL+"/api/admin/users/:account_id/status", wrapper.PatchAdminUserStatus)
+	router.GET(baseURL+"/api/analytics/finance", wrapper.GetFinanceAnalytics)
 	router.GET(baseURL+"/api/analytics/goals", wrapper.GetGoalAnalytics)
+	router.GET(baseURL+"/api/analytics/team", wrapper.GetTeamAnalytics)
 	router.GET(baseURL+"/api/analytics/turnover", wrapper.GetTurnoverAnalytics)
 	router.GET(baseURL+"/api/analytics/worklogs", wrapper.GetWorklogAnalytics)
 	router.DELETE(baseURL+"/api/auth/account", wrapper.DeleteCurrentAccount)

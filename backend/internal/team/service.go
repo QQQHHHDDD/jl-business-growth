@@ -19,29 +19,31 @@ type Service struct{ pool *pgxpool.Pool }
 func NewService(pool *pgxpool.Pool) *Service { return &Service{pool: pool} }
 
 type Member struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	ParentID  *uuid.UUID
-	Name      string
-	JoinedOn  *time.Time
-	Rank      *string
-	City      *string
-	Status    string
-	Note      *string
-	SortOrder int
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	MemberCode string
+	ParentID   *uuid.UUID
+	Name       string
+	JoinedOn   *time.Time
+	Rank       *string
+	City       *string
+	Status     string
+	Note       *string
+	SortOrder  int
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type MemberInput struct {
-	ParentID  *uuid.UUID
-	Name      string
-	JoinedOn  *time.Time
-	Rank      *string
-	City      *string
-	Status    string
-	Note      *string
-	SortOrder int
+	MemberCode string
+	ParentID   *uuid.UUID
+	Name       string
+	JoinedOn   *time.Time
+	Rank       *string
+	City       *string
+	Status     string
+	Note       *string
+	SortOrder  int
 }
 
 type Snapshot struct {
@@ -68,7 +70,7 @@ type SnapshotMember struct {
 }
 
 func (s *Service) ListMembers(ctx context.Context, userID uuid.UUID) ([]Member, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id, user_id, parent_member_id, name, joined_on, rank, city, status, note, sort_order, created_at, updated_at
+	rows, err := s.pool.Query(ctx, `SELECT id, user_id, member_code, parent_member_id, name, joined_on, rank, city, status, note, sort_order, created_at, updated_at
 		FROM team_members WHERE user_id=$1 ORDER BY sort_order, created_at, name`, userID)
 	if err != nil {
 		return nil, err
@@ -86,7 +88,7 @@ func (s *Service) ListMembers(ctx context.Context, userID uuid.UUID) ([]Member, 
 }
 
 func (s *Service) GetMember(ctx context.Context, userID, id uuid.UUID) (Member, error) {
-	row := s.pool.QueryRow(ctx, `SELECT id, user_id, parent_member_id, name, joined_on, rank, city, status, note, sort_order, created_at, updated_at
+	row := s.pool.QueryRow(ctx, `SELECT id, user_id, member_code, parent_member_id, name, joined_on, rank, city, status, note, sort_order, created_at, updated_at
 		FROM team_members WHERE user_id=$1 AND id=$2`, userID, id)
 	item, err := scanMember(row)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -104,6 +106,9 @@ func (s *Service) SaveMember(ctx context.Context, userID, id uuid.UUID, input Me
 	}
 	if input.Status != "ACTIVE" && input.Status != "INACTIVE" {
 		return Member{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "member status is invalid")
+	}
+	if strings.TrimSpace(input.MemberCode) != "" && (len([]rune(strings.TrimSpace(input.MemberCode))) > 100 || strings.ContainsAny(input.MemberCode, "\r\n")) {
+		return Member{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "member code is invalid")
 	}
 	if input.ParentID != nil {
 		var exists bool
@@ -131,13 +136,24 @@ func (s *Service) SaveMember(ctx context.Context, userID, id uuid.UUID, input Me
 	if id == uuid.Nil {
 		id = uuid.New()
 	}
+	code := strings.TrimSpace(input.MemberCode)
+	if code == "" {
+		code = "member-" + strings.ReplaceAll(id.String(), "-", "")[:12]
+	}
+	var duplicate bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM team_members WHERE user_id=$1 AND member_code=$2 AND id<>$3)`, userID, code, id).Scan(&duplicate); err != nil {
+		return Member{}, err
+	}
+	if duplicate {
+		return Member{}, problem.New("CONFLICT", http.StatusConflict, "member code already exists")
+	}
 	var item Member
-	row := s.pool.QueryRow(ctx, `INSERT INTO team_members (id,user_id,parent_member_id,name,joined_on,rank,city,status,note,sort_order)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+	row := s.pool.QueryRow(ctx, `INSERT INTO team_members (id,user_id,member_code,parent_member_id,name,joined_on,rank,city,status,note,sort_order)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		ON CONFLICT (id) DO UPDATE SET parent_member_id=EXCLUDED.parent_member_id,name=EXCLUDED.name,joined_on=EXCLUDED.joined_on,
-		 rank=EXCLUDED.rank,city=EXCLUDED.city,status=EXCLUDED.status,note=EXCLUDED.note,sort_order=EXCLUDED.sort_order,updated_at=now()
+		 member_code=EXCLUDED.member_code,rank=EXCLUDED.rank,city=EXCLUDED.city,status=EXCLUDED.status,note=EXCLUDED.note,sort_order=EXCLUDED.sort_order,updated_at=now()
 		WHERE team_members.user_id=$2
-		RETURNING id,user_id,parent_member_id,name,joined_on,rank,city,status,note,sort_order,created_at,updated_at`, id, userID, input.ParentID, name, input.JoinedOn, input.Rank, input.City, input.Status, input.Note, input.SortOrder)
+		RETURNING id,user_id,member_code,parent_member_id,name,joined_on,rank,city,status,note,sort_order,created_at,updated_at`, id, userID, code, input.ParentID, name, input.JoinedOn, input.Rank, input.City, input.Status, input.Note, input.SortOrder)
 	var err error
 	item, err = scanMember(row)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -290,10 +306,48 @@ func (s *Service) CreateSnapshot(ctx context.Context, userID uuid.UUID, month ti
 	return s.GetSnapshot(ctx, userID, id)
 }
 
+// CaptureMonthlySnapshots uses each account's IANA timezone to determine the
+// just-finished business month. Delayed backfills are visible in the snapshot.
+func (s *Service) CaptureMonthlySnapshots(ctx context.Context, now time.Time) error {
+	rows, err := s.pool.Query(ctx, `SELECT id,timezone FROM accounts WHERE role='USER' AND status='ACTIVE'`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userID uuid.UUID
+		var timezone string
+		if err := rows.Scan(&userID, &timezone); err != nil {
+			return err
+		}
+		month, late, err := SnapshotMonthFor(now, timezone)
+		if err != nil {
+			return err
+		}
+		if _, err := s.CreateSnapshot(ctx, userID, month, "AUTO", late); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+
+func SnapshotMonthFor(now time.Time, timezone string) (time.Time, bool, error) {
+	if strings.TrimSpace(timezone) == "" {
+		timezone = "Asia/Shanghai"
+	}
+	location, err := time.LoadLocation(timezone)
+	if err != nil {
+		return time.Time{}, false, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "account timezone is invalid")
+	}
+	local := now.In(location)
+	currentMonthStart := time.Date(local.Year(), local.Month(), 1, 0, 0, 0, 0, location)
+	return currentMonthStart.AddDate(0, -1, 0).UTC(), local.Day() > 1, nil
+}
+
 type rowScanner interface{ Scan(...any) error }
 
 func scanMember(row rowScanner) (Member, error) {
 	var item Member
-	err := row.Scan(&item.ID, &item.UserID, &item.ParentID, &item.Name, &item.JoinedOn, &item.Rank, &item.City, &item.Status, &item.Note, &item.SortOrder, &item.CreatedAt, &item.UpdatedAt)
+	err := row.Scan(&item.ID, &item.UserID, &item.MemberCode, &item.ParentID, &item.Name, &item.JoinedOn, &item.Rank, &item.City, &item.Status, &item.Note, &item.SortOrder, &item.CreatedAt, &item.UpdatedAt)
 	return item, err
 }

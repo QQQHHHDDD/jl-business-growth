@@ -687,6 +687,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/analytics/finance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate finance transactions by day, week, or month */
+        get: operations["getFinanceAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate team membership by day, week, or month */
+        get: operations["getTeamAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/team/members": {
         parameters: {
             query?: never;
@@ -1237,6 +1271,7 @@ export interface components {
             validation_summary: {
                 [key: string]: unknown;
             };
+            warnings?: string[];
             /** Format: date-time */
             expires_at: string;
             /** Format: date-time */
@@ -1249,6 +1284,7 @@ export interface components {
                 [key: string]: string;
             };
             errors: string[];
+            warnings: string[];
         };
         ImportJobResponse: {
             data: components["schemas"]["ImportJob"];
@@ -1411,7 +1447,7 @@ export interface components {
             reading_minutes: number;
             audio_minutes: number;
             turnover_pv?: number | null;
-            turnover_net_amount?: number | null;
+            turnover_net_amount?: string | null;
             note?: string | null;
             /** Format: date-time */
             created_at: string;
@@ -1434,7 +1470,7 @@ export interface components {
             /** @default 0 */
             audio_minutes: number;
             turnover_pv?: number | null;
-            turnover_net_amount?: number | null;
+            turnover_net_amount?: string | null;
             note?: string | null;
         };
         WorklogResponse: {
@@ -1453,7 +1489,7 @@ export interface components {
             /** Format: date */
             turnover_date: string;
             pv: number;
-            net_amount: number;
+            net_amount: string;
             note?: string | null;
             /** Format: date-time */
             created_at: string;
@@ -1464,7 +1500,7 @@ export interface components {
             /** Format: date */
             turnover_date: string;
             pv?: number | null;
-            net_amount?: number | null;
+            net_amount?: string | null;
             note?: string | null;
         };
         TurnoverResponse: {
@@ -1483,6 +1519,7 @@ export interface components {
             title: string;
             description?: string | null;
             goal_ids: string[];
+            file_ids: string[];
             sort_order: number;
             /** Format: date-time */
             created_at: string;
@@ -1495,6 +1532,7 @@ export interface components {
             goal_ids?: string[];
             /** @default 0 */
             sort_order: number;
+            file_ids?: string[];
         };
         DreamResponse: {
             data: components["schemas"]["Dream"];
@@ -1586,7 +1624,7 @@ export interface components {
         };
         TurnoverTotals: {
             pv: number;
-            net_amount: number;
+            net_amount: string;
         };
         DashboardPeriod: {
             /** Format: date */
@@ -1604,6 +1642,32 @@ export interface components {
             month: components["schemas"]["DashboardPeriod"];
             active_goals: components["schemas"]["Goal"][];
             dreams_count: number;
+            upcoming_events: components["schemas"]["DashboardUpcomingEvent"][];
+            team_summary: components["schemas"]["DashboardTeamSummary"];
+            learning_summary: components["schemas"]["DashboardLearningSummary"];
+            finance_summary: components["schemas"]["DashboardFinanceSummary"];
+        };
+        DashboardUpcomingEvent: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            start_at: string;
+            /** Format: date-time */
+            end_at: string;
+        };
+        DashboardTeamSummary: {
+            total_members: number;
+            active_members: number;
+        };
+        DashboardLearningSummary: {
+            reading_minutes: number;
+            audio_minutes: number;
+        };
+        DashboardFinanceSummary: {
+            income: string;
+            expense: string;
+            net_cash_flow: string;
         };
         DashboardResponse: {
             data: components["schemas"]["DashboardData"];
@@ -1692,7 +1756,7 @@ export interface components {
         ReviewPeriodTotals: {
             worklog_action_count: number;
             turnover_pv: number;
-            turnover_net_amount: number;
+            turnover_net_amount: string;
         };
         Review: {
             /** Format: uuid */
@@ -1731,7 +1795,12 @@ export interface components {
             reading_minutes: number;
             audio_minutes: number;
             pv: number;
-            net_amount: number;
+            net_amount: string;
+            income_amount?: string;
+            expense_amount?: string;
+            net_cash_flow?: string;
+            member_count?: number;
+            active_member_count?: number;
             goal_count: number;
             completed_count: number;
         };
@@ -1752,6 +1821,7 @@ export interface components {
         TeamMember: {
             /** Format: uuid */
             id: string;
+            member_code: string;
             /** Format: uuid */
             parent_id?: string | null;
             name: string;
@@ -1769,6 +1839,7 @@ export interface components {
             updated_at: string;
         };
         TeamMemberRequest: {
+            member_code?: string;
             /** Format: uuid */
             parent_id?: string | null;
             name: string;
@@ -2022,7 +2093,7 @@ export interface components {
             type: "INCOME" | "EXPENSE";
             /** Format: uuid */
             category_id: string;
-            amount: number;
+            amount: string;
             description?: string | null;
             note?: string | null;
             /** @enum {string} */
@@ -2039,7 +2110,7 @@ export interface components {
             type: "INCOME" | "EXPENSE";
             /** Format: uuid */
             category_id: string;
-            amount: number;
+            amount: string;
             description?: string | null;
             note?: string | null;
             /**
@@ -2065,7 +2136,7 @@ export interface components {
             month: string;
             /** Format: uuid */
             category_id?: string | null;
-            amount: number;
+            amount: string;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -2076,7 +2147,7 @@ export interface components {
             month: string;
             /** Format: uuid */
             category_id?: string | null;
-            amount: number;
+            amount: string;
         };
         FinanceBudgetResponse: {
             data: components["schemas"]["FinanceBudget"];
@@ -2095,7 +2166,7 @@ export interface components {
             snapshot_date: string;
             /** @enum {string} */
             kind: "SAVINGS" | "EMERGENCY_FUND";
-            amount: number;
+            amount: string;
             note?: string | null;
             /** Format: date-time */
             created_at: string;
@@ -2107,7 +2178,7 @@ export interface components {
             snapshot_date: string;
             /** @enum {string} */
             kind: "SAVINGS" | "EMERGENCY_FUND";
-            amount: number;
+            amount: string;
             note?: string | null;
         };
         FinanceSnapshotResponse: {
@@ -2134,19 +2205,19 @@ export interface components {
             double_year_rank?: string | null;
         };
         IncomeSimulationResult: {
-            personal_sales_bonus: number;
-            coupon_6_percent: number;
-            differential_bonus: number;
-            monthly_marketing_star_bonus: number;
-            annual_growth_bonus: number;
-            ruby_bonus: number;
-            bfi_bonus: number;
-            bbi_bonus: number;
-            excel_total_income: number;
-            double_year_bonus: number;
-            monthly_income: number;
-            annual_or_one_time_income: number;
-            combined_income: number;
+            personal_sales_bonus: string;
+            coupon_6_percent: string;
+            differential_bonus: string;
+            monthly_marketing_star_bonus: string;
+            annual_growth_bonus: string;
+            ruby_bonus: string;
+            bfi_bonus: string;
+            bbi_bonus: string;
+            excel_total_income: string;
+            double_year_bonus: string;
+            monthly_income: string;
+            annual_or_one_time_income: string;
+            combined_income: string;
         };
         IncomeCalculationResponse: {
             data: {
@@ -3621,6 +3692,56 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Goal analytics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getFinanceAnalytics: {
+        parameters: {
+            query: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+                granularity: components["parameters"]["AnalyticsGranularity"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finance analytics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getTeamAnalytics: {
+        parameters: {
+            query: {
+                from?: components["parameters"]["DateFrom"];
+                to?: components["parameters"]["DateTo"];
+                granularity: components["parameters"]["AnalyticsGranularity"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Team analytics */
             200: {
                 headers: {
                     [name: string]: unknown;

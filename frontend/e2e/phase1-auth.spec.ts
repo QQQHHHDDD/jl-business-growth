@@ -91,7 +91,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({ 
 
   await page.goto("/app/analytics");
   await expect(page.getByRole("heading", { name: "数据统计", exact: true })).toBeVisible();
-  await expect(page.getByText("聚合结果")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "聚合结果", exact: true })).toBeVisible();
 
   await page.goto("/app/team");
   await expect(page.getByRole("heading", { name: "团队", exact: true })).toBeVisible();

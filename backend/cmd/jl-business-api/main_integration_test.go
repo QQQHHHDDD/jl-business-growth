@@ -13,12 +13,14 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jl-business-growth/backend/internal/api"
@@ -329,7 +331,7 @@ func TestPhase2APIIntegration(t *testing.T) {
 	}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var worklog api.WorklogResponse
 	decodeTestJSON(t, worklogResponse, &worklog)
-	if worklog.Data.TurnoverPv == nil || *worklog.Data.TurnoverPv != 2 || worklog.Data.TurnoverNetAmount == nil || *worklog.Data.TurnoverNetAmount != 25 || worklog.Data.ReadingMinutes != 30 || worklog.Data.AudioMinutes != 15 {
+	if worklog.Data.TurnoverPv == nil || *worklog.Data.TurnoverPv != 2 || worklog.Data.TurnoverNetAmount == nil || *worklog.Data.TurnoverNetAmount != "25.00" || worklog.Data.ReadingMinutes != 30 || worklog.Data.AudioMinutes != 15 {
 		t.Fatalf("worklog response = %+v, want turnover 2 PV/25 amount and learning minutes", worklog.Data)
 	}
 	worklogList := getTestJSON(t, userClient, server.URL, "/api/worklogs?from="+dailyDate+"&to="+dailyDate, http.StatusOK)
@@ -339,13 +341,13 @@ func TestPhase2APIIntegration(t *testing.T) {
 		t.Fatalf("worklog list length = %d, want 1", len(listedWorklogs.Data.Items))
 	}
 
-	turnoverResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/turnover", map[string]interface{}{"turnover_date": dailyDate, "net_amount": 37.5, "note": "direct turnover update"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	turnoverResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/turnover", map[string]interface{}{"turnover_date": dailyDate, "net_amount": "37.50", "note": "direct turnover update"}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var turnover api.TurnoverResponse
 	decodeTestJSON(t, turnoverResponse, &turnover)
-	if turnover.Data.Pv != 3 || turnover.Data.NetAmount != 37.5 {
+	if turnover.Data.Pv != 3 || turnover.Data.NetAmount != "37.50" {
 		t.Fatalf("turnover response = %+v, want 3 PV and 37.5 amount", turnover.Data)
 	}
-	postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/turnover", map[string]interface{}{"turnover_date": dailyDate, "pv": 2, "net_amount": 30}, userAuth.Data.CsrfToken, http.StatusBadRequest)
+	postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/turnover", map[string]interface{}{"turnover_date": dailyDate, "pv": 2, "net_amount": "30.00"}, userAuth.Data.CsrfToken, http.StatusBadRequest)
 
 	goalResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/goals", map[string]interface{}{
 		"type": "YEAR", "title": "Phase 2 meeting goal", "start_date": dailyDate, "due_date": dailyDate, "status": "IN_PROGRESS",
@@ -366,7 +368,7 @@ func TestPhase2APIIntegration(t *testing.T) {
 	dashboardResponse := getTestJSON(t, userClient, server.URL, "/api/dashboard?date="+dailyDate, http.StatusOK)
 	var dashboard api.DashboardResponse
 	decodeTestJSON(t, dashboardResponse, &dashboard)
-	if dashboard.Data.Today.Worklogs.MeetingCount != 2 || dashboard.Data.Today.Turnover.Pv != 3 || dashboard.Data.Today.Turnover.NetAmount != 37.5 || dashboard.Data.DreamsCount != 1 || len(dashboard.Data.ActiveGoals) != 1 || dashboard.Data.ActiveGoals[0].Progress != 1 {
+	if dashboard.Data.Today.Worklogs.MeetingCount != 2 || dashboard.Data.Today.Turnover.Pv != 3 || dashboard.Data.Today.Turnover.NetAmount != "37.50" || dashboard.Data.DreamsCount != 1 || len(dashboard.Data.ActiveGoals) != 1 || dashboard.Data.ActiveGoals[0].Progress != 1 {
 		t.Fatalf("dashboard response = %+v, want daily totals, one dream, and completed goal progress", dashboard.Data)
 	}
 	getTestJSON(t, superAdminClient, server.URL, "/api/worklogs", http.StatusForbidden)
@@ -541,6 +543,12 @@ func TestPhase4APIIntegration(t *testing.T) {
 	if len(snapshotResponse.Data.Members) != 2 {
 		t.Fatalf("snapshot members = %d, want 2", len(snapshotResponse.Data.Members))
 	}
+	teamAnalyticsBody := getTestJSON(t, userClient, server.URL, "/api/analytics/team?from=2026-09-01&to=2026-10-01&granularity=month", http.StatusOK)
+	var teamAnalytics api.AnalyticsResponse
+	decodeTestJSON(t, teamAnalyticsBody, &teamAnalytics)
+	if teamAnalytics.Data.Metric != "team" || len(teamAnalytics.Data.Buckets) != 1 || teamAnalytics.Data.Buckets[0].MemberCount == nil || *teamAnalytics.Data.Buckets[0].MemberCount != 2 {
+		t.Fatalf("team analytics = %+v", teamAnalytics.Data)
+	}
 	knowledgeResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/knowledge", map[string]interface{}{"title": "Phase 4 book", "type": "BOOK", "tags": []string{"经营", "经营"}, "status": "IN_PROGRESS"}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var item api.KnowledgeItemResponse
 	decodeTestJSON(t, knowledgeResponse, &item)
@@ -578,6 +586,47 @@ func TestPhase4APIIntegration(t *testing.T) {
 	uploadResponse := doTestRequest(t, userClient, uploadRequest, http.StatusCreated)
 	var fileResponse api.FileResponse
 	decodeTestJSON(t, uploadResponse, &fileResponse)
+	knowledgeUpdate := putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/knowledge/"+item.Data.Id.String(), map[string]interface{}{"title": "Phase 4 book", "type": "BOOK", "status": "IN_PROGRESS", "file_ids": []string{fileResponse.Data.Id.String()}}, userAuth.Data.CsrfToken, http.StatusOK)
+	decodeTestJSON(t, knowledgeUpdate, &item)
+	if len(item.Data.FileIds) != 1 || item.Data.FileIds[0] != fileResponse.Data.Id {
+		t.Fatalf("knowledge attachments = %v, want uploaded file", item.Data.FileIds)
+	}
+
+	var imageBody bytes.Buffer
+	imageWriter := multipart.NewWriter(&imageBody)
+	_ = imageWriter.WriteField("category", "DREAM_IMAGE")
+	imagePart, err := imageWriter.CreatePart(textproto.MIMEHeader{"Content-Disposition": {`form-data; name="file"; filename="dream.png"`}, "Content-Type": {"image/png"}})
+	if err != nil {
+		t.Fatalf("create dream image: %v", err)
+	}
+	_, _ = imagePart.Write([]byte("test image"))
+	_ = imageWriter.Close()
+	imageRequest, err := http.NewRequest(http.MethodPost, endpointURL(server.URL, "/api/files"), &imageBody)
+	if err != nil {
+		t.Fatalf("create dream image request: %v", err)
+	}
+	imageRequest.Header.Set("Content-Type", imageWriter.FormDataContentType())
+	imageRequest.Header.Set("Origin", cfg.PublicBaseURL)
+	imageRequest.Header.Set("X-CSRF-Token", userAuth.Data.CsrfToken)
+	imageRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
+	imageUpload := doTestRequest(t, userClient, imageRequest, http.StatusCreated)
+	var imageResponse api.FileResponse
+	decodeTestJSON(t, imageUpload, &imageResponse)
+	dreamBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/dreams", map[string]interface{}{"title": "Phase 4 dream", "file_ids": []string{imageResponse.Data.Id.String()}}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var dreamResponse api.DreamResponse
+	decodeTestJSON(t, dreamBody, &dreamResponse)
+	if len(dreamResponse.Data.FileIds) != 1 || dreamResponse.Data.FileIds[0] != imageResponse.Data.Id {
+		t.Fatalf("dream attachments = %v, want uploaded image", dreamResponse.Data.FileIds)
+	}
+	exportRequest, err := http.NewRequest(http.MethodGet, endpointURL(server.URL, "/api/exports/TEAM?format=csv"), nil)
+	if err != nil {
+		t.Fatalf("create team export request: %v", err)
+	}
+	exportRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
+	exportData := doTestRequest(t, userClient, exportRequest, http.StatusOK)
+	if !strings.Contains(string(exportData), "member_code,name,parent_member_code") || !strings.Contains(string(exportData), "Phase 4 root") {
+		t.Fatalf("team export does not contain stable hierarchy columns: %q", exportData)
+	}
 	searchResponse := getTestJSON(t, userClient, server.URL, "/api/search?q=Phase%204%20book", http.StatusOK)
 	var searchResult api.SearchResponse
 	decodeTestJSON(t, searchResponse, &searchResult)
@@ -654,32 +703,38 @@ func TestPhase5APIIntegration(t *testing.T) {
 	var category api.FinanceCategoryResponse
 	decodeTestJSON(t, categoryBody, &category)
 	today := time.Now().UTC().Format("2006-01-02")
-	transactionBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/transactions", map[string]interface{}{"occurred_on": today, "type": "EXPENSE", "category_id": category.Data.Id.String(), "amount": 123.45, "description": "Phase 5 transaction"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	transactionBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/transactions", map[string]interface{}{"occurred_on": today, "type": "EXPENSE", "category_id": category.Data.Id.String(), "amount": "123.45", "description": "Phase 5 transaction"}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var transaction api.FinanceTransactionResponse
 	decodeTestJSON(t, transactionBody, &transaction)
 	transactionsBody := getTestJSON(t, userClient, server.URL, "/api/finance/transactions?from="+today+"&to="+today, http.StatusOK)
 	var transactions api.FinanceTransactionListResponse
 	decodeTestJSON(t, transactionsBody, &transactions)
-	if len(transactions.Data.Items) != 1 || transactions.Data.Items[0].Amount != 123.45 {
+	if len(transactions.Data.Items) != 1 || transactions.Data.Items[0].Amount != "123.45" {
 		t.Fatalf("finance transactions = %+v", transactions.Data.Items)
 	}
-	budgetInput := map[string]interface{}{"month": "2026-09-01", "amount": 1000}
+	budgetInput := map[string]interface{}{"month": "2026-09-01", "amount": "1000.00"}
 	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/budgets", budgetInput, userAuth.Data.CsrfToken, http.StatusOK)
-	budgetInput["amount"] = 1500
+	budgetInput["amount"] = "1500.00"
 	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/budgets", budgetInput, userAuth.Data.CsrfToken, http.StatusOK)
 	budgetsBody := getTestJSON(t, userClient, server.URL, "/api/finance/budgets", http.StatusOK)
 	var budgets api.FinanceBudgetListResponse
 	decodeTestJSON(t, budgetsBody, &budgets)
-	if len(budgets.Data.Items) != 1 || budgets.Data.Items[0].Amount != 1500 {
+	if len(budgets.Data.Items) != 1 || budgets.Data.Items[0].Amount != "1500.00" {
 		t.Fatalf("finance budgets = %+v", budgets.Data.Items)
 	}
-	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/snapshots", map[string]interface{}{"snapshot_date": today, "kind": "SAVINGS", "amount": 8000, "note": "Phase 5"}, userAuth.Data.CsrfToken, http.StatusOK)
+	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/snapshots", map[string]interface{}{"snapshot_date": today, "kind": "SAVINGS", "amount": "8000.00", "note": "Phase 5"}, userAuth.Data.CsrfToken, http.StatusOK)
 	incomeInput := map[string]interface{}{"personal_use_pv": 1000, "customer_pv": 0, "markets": []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, "annual_growth_status": "NOT_QUALIFIED", "annual_growth_qualified_months": 0, "bfi_period_eligible": false, "bbi_period_eligible": false, "double_year_mode": "NONE"}
 	calculationBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulator/calculate", incomeInput, "", http.StatusOK)
 	var calculation api.IncomeCalculationResponse
 	decodeTestJSON(t, calculationBody, &calculation)
-	if calculation.Data.Result.PersonalSalesBonus != 1125 || calculation.Data.RuleVersion == "" {
+	if calculation.Data.Result.PersonalSalesBonus != "1125.00" || calculation.Data.RuleVersion == "" {
 		t.Fatalf("income calculation = %+v", calculation.Data)
+	}
+	financeAnalyticsBody := getTestJSON(t, userClient, server.URL, "/api/analytics/finance?from="+today+"&to="+today+"&granularity=day", http.StatusOK)
+	var financeAnalytics api.AnalyticsResponse
+	decodeTestJSON(t, financeAnalyticsBody, &financeAnalytics)
+	if financeAnalytics.Data.Metric != "finance" || len(financeAnalytics.Data.Buckets) != 1 || financeAnalytics.Data.Buckets[0].ExpenseAmount == nil || *financeAnalytics.Data.Buckets[0].ExpenseAmount != "123.45" {
+		t.Fatalf("finance analytics = %+v", financeAnalytics.Data)
 	}
 	simulationBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulations", map[string]interface{}{"name": "Phase 5 plan", "input": incomeInput}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var simulation api.IncomeSimulationResponse
@@ -747,13 +802,21 @@ func TestPhase6APIIntegration(t *testing.T) {
 	login := postTestJSON(t, adminClient, server.URL, cfg.PublicBaseURL, "/api/auth/login", map[string]string{"username": cfg.SuperadminUsername, "password": cfg.SuperadminPassword}, "", http.StatusOK)
 	var adminAuth api.AuthResponse
 	decodeTestJSON(t, login, &adminAuth)
-	inviteBody := postTestJSON(t, adminClient, server.URL, cfg.PublicBaseURL, "/api/admin/invitation-codes", map[string]interface{}{"max_uses": 1}, adminAuth.Data.CsrfToken, http.StatusCreated)
+	inviteBody := postTestJSON(t, adminClient, server.URL, cfg.PublicBaseURL, "/api/admin/invitation-codes", map[string]interface{}{"max_uses": 3}, adminAuth.Data.CsrfToken, http.StatusCreated)
 	var invite api.InvitationResponse
 	decodeTestJSON(t, inviteBody, &invite)
 	userClient := newTestClient(t)
 	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase6-user", "password": "phase6-user-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
 	var userAuth api.AuthResponse
 	decodeTestJSON(t, registered, &userAuth)
+	deleteClient := newTestClient(t)
+	deleteRegistered := postTestJSON(t, deleteClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase6-admin-delete-user", "password": "phase6-admin-delete-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
+	var deleteAuth api.AuthResponse
+	decodeTestJSON(t, deleteRegistered, &deleteAuth)
+	teamTargetClient := newTestClient(t)
+	teamTargetRegistered := postTestJSON(t, teamTargetClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase6-team-target", "password": "phase6-team-target-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
+	var teamTargetAuth api.AuthResponse
+	decodeTestJSON(t, teamTargetRegistered, &teamTargetAuth)
 
 	templateRequest, err := http.NewRequest(http.MethodGet, endpointURL(server.URL, "/api/imports/templates/WORKLOG"), nil)
 	if err != nil {
@@ -802,31 +865,80 @@ func TestPhase6APIIntegration(t *testing.T) {
 	if job.Data.Status != api.ImportJobStatus("COMMITTED") {
 		t.Fatalf("committed import job = %+v", job.Data)
 	}
+	reimport := uploadTestImport(t, userClient, server.URL, cfg.PublicBaseURL, userAuth.Data.CsrfToken, "WORKLOG", "phase6-worklog-again.xlsx", templateData)
+	if reimport.Warnings == nil || !containsTestString(*reimport.Warnings, "same file was successfully imported before") {
+		t.Fatalf("reimport warnings = %v, want prior-import warning", reimport.Warnings)
+	}
+	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+reimport.Id.String()+"/commit", nil, userAuth.Data.CsrfToken, http.StatusConflict)
+	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+reimport.Id.String()+"/commit", nil, userAuth.Data.CsrfToken, http.StatusConflict)
 
-	var fileBody bytes.Buffer
-	fileWriter := multipart.NewWriter(&fileBody)
-	_ = fileWriter.WriteField("category", "KNOWLEDGE_DOCUMENT")
-	filePart, err := fileWriter.CreatePart(textproto.MIMEHeader{"Content-Disposition": {`form-data; name="file"; filename="phase6.txt"`}, "Content-Type": {"text/plain"}})
+	rootBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"member_code": "roundtrip-root", "name": "Roundtrip root"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var root api.TeamMemberResponse
+	decodeTestJSON(t, rootBody, &root)
+	childBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"member_code": "roundtrip-child", "name": "Roundtrip child", "parent_id": root.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var child api.TeamMemberResponse
+	decodeTestJSON(t, childBody, &child)
+	leafBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"member_code": "roundtrip-leaf", "name": "Roundtrip leaf", "parent_id": child.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var leaf api.TeamMemberResponse
+	decodeTestJSON(t, leafBody, &leaf)
+	teamExportRequest, err := http.NewRequest(http.MethodGet, endpointURL(server.URL, "/api/exports/TEAM?format=xlsx"), nil)
 	if err != nil {
-		t.Fatalf("create account file: %v", err)
+		t.Fatalf("create team export request: %v", err)
 	}
-	_, _ = filePart.Write([]byte("phase 6 account deletion file"))
-	_ = fileWriter.Close()
-	fileRequest, err := http.NewRequest(http.MethodPost, endpointURL(server.URL, "/api/files"), &fileBody)
-	if err != nil {
-		t.Fatalf("create account file request: %v", err)
+	teamExportRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
+	teamWorkbook := doTestRequest(t, userClient, teamExportRequest, http.StatusOK)
+	teamJob := uploadTestImport(t, teamTargetClient, server.URL, cfg.PublicBaseURL, teamTargetAuth.Data.CsrfToken, "TEAM", "team-roundtrip.xlsx", teamWorkbook)
+	if teamJob.Status != api.ImportJobStatus("VALIDATED") || teamJob.InvalidCount != 0 {
+		t.Fatalf("team import job = %+v", teamJob)
 	}
-	fileRequest.Header.Set("Content-Type", fileWriter.FormDataContentType())
-	fileRequest.Header.Set("Origin", cfg.PublicBaseURL)
-	fileRequest.Header.Set("X-CSRF-Token", userAuth.Data.CsrfToken)
-	fileRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
-	doTestRequest(t, userClient, fileRequest, http.StatusCreated)
+	postTestJSON(t, teamTargetClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+teamJob.Id.String()+"/commit", nil, teamTargetAuth.Data.CsrfToken, http.StatusOK)
+	teamMembersBody := getTestJSON(t, teamTargetClient, server.URL, "/api/team/members", http.StatusOK)
+	var teamMembers api.TeamMemberListResponse
+	decodeTestJSON(t, teamMembersBody, &teamMembers)
+	byCode := make(map[string]api.TeamMember, len(teamMembers.Data.Items))
+	for _, member := range teamMembers.Data.Items {
+		byCode[member.MemberCode] = member
+	}
+	importedRoot, rootFound := byCode["roundtrip-root"]
+	importedChild, childFound := byCode["roundtrip-child"]
+	importedLeaf, leafFound := byCode["roundtrip-leaf"]
+	if !rootFound || !childFound || !leafFound || importedChild.ParentId == nil || importedLeaf.ParentId == nil || *importedChild.ParentId != importedRoot.Id || *importedLeaf.ParentId != importedChild.Id {
+		t.Fatalf("team round trip did not restore three-level hierarchy: %+v", teamMembers.Data.Items)
+	}
+
+	fileID := uploadTestFile(t, userClient, server.URL, cfg.PublicBaseURL, userAuth.Data.CsrfToken, "phase6.txt", "phase 6 account deletion file")
+	var storageName string
+	if err := pool.QueryRow(ctx, `SELECT storage_name FROM file_assets WHERE id=$1`, fileID).Scan(&storageName); err != nil {
+		t.Fatalf("find self-deletion file: %v", err)
+	}
 	deleteTestJSON(t, userClient, server.URL, "/api/auth/account", userAuth.Data.CsrfToken, http.StatusNoContent)
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM accounts WHERE username='phase6-user'`).Scan(&worklogCount); err != nil {
 		t.Fatalf("check deleted account: %v", err)
 	}
 	if worklogCount != 0 {
 		t.Fatal("account still exists after deletion")
+	}
+	if _, err := os.Stat(filepath.Join(fileRoot, storageName)); !os.IsNotExist(err) {
+		t.Fatalf("self-deleted account file still exists or cannot be checked: %v", err)
+	}
+	adminFileID := uploadTestFile(t, deleteClient, server.URL, cfg.PublicBaseURL, deleteAuth.Data.CsrfToken, "phase6-admin-delete.txt", "phase 6 administrator deletion file")
+	var adminFile string
+	if err := pool.QueryRow(ctx, `SELECT storage_name FROM file_assets WHERE id=$1`, adminFileID).Scan(&adminFile); err != nil {
+		t.Fatalf("find administrator-deletion file: %v", err)
+	}
+	var deleteUserID uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM accounts WHERE username='phase6-admin-delete-user'`).Scan(&deleteUserID); err != nil {
+		t.Fatalf("find administrator deletion target: %v", err)
+	}
+	deleteTestJSON(t, adminClient, server.URL, "/api/admin/users/"+deleteUserID.String(), adminAuth.Data.CsrfToken, http.StatusNoContent)
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM accounts WHERE id=$1`, deleteUserID).Scan(&worklogCount); err != nil {
+		t.Fatalf("check administrator-deleted account: %v", err)
+	}
+	if worklogCount != 0 {
+		t.Fatal("administrator-deleted account still exists")
+	}
+	if _, err := os.Stat(filepath.Join(fileRoot, adminFile)); !os.IsNotExist(err) {
+		t.Fatalf("administrator-deleted account file still exists or cannot be checked: %v", err)
 	}
 }
 
@@ -852,6 +964,77 @@ func testClientIP(client *http.Client) string {
 		return value.(string)
 	}
 	return "198.51.100.254"
+}
+
+func uploadTestFile(t *testing.T, client *http.Client, serverURL, origin, csrfToken, filename, content string) uuid.UUID {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writer.WriteField("category", "KNOWLEDGE_DOCUMENT"); err != nil {
+		t.Fatalf("write file category: %v", err)
+	}
+	part, err := writer.CreatePart(textproto.MIMEHeader{"Content-Disposition": {fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename)}, "Content-Type": {"text/plain"}})
+	if err != nil {
+		t.Fatalf("create test file: %v", err)
+	}
+	if _, err := part.Write([]byte(content)); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close test file form: %v", err)
+	}
+	request, err := http.NewRequest(http.MethodPost, endpointURL(serverURL, "/api/files"), &body)
+	if err != nil {
+		t.Fatalf("create test file request: %v", err)
+	}
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	request.Header.Set("Origin", origin)
+	request.Header.Set("X-CSRF-Token", csrfToken)
+	request.Header.Set("X-Forwarded-For", testClientIP(client))
+	response := doTestRequest(t, client, request, http.StatusCreated)
+	var file api.FileResponse
+	decodeTestJSON(t, response, &file)
+	return file.Data.Id
+}
+
+func uploadTestImport(t *testing.T, client *http.Client, serverURL, origin, csrfToken, kind, filename string, workbook []byte) api.ImportJob {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writer.WriteField("type", kind); err != nil {
+		t.Fatalf("write import type: %v", err)
+	}
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		t.Fatalf("create import workbook: %v", err)
+	}
+	if _, err := part.Write(workbook); err != nil {
+		t.Fatalf("write import workbook: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close import workbook form: %v", err)
+	}
+	request, err := http.NewRequest(http.MethodPost, endpointURL(serverURL, "/api/imports"), &body)
+	if err != nil {
+		t.Fatalf("create import workbook request: %v", err)
+	}
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	request.Header.Set("Origin", origin)
+	request.Header.Set("X-CSRF-Token", csrfToken)
+	request.Header.Set("X-Forwarded-For", testClientIP(client))
+	response := doTestRequest(t, client, request, http.StatusCreated)
+	var job api.ImportJobResponse
+	decodeTestJSON(t, response, &job)
+	return job.Data
+}
+
+func containsTestString(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
 }
 
 func postTestJSON(t *testing.T, client *http.Client, serverURL, origin, path string, body interface{}, csrfToken string, expectedStatus int) []byte {
