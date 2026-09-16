@@ -3219,11 +3219,27 @@ components:
           type: string
     AnalyticsBucket:
       type: object
-      required: [period, action_count, reading_minutes, audio_minutes, pv, net_amount, goal_count, completed_count]
+      required: [period, action_count, open_conversation_count, deep_conversation_count, buffer_count, story_share_count, screening_count, opportunity_count, meeting_count, customer_followup_count, reading_minutes, audio_minutes, pv, net_amount, goal_count, completed_count]
       properties:
         period:
           type: string
         action_count:
+          type: integer
+        open_conversation_count:
+          type: integer
+        deep_conversation_count:
+          type: integer
+        buffer_count:
+          type: integer
+        story_share_count:
+          type: integer
+        screening_count:
+          type: integer
+        opportunity_count:
+          type: integer
+        meeting_count:
+          type: integer
+        customer_followup_count:
           type: integer
         reading_minutes:
           type: integer
@@ -3253,7 +3269,7 @@ components:
           type: integer
     AnalyticsData:
       type: object
-      required: [metric, from, to, granularity, buckets]
+      required: [metric, from, to, granularity, current_member_count, current_active_member_count, snapshot_count, buckets]
       properties:
         metric:
           type: string
@@ -3266,6 +3282,12 @@ components:
         granularity:
           type: string
           enum: [day, week, month]
+        current_member_count:
+          type: integer
+        current_active_member_count:
+          type: integer
+        snapshot_count:
+          type: integer
         buckets:
           type: array
           items:

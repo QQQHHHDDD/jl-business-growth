@@ -538,6 +538,12 @@ func TestPhase4APIIntegration(t *testing.T) {
 	var child api.TeamMemberResponse
 	decodeTestJSON(t, childResponse, &child)
 	putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members/"+parent.Data.Id.String(), map[string]interface{}{"name": "Phase 4 root", "parent_id": child.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusBadRequest)
+	teamWithoutSnapshotsBody := getTestJSON(t, userClient, server.URL, "/api/analytics/team?from=2026-09-01&to=2026-10-01&granularity=month", http.StatusOK)
+	var teamWithoutSnapshots api.AnalyticsResponse
+	decodeTestJSON(t, teamWithoutSnapshotsBody, &teamWithoutSnapshots)
+	if teamWithoutSnapshots.Data.CurrentMemberCount != 2 || teamWithoutSnapshots.Data.CurrentActiveMemberCount != 2 || teamWithoutSnapshots.Data.SnapshotCount != 0 || len(teamWithoutSnapshots.Data.Buckets) != 0 {
+		t.Fatalf("team analytics without snapshots = %+v", teamWithoutSnapshots.Data)
+	}
 	snapshot := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/snapshots", map[string]interface{}{"snapshot_month": "2026-09-01", "snapshot_type": "MANUAL"}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var snapshotResponse api.TeamSnapshotResponse
 	decodeTestJSON(t, snapshot, &snapshotResponse)
@@ -547,7 +553,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 	teamAnalyticsBody := getTestJSON(t, userClient, server.URL, "/api/analytics/team?from=2026-09-01&to=2026-10-01&granularity=month", http.StatusOK)
 	var teamAnalytics api.AnalyticsResponse
 	decodeTestJSON(t, teamAnalyticsBody, &teamAnalytics)
-	if teamAnalytics.Data.Metric != "team" || len(teamAnalytics.Data.Buckets) != 1 || teamAnalytics.Data.Buckets[0].MemberCount == nil || *teamAnalytics.Data.Buckets[0].MemberCount != 2 {
+	if teamAnalytics.Data.Metric != "team" || teamAnalytics.Data.CurrentMemberCount != 2 || teamAnalytics.Data.CurrentActiveMemberCount != 2 || teamAnalytics.Data.SnapshotCount != 1 || len(teamAnalytics.Data.Buckets) != 1 || teamAnalytics.Data.Buckets[0].MemberCount == nil || *teamAnalytics.Data.Buckets[0].MemberCount != 2 {
 		t.Fatalf("team analytics = %+v", teamAnalytics.Data)
 	}
 	knowledgeResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/knowledge", map[string]interface{}{"title": "Phase 4 book", "type": "BOOK", "tags": []string{"经营", "经营"}, "status": "IN_PROGRESS"}, userAuth.Data.CsrfToken, http.StatusCreated)

@@ -1047,9 +1047,24 @@ func (h *Handler) analyticsResponse(ctx echo.Context, granularity string, fromPa
 	for _, item := range result.Buckets {
 		memberCount, activeMemberCount := int(item.MemberCount), int(item.ActiveMemberCount)
 		income, expense, netCashFlow := money.Format(item.IncomeAmount), money.Format(item.ExpenseAmount), money.Format(item.NetCashFlow)
-		buckets = append(buckets, AnalyticsBucket{Period: item.Period, ActionCount: int(item.ActionCount), ReadingMinutes: int(item.ReadingMinutes), AudioMinutes: int(item.AudioMinutes), Pv: float32(item.PV), NetAmount: money.Format(item.NetAmount), IncomeAmount: &income, ExpenseAmount: &expense, NetCashFlow: &netCashFlow, MemberCount: &memberCount, ActiveMemberCount: &activeMemberCount, GoalCount: int(item.GoalCount), CompletedCount: int(item.CompletedCount)})
+		buckets = append(buckets, AnalyticsBucket{
+			Period: item.Period, ActionCount: int(item.ActionCount),
+			OpenConversationCount: int(item.OpenConversationCount), DeepConversationCount: int(item.DeepConversationCount),
+			BufferCount: int(item.BufferCount), StoryShareCount: int(item.StoryShareCount),
+			ScreeningCount: int(item.ScreeningCount), OpportunityCount: int(item.OpportunityCount),
+			MeetingCount: int(item.MeetingCount), CustomerFollowupCount: int(item.CustomerFollowupCount),
+			ReadingMinutes: int(item.ReadingMinutes), AudioMinutes: int(item.AudioMinutes),
+			Pv: float32(item.PV), NetAmount: money.Format(item.NetAmount), IncomeAmount: &income,
+			ExpenseAmount: &expense, NetCashFlow: &netCashFlow, MemberCount: &memberCount,
+			ActiveMemberCount: &activeMemberCount, GoalCount: int(item.GoalCount), CompletedCount: int(item.CompletedCount),
+		})
 	}
-	return ctx.JSON(http.StatusOK, AnalyticsResponse{Data: AnalyticsData{Metric: result.Metric, Granularity: AnalyticsDataGranularity(result.Granularity), From: apiDate(result.From), To: apiDate(result.To), Buckets: buckets}, RequestId: requestID(ctx)})
+	return ctx.JSON(http.StatusOK, AnalyticsResponse{Data: AnalyticsData{
+		Metric: result.Metric, Granularity: AnalyticsDataGranularity(result.Granularity),
+		From: apiDate(result.From), To: apiDate(result.To), Buckets: buckets,
+		CurrentMemberCount: int(result.CurrentMemberCount), CurrentActiveMemberCount: int(result.CurrentActiveCount),
+		SnapshotCount: int(result.SnapshotCount),
+	}, RequestId: requestID(ctx)})
 }
 
 func (h *Handler) dailyUser(ctx echo.Context) (uuid.UUID, *auth.Session, error) {

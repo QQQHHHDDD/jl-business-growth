@@ -548,28 +548,39 @@ type AccountsResponse struct {
 
 // AnalyticsBucket defines model for AnalyticsBucket.
 type AnalyticsBucket struct {
-	ActionCount       int     `json:"action_count"`
-	ActiveMemberCount *int    `json:"active_member_count,omitempty"`
-	AudioMinutes      int     `json:"audio_minutes"`
-	CompletedCount    int     `json:"completed_count"`
-	ExpenseAmount     *string `json:"expense_amount,omitempty"`
-	GoalCount         int     `json:"goal_count"`
-	IncomeAmount      *string `json:"income_amount,omitempty"`
-	MemberCount       *int    `json:"member_count,omitempty"`
-	NetAmount         string  `json:"net_amount"`
-	NetCashFlow       *string `json:"net_cash_flow,omitempty"`
-	Period            string  `json:"period"`
-	Pv                float32 `json:"pv"`
-	ReadingMinutes    int     `json:"reading_minutes"`
+	ActionCount           int     `json:"action_count"`
+	ActiveMemberCount     *int    `json:"active_member_count,omitempty"`
+	AudioMinutes          int     `json:"audio_minutes"`
+	BufferCount           int     `json:"buffer_count"`
+	CompletedCount        int     `json:"completed_count"`
+	CustomerFollowupCount int     `json:"customer_followup_count"`
+	DeepConversationCount int     `json:"deep_conversation_count"`
+	ExpenseAmount         *string `json:"expense_amount,omitempty"`
+	GoalCount             int     `json:"goal_count"`
+	IncomeAmount          *string `json:"income_amount,omitempty"`
+	MeetingCount          int     `json:"meeting_count"`
+	MemberCount           *int    `json:"member_count,omitempty"`
+	NetAmount             string  `json:"net_amount"`
+	NetCashFlow           *string `json:"net_cash_flow,omitempty"`
+	OpenConversationCount int     `json:"open_conversation_count"`
+	OpportunityCount      int     `json:"opportunity_count"`
+	Period                string  `json:"period"`
+	Pv                    float32 `json:"pv"`
+	ReadingMinutes        int     `json:"reading_minutes"`
+	ScreeningCount        int     `json:"screening_count"`
+	StoryShareCount       int     `json:"story_share_count"`
 }
 
 // AnalyticsData defines model for AnalyticsData.
 type AnalyticsData struct {
-	Buckets     []AnalyticsBucket        `json:"buckets"`
-	From        openapi_types.Date       `json:"from"`
-	Granularity AnalyticsDataGranularity `json:"granularity"`
-	Metric      string                   `json:"metric"`
-	To          openapi_types.Date       `json:"to"`
+	Buckets                  []AnalyticsBucket        `json:"buckets"`
+	CurrentActiveMemberCount int                      `json:"current_active_member_count"`
+	CurrentMemberCount       int                      `json:"current_member_count"`
+	From                     openapi_types.Date       `json:"from"`
+	Granularity              AnalyticsDataGranularity `json:"granularity"`
+	Metric                   string                   `json:"metric"`
+	SnapshotCount            int                      `json:"snapshot_count"`
+	To                       openapi_types.Date       `json:"to"`
 }
 
 // AnalyticsDataGranularity defines model for AnalyticsData.Granularity.

@@ -1792,6 +1792,14 @@ export interface components {
         AnalyticsBucket: {
             period: string;
             action_count: number;
+            open_conversation_count: number;
+            deep_conversation_count: number;
+            buffer_count: number;
+            story_share_count: number;
+            screening_count: number;
+            opportunity_count: number;
+            meeting_count: number;
+            customer_followup_count: number;
             reading_minutes: number;
             audio_minutes: number;
             pv: number;
@@ -1812,6 +1820,9 @@ export interface components {
             to: string;
             /** @enum {string} */
             granularity: "day" | "week" | "month";
+            current_member_count: number;
+            current_active_member_count: number;
+            snapshot_count: number;
             buckets: components["schemas"]["AnalyticsBucket"][];
         };
         AnalyticsResponse: {
