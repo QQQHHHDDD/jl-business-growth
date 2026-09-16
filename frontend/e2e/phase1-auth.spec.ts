@@ -141,6 +141,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(
     page.getByRole("heading", { name: "团队", exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "新增成员" }).click();
   await page.getByLabel("团队成员姓名").fill("E2E 团队成员");
   await page.getByRole("button", { name: "保存成员" }).click();
   await expect(page.getByRole("status")).toContainText("团队成员已保存");
