@@ -79,7 +79,7 @@ describe("AppShell navigation", () => {
     expect(screen.getByRole("link", { name: "财务" })).toHaveClass(
       "bg-teal-50",
     );
-    expect(screen.getAllByRole("link", { name: "全局搜索" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "全局搜索" })).toHaveLength(2);
   });
 
   it("keeps only one user group expanded and supports desktop collapse", () => {
@@ -107,8 +107,12 @@ describe("AppShell navigation", () => {
     const onLogout = vi.fn();
     renderShell("/app", userAuth, onLogout);
     expect(
-      screen.getAllByRole("link", { name: "全局搜索" }).length,
+      screen.getAllByRole("button", { name: "全局搜索" }).length,
     ).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: "全局搜索" })[0]);
+    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(screen.getByLabelText("全局搜索关键词")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
     fireEvent.click(screen.getByRole("button", { name: "账号菜单 owner" }));
     const menu = screen.getByRole("menu", { name: "账号操作" });
     expect(
@@ -144,7 +148,7 @@ describe("AppShell navigation", () => {
       screen.queryByRole("link", { name: "管理员管理" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: "全局搜索" }),
+      screen.queryByRole("button", { name: "全局搜索" }),
     ).not.toBeInTheDocument();
   });
 });

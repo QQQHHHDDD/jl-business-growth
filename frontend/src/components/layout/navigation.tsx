@@ -31,6 +31,7 @@ import type { AuthResponse, HealthResponse } from "@/api/client";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
+import { SearchOverlay } from "@/features/search/search-page";
 import { cn } from "@/lib/utils";
 
 type NavigationItem = { href: string; label: string; icon: typeof Home };
@@ -367,6 +368,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(collapseStorageKey) === "true",
   );
@@ -581,22 +583,18 @@ export function AppShell({
               <HealthIndicator health={health} />
               {!admin && (
                 <Button
-                  asChild
                   variant="secondary"
                   size="sm"
                   className="hidden md:inline-flex"
+                  onClick={() => setSearchOpen(true)}
                 >
-                  <Link to="/app/search">
-                    <Search size={16} />
-                    全局搜索
-                  </Link>
+                  <Search size={16} />
+                  全局搜索
                 </Button>
               )}
               {!admin && (
-                <Button asChild variant="icon" size="sm" className="md:hidden">
-                  <Link to="/app/search" aria-label="全局搜索">
-                    <Search size={18} />
-                  </Link>
+                <Button variant="icon" size="sm" className="md:hidden" aria-label="全局搜索" onClick={() => setSearchOpen(true)}>
+                  <Search size={18} />
                 </Button>
               )}
               <AccountMenu
@@ -632,6 +630,7 @@ export function AppShell({
           ))}
         </div>
       </nav>
+      {!admin && <SearchOverlay authResponse={authResponse} open={searchOpen} onOpenChange={setSearchOpen} />}
     </div>
   );
 }

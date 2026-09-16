@@ -1,67 +1,54 @@
 import { useMutation } from "@tanstack/react-query";
-import { Search as SearchIcon, X } from "lucide-react";
+import { ArrowRight, Search as SearchIcon, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { AuthResponse, SearchResult } from "@/api/client";
 import { searchRecords } from "@/api/client";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { EmptyState, ErrorState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { errorMessage } from "@/lib/utils";
 
 const modules = [["goals", "目标"], ["calendar", "日历"], ["team", "团队"], ["knowledge", "学习"], ["tags", "标签"]] as const;
 const labels = Object.fromEntries(modules) as Record<string, string>;
+const moduleRoutes: Record<string, string> = { goals: "/app/goals", calendar: "/app/calendar", team: "/app/team", knowledge: "/app/knowledge", tags: "/app/knowledge" };
+
+function grouped(items: SearchResult[]) { const groups = new Map<string, SearchResult[]>(); items.forEach((item) => groups.set(item.module, [...(groups.get(item.module) ?? []), item])); return [...groups.entries()]; }
+function resultRoute(item: SearchResult) { return moduleRoutes[item.module] ?? "/app/search"; }
+
+export function SearchOverlay({ authResponse, open, onOpenChange }: { authResponse: AuthResponse; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(0);
+  const search = useMutation({ mutationFn: (value: string) => searchRecords(value, [], 1, 8) });
+  const runOverlaySearch = search.mutate;
+  const resetOverlaySearch = search.reset;
+  const items = search.data?.data.items ?? [];
+  useEffect(() => { if (!open) { setQuery(""); resetOverlaySearch(); setSelected(0); } }, [open, resetOverlaySearch]);
+  useEffect(() => { const value = query.trim(); if (!open || value.length < 2) return; const timer = window.setTimeout(() => runOverlaySearch(value), 220); return () => window.clearTimeout(timer); }, [open, query, runOverlaySearch]);
+  useEffect(() => setSelected(0), [search.data]);
+  const openResult = (item: SearchResult) => { onOpenChange(false); navigate(resultRoute(item)); };
+  const viewAll = () => { const value = query.trim(); onOpenChange(false); navigate(`/app/search${value ? `?q=${encodeURIComponent(value)}` : ""}`); };
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="top-[12vh] max-h-[76vh] max-w-2xl -translate-y-0 overflow-hidden p-0"><DialogHeader><div className="px-5 pt-5"><DialogTitle>全局搜索</DialogTitle><DialogDescription>搜索 {authResponse.data.account.username} 的目标、日历、团队、学习内容和标签。</DialogDescription></div></DialogHeader><div className="border-y border-slate-200 px-5 py-3"><div className="relative"><SearchIcon className="absolute left-3 top-3 text-slate-400" size={18} /><input autoFocus aria-label="全局搜索关键词" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "ArrowDown") { event.preventDefault(); setSelected((value) => Math.min(items.length - 1, value + 1)); } if (event.key === "ArrowUp") { event.preventDefault(); setSelected((value) => Math.max(0, value - 1)); } if (event.key === "Enter") { event.preventDefault(); if (items[selected]) openResult(items[selected]); else if (query.trim()) search.mutate(query.trim()); } }} placeholder="输入至少 2 个字符" className="min-h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" /></div></div><div className="min-h-52 overflow-y-auto p-3">{query.trim().length < 2 ? <EmptyState title="输入关键词开始搜索" description="附件正文不会参与搜索。" /> : search.isPending ? <LoadingState label="正在搜索" /> : search.isError ? <ErrorState message={errorMessage(search.error)} onRetry={() => search.mutate(query.trim())} /> : items.length ? <div className="space-y-4">{grouped(items).map(([module, values]) => <section key={module}><h3 className="px-2 text-xs font-bold text-slate-500">{labels[module] ?? module}</h3><div className="mt-1 space-y-1">{values.map((item) => { const index = items.indexOf(item); return <button key={`${item.module}-${item.id}`} type="button" onMouseEnter={() => setSelected(index)} onClick={() => openResult(item)} className={`w-full rounded-lg px-3 py-2.5 text-left ${selected === index ? "bg-teal-50" : "hover:bg-slate-50"}`}><span className="block font-semibold text-slate-900">{item.title}</span><span className="mt-1 block truncate text-xs text-slate-500">{item.snippet}</span></button>; })}</div></section>)}</div> : <EmptyState title="没有匹配记录" description="尝试更短的关键词。" />}</div><div className="flex justify-end border-t border-slate-200 bg-slate-50 px-5 py-3"><Button variant="ghost" size="sm" onClick={viewAll}>查看全部结果<ArrowRight size={15} /></Button></div></DialogContent></Dialog>;
+}
 
 export function SearchPage({ authResponse }: { authResponse: AuthResponse }) {
   const accountId = authResponse.data.account.id;
   const storageKey = `jl-business-growth:recent-searches:${accountId}`;
-  const [query, setQuery] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [query, setQuery] = useState(params.get("q") ?? "");
   const [selectedModules, setSelectedModules] = useState<string[]>(modules.map(([value]) => value));
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const search = useMutation({ mutationFn: ({ value, scopes }: { value: string; scopes: string[] }) => searchRecords(value, scopes) });
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as unknown;
-      if (Array.isArray(saved)) setRecentSearches(saved.filter((value): value is string => typeof value === "string").slice(0, 5));
-    } catch {
-      setRecentSearches([]);
-    }
-  }, [storageKey]);
-
-  const groupedResults = useMemo(() => {
-    const groups = new Map<string, SearchResult[]>();
-    search.data?.data.items.forEach((item) => groups.set(item.module, [...(groups.get(item.module) ?? []), item]));
-    return [...groups.entries()];
-  }, [search.data]);
-
-  const remember = (value: string) => {
-    const next = [value, ...recentSearches.filter((item) => item !== value)].slice(0, 5);
-    setRecentSearches(next);
-    localStorage.setItem(storageKey, JSON.stringify(next));
-  };
-  const runSearch = (value = query) => {
-    const normalized = value.trim();
-    if (!normalized || selectedModules.length === 0) return;
-    setQuery(normalized);
-    remember(normalized);
-    search.mutate({ value: normalized, scopes: selectedModules });
-  };
+  const runFullSearch = search.mutate;
+  useEffect(() => { try { const saved = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as unknown; if (Array.isArray(saved)) setRecentSearches(saved.filter((value): value is string => typeof value === "string").slice(0, 5)); } catch { setRecentSearches([]); } }, [storageKey]);
+  useEffect(() => { const value = params.get("q")?.trim(); if (value) runFullSearch({ value, scopes: selectedModules }); }, [params, runFullSearch, selectedModules]);
+  const groupedResults = useMemo(() => grouped(search.data?.data.items ?? []), [search.data]);
+  const remember = (value: string) => { const next = [value, ...recentSearches.filter((item) => item !== value)].slice(0, 5); setRecentSearches(next); localStorage.setItem(storageKey, JSON.stringify(next)); };
+  const runSearch = (value = query) => { const normalized = value.trim(); if (!normalized || selectedModules.length === 0) return; setQuery(normalized); setParams({ q: normalized }); remember(normalized); search.mutate({ value: normalized, scopes: selectedModules }); };
   const toggleModule = (module: string) => setSelectedModules((current) => current.includes(module) ? current.filter((item) => item !== module) : [...current, module]);
-
-  return <div className="space-y-7">
-    <PageHeader eyebrow="统一检索" title="全局搜索" description={`在目标、日历、团队、学习内容和标签中查找 ${authResponse.data.account.username} 的记录；附件正文不会参与搜索。`} />
-    <Panel title="查找记录" description="选择搜索范围后，结果会按模块分组展示。">
-      <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); runSearch(); }}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end"><Input label="搜索关键词" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入关键词" className="flex-1" /><Button type="submit" loading={search.isPending} disabled={!query.trim() || selectedModules.length === 0}><SearchIcon size={16} />搜索</Button></div>
-        <fieldset><legend className="text-sm font-semibold text-slate-700">搜索范围</legend><div className="mt-2 flex flex-wrap gap-2">{modules.map(([value, label]) => <label key={value} className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selectedModules.includes(value) ? "border-teal-300 bg-teal-50 text-teal-900" : "border-slate-200 bg-white text-slate-600"}`}><input type="checkbox" checked={selectedModules.includes(value)} onChange={() => toggleModule(value)} />{label}</label>)}</div>{selectedModules.length === 0 && <p className="mt-2 text-sm text-rose-700">至少选择一个搜索范围。</p>}</fieldset>
-      </form>
-      {recentSearches.length > 0 && <div className="mt-5 border-t border-slate-100 pt-4"><div className="flex items-center justify-between"><p className="text-sm font-semibold text-slate-700">最近搜索</p><Button variant="ghost" size="sm" onClick={() => { setRecentSearches([]); localStorage.removeItem(storageKey); }}><X size={14} />清空</Button></div><div className="mt-2 flex flex-wrap gap-2">{recentSearches.map((item) => <button key={item} type="button" className="rounded-md bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-800" onClick={() => runSearch(item)}>{item}</button>)}</div></div>}
-    </Panel>
-    {search.isError && <ErrorState message={errorMessage(search.error)} onRetry={() => runSearch()} />}
-    {search.data && <Panel title="搜索结果" description={`共找到 ${search.data.meta.total} 条匹配记录。`}>
-      {search.data.data.items.length === 0 ? <EmptyState title="没有匹配记录" description="尝试更短的关键词，或扩大搜索范围。" /> : <div className="space-y-6">{groupedResults.map(([module, items]) => <section key={module} aria-labelledby={`search-group-${module}`}><h2 id={`search-group-${module}`} className="mb-3 text-base font-bold text-slate-900">{labels[module] ?? module}<span className="ml-2 text-xs font-normal text-slate-500">{items.length} 条</span></h2><div className="space-y-3">{items.map((item) => <article key={`${item.module}-${item.id}`} className="border-b border-slate-100 pb-3 last:border-0"><h3 className="font-bold text-slate-900">{item.title}</h3><p className="mt-2 line-clamp-2 text-sm text-slate-600">{item.snippet}</p></article>)}</div></section>)}</div>}
-    </Panel>}
-  </div>;
+  return <div className="space-y-6"><PageHeader eyebrow="统一检索" title="全局搜索" description="在目标、日历、团队、学习内容和标签中查找记录；附件正文不参与搜索。" /><Panel><form onSubmit={(event) => { event.preventDefault(); runSearch(); }}><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><Input label="搜索关键词" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入关键词" className="flex-1" /><Button type="submit" loading={search.isPending} disabled={!query.trim() || selectedModules.length === 0}><SearchIcon size={16} />搜索</Button></div><fieldset className="mt-4"><legend className="text-sm font-semibold text-slate-700">搜索范围</legend><div className="mt-2 flex flex-wrap gap-2">{modules.map(([value, label]) => <label key={value} className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selectedModules.includes(value) ? "border-teal-300 bg-teal-50 text-teal-900" : "border-slate-200 bg-white text-slate-600"}`}><input type="checkbox" checked={selectedModules.includes(value)} onChange={() => toggleModule(value)} />{label}</label>)}</div></fieldset></form>{recentSearches.length > 0 && <div className="mt-5 border-t border-slate-100 pt-4"><div className="flex items-center justify-between"><p className="text-sm font-semibold text-slate-700">最近搜索</p><Button variant="ghost" size="sm" onClick={() => { setRecentSearches([]); localStorage.removeItem(storageKey); }}><X size={14} />清空</Button></div><div className="mt-2 flex flex-wrap gap-2">{recentSearches.map((item) => <button key={item} type="button" className="rounded-md bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-800" onClick={() => runSearch(item)}>{item}</button>)}</div></div>}</Panel>{search.isError && <ErrorState message={errorMessage(search.error)} onRetry={() => runSearch()} />}{search.data && <Panel title="搜索结果" description={`共找到 ${search.data.meta.total} 条匹配记录。`}>{search.data.data.items.length === 0 ? <EmptyState title="没有匹配记录" description="尝试更短的关键词，或扩大搜索范围。" /> : <div className="space-y-6">{groupedResults.map(([module, items]) => <section key={module} aria-labelledby={`search-group-${module}`}><h2 id={`search-group-${module}`} className="mb-2 text-sm font-bold text-slate-500">{labels[module] ?? module}<span className="ml-2 font-normal">{items.length} 条</span></h2><div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">{items.map((item) => <a key={`${item.module}-${item.id}`} href={resultRoute(item)} className="flex items-center justify-between gap-4 p-4 hover:bg-slate-50"><span className="min-w-0"><strong className="block truncate text-slate-900">{item.title}</strong><span className="mt-1 block truncate text-sm text-slate-500">{item.snippet}</span></span><ArrowRight className="shrink-0 text-slate-400" size={16} /></a>)}</div></section>)}</div>}</Panel>}</div>;
 }
