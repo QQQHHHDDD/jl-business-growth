@@ -399,7 +399,7 @@ export function saveLearningSession(csrfToken: string, input: LearningSessionReq
 export function listFiles(): Promise<components["schemas"]["FileListResponse"]> { return request("/api/files"); }
 export function uploadFile(csrfToken: string, file: File, category: "DREAM_IMAGE" | "KNOWLEDGE_DOCUMENT" | "KNOWLEDGE_IMAGE"): Promise<components["schemas"]["FileResponse"]> { const form = new FormData(); form.set("category", category); form.set("file", file); return request("/api/files", { method: "POST", headers: { "X-CSRF-Token": csrfToken }, body: form }); }
 export function deleteFile(csrfToken: string, id: string): Promise<void> { return request(`/api/files/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE")); }
-export function searchRecords(query: string, page = 1, pageSize = 20): Promise<components["schemas"]["SearchResponse"]> { return request(`/api/search?q=${encodeURIComponent(query)}&page=${page}&page_size=${pageSize}`); }
+export function searchRecords(query: string, modules: string[] = [], page = 1, pageSize = 20): Promise<components["schemas"]["SearchResponse"]> { const params = new URLSearchParams({ q: query, page: String(page), page_size: String(pageSize) }); if (modules.length) params.set("modules", modules.join(",")); return request(`/api/search?${params}`); }
 
 export function downloadImportTemplate(type: ImportType): Promise<Blob> { return requestBlob(`/api/imports/templates/${encodeURIComponent(type)}`); }
 export function createImport(csrfToken: string, type: ImportType, file: File): Promise<components["schemas"]["ImportJobResponse"]> {

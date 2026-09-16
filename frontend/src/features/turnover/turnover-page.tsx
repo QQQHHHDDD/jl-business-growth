@@ -33,7 +33,7 @@ export function TurnoverPage({ authResponse }: { authResponse: AuthResponse }) {
   const rangeStart = useMemo(() => businessDateDaysAgo(timezone, 365), [timezone]);
   const query = useQuery({ queryKey: ["user", authResponse.data.account.id, "turnover", rangeStart, currentDate], queryFn: () => listTurnovers(rangeStart, currentDate) });
   const existing = query.data?.data.items.find((item) => item.turnover_date === selectedDate);
-  const form = useForm<TurnoverFormInput, unknown, TurnoverForm>({ resolver: zodResolver(turnoverSchema), defaultValues: formDefaults(selectedDate) });
+  const form = useForm<TurnoverFormInput, unknown, TurnoverForm>({ resolver: zodResolver(turnoverSchema), defaultValues: formDefaults(selectedDate), mode: "onChange", reValidateMode: "onChange" });
   useEffect(() => { form.reset(existing ? fromTurnover(existing) : formDefaults(selectedDate)); }, [existing, form, selectedDate]);
   const mutation = useMutation({ mutationFn: (value: TurnoverRequest) => saveTurnover(authResponse.data.csrf_token, value, Boolean(existing)), onSuccess: () => { setNotice("营业额已保存，PV 与净营业额来自同一条事实记录。"); setError(""); void queryClient.invalidateQueries({ queryKey: ["user", authResponse.data.account.id] }); }, onError: (value) => { setError(errorMessage(value)); setNotice(""); } });
   const onSubmit = form.handleSubmit((value) => mutation.mutate({ turnover_date: value.turnover_date, pv: value.pv ?? null, net_amount: value.net_amount == null ? null : value.net_amount.toFixed(2), note: value.note.trim() || null }));

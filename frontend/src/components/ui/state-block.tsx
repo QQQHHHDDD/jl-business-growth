@@ -1,9 +1,9 @@
-import { AlertCircle, Inbox, LoaderCircle, RefreshCcw } from "lucide-react";
+import { AlertCircle, Inbox, RefreshCcw } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
 export function LoadingState({ label = "正在加载" }: { label?: string }) {
-  return <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-slate-200 bg-white p-8 text-sm text-slate-500"><LoaderCircle className="animate-spin text-teal-700" size={22} aria-hidden="true" /><span>{label}...</span></div>;
+  return <div role="status" aria-live="polite" className="min-h-40 rounded-md border border-slate-200 bg-white p-6"><span className="sr-only">{label}...</span><div className="space-y-4" aria-hidden="true"><div className="h-4 w-36 animate-pulse rounded bg-slate-200" /><div className="grid gap-3 sm:grid-cols-3"><div className="h-20 animate-pulse rounded bg-slate-100" /><div className="h-20 animate-pulse rounded bg-slate-100" /><div className="h-20 animate-pulse rounded bg-slate-100" /></div><div className="h-24 animate-pulse rounded bg-slate-100" /></div><p className="mt-4 text-sm text-slate-500">{label}...</p></div>;
 }
 
 export function EmptyState({ title = "暂无内容", description, action }: { title?: string; description?: string; action?: ReactNode }) {

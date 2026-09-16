@@ -1453,6 +1453,13 @@ paths:
           schema:
             type: string
             minLength: 1
+        - name: modules
+          in: query
+          required: false
+          description: Comma-separated search modules. Empty means all modules.
+          schema:
+            type: string
+            example: goals,calendar,knowledge
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
       responses:

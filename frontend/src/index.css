@@ -8,6 +8,9 @@
   background: #f1f5f9;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  --brand-600: #0d9488;
+  --brand-700: #0f766e;
+  --focus-ring: 0 0 0 3px rgba(13, 148, 136, 0.18);
 }
 
 body {
@@ -28,6 +31,35 @@ select {
   font: inherit;
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--brand-700);
+}
+
+select,
+textarea,
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  border-radius: 8px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+select,
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  min-height: 40px;
+}
+
+select:focus-visible,
+textarea:focus-visible,
+input:not([type="checkbox"]):not([type="radio"]):not(
+    [type="file"]
+  ):focus-visible {
+  border-color: var(--brand-600);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
 ::selection {
   background: #99f6e4;
   color: #134e4a;
@@ -36,4 +68,76 @@ select {
 :focus-visible {
   outline: 2px solid #0d9488;
   outline-offset: 2px;
+}
+
+.fc .fc-day-today {
+  background: #f0fdfa !important;
+}
+
+.fc .fc-toolbar-title {
+  color: #0b1f1c;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.fc .fc-button {
+  min-height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  box-shadow: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.fc .fc-button:hover,
+.fc .fc-button:focus {
+  border-color: #0d9488;
+  background: #f0fdfa;
+  color: #115e59;
+  box-shadow: var(--focus-ring);
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+
+.fc .fc-col-header-cell-cushion {
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.fc .fc-daygrid-day-number {
+  color: #334155;
+  font-size: 0.8125rem;
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  margin: 3px;
+  place-items: center;
+  border-radius: 9999px;
+  background: #0f766e;
+  color: #fff;
+  font-weight: 700;
+}
+
+.fc .fc-daygrid-day:hover {
+  background: #f0fdfa;
+}
+
+.fc .fc-daygrid-day.fc-day-other .fc-daygrid-day-number {
+  color: #94a3b8;
 }

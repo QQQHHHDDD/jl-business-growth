@@ -6,7 +6,7 @@ BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 
 .PHONY: dev generate generate-openapi generate-sqlc generate-frontend lint lint-backend lint-frontend \
-	test test-backend test-integration test-performance test-frontend test-e2e build build-backend build-jobs build-frontend reset-superadmin-password \
+	test test-backend test-integration test-performance test-frontend test-e2e build build-backend build-jobs build-frontend release reset-superadmin-password \
 	migrate-up migrate-status migrate-test-up migrate-test-status check-test-database check
 
 dev:
@@ -69,6 +69,10 @@ build-jobs:
 
 build-frontend:
 	$(NPM) --prefix $(FRONTEND_DIR) run build
+
+release:
+	@test -n "$(VERSION)" || (echo 'VERSION must be set, for example: make release VERSION=v1.0.0'; exit 1)
+	./scripts/build-release.sh "$(VERSION)"
 
 migrate-up:
 	@test -n "$$DATABASE_URL" || (echo 'DATABASE_URL must be set'; exit 1)

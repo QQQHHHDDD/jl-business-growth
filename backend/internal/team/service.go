@@ -98,8 +98,20 @@ func (s *Service) GetMember(ctx context.Context, userID, id uuid.UUID) (Member, 
 }
 
 func (s *Service) SaveMember(ctx context.Context, userID, id uuid.UUID, input MemberInput) (Member, error) {
-	if strings.TrimSpace(input.Name) == "" || len([]rune(input.Name)) > 200 {
-		return Member{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "member name is required")
+	name := strings.TrimSpace(input.Name)
+	runes := []rune(name)
+	if len(runes) < 2 || len(runes) > 200 {
+		return Member{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "member name must contain 2 to 200 characters")
+	}
+	allDigits := true
+	for _, value := range runes {
+		if value < '0' || value > '9' {
+			allDigits = false
+			break
+		}
+	}
+	if allDigits {
+		return Member{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "member name cannot contain only digits")
 	}
 	if input.Status == "" {
 		input.Status = "ACTIVE"
@@ -132,7 +144,6 @@ func (s *Service) SaveMember(ctx context.Context, userID, id uuid.UUID, input Me
 			}
 		}
 	}
-	name := strings.TrimSpace(input.Name)
 	if id == uuid.Nil {
 		id = uuid.New()
 	}

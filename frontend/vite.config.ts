@@ -2,6 +2,8 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
+const backendPort = process.env.E2E_BACKEND_PORT && /^\d+$/.test(process.env.E2E_BACKEND_PORT) ? process.env.E2E_BACKEND_PORT : "8080";
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -15,7 +17,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8080",
+        target: `http://127.0.0.1:${backendPort}`,
         changeOrigin: true,
       },
     },

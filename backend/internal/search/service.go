@@ -25,7 +25,7 @@ type Result struct {
 	Score     float32
 }
 
-func (s *Service) Search(ctx context.Context, userID uuid.UUID, query string, page, pageSize int) ([]Result, int, error) {
+func (s *Service) Search(ctx context.Context, userID uuid.UUID, query string, modules []string, page, pageSize int) ([]Result, int, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return []Result{}, 0, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "search query is required")
@@ -49,9 +49,10 @@ func (s *Service) Search(ctx context.Context, userID uuid.UUID, query string, pa
 	)
 	SELECT module,id,title,searchable,updated_at,
 		CASE WHEN searchable ILIKE $2 THEN 1.0 ELSE similarity(searchable,$3) END AS score
-	FROM hits WHERE searchable ILIKE $2 OR (length($3) >= 3 AND similarity(searchable,$3) >= 0.15)
+	FROM hits WHERE (searchable ILIKE $2 OR (length($3) >= 3 AND similarity(searchable,$3) >= 0.15))
+		AND ($6::text[] IS NULL OR module = ANY($6::text[]))
 	ORDER BY score DESC, updated_at DESC LIMIT $4 OFFSET $5`
-	rows, err := s.pool.Query(ctx, source, userID, pattern, query, pageSize, (page-1)*pageSize)
+	rows, err := s.pool.Query(ctx, source, userID, pattern, query, pageSize, (page-1)*pageSize, modulesOrNil(modules))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -69,11 +70,18 @@ func (s *Service) Search(ctx context.Context, userID uuid.UUID, query string, pa
 	}
 	var total int
 	err = s.pool.QueryRow(ctx, `WITH hits AS (
-		SELECT title AS searchable FROM goals WHERE user_id=$1
-		UNION ALL SELECT concat_ws(' ',title,description,location_or_link) FROM calendar_events WHERE user_id=$1
-		UNION ALL SELECT concat_ws(' ',name,rank,city,note) FROM team_members WHERE user_id=$1
-		UNION ALL SELECT concat_ws(' ',title,raw_text,summary,understanding,action_items) FROM knowledge_items WHERE user_id=$1
-		UNION ALL SELECT name FROM tags WHERE user_id=$1
-	) SELECT count(*) FROM hits WHERE searchable ILIKE $2 OR (length($3)>=3 AND similarity(searchable,$3)>=0.15)`, userID, pattern, query).Scan(&total)
+		SELECT 'goals'::text AS module, title AS searchable FROM goals WHERE user_id=$1
+		UNION ALL SELECT 'calendar'::text, concat_ws(' ',title,description,location_or_link) FROM calendar_events WHERE user_id=$1
+		UNION ALL SELECT 'team'::text, concat_ws(' ',name,rank,city,note) FROM team_members WHERE user_id=$1
+		UNION ALL SELECT 'knowledge'::text, concat_ws(' ',title,raw_text,summary,understanding,action_items) FROM knowledge_items WHERE user_id=$1
+		UNION ALL SELECT 'tags'::text, name FROM tags WHERE user_id=$1
+	) SELECT count(*) FROM hits WHERE (searchable ILIKE $2 OR (length($3)>=3 AND similarity(searchable,$3)>=0.15)) AND ($4::text[] IS NULL OR module = ANY($4::text[]))`, userID, pattern, query, modulesOrNil(modules)).Scan(&total)
 	return items, total, err
+}
+
+func modulesOrNil(modules []string) []string {
+	if len(modules) == 0 {
+		return nil
+	}
+	return modules
 }

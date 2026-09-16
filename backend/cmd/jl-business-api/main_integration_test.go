@@ -533,6 +533,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 	parentResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", parentBody, userAuth.Data.CsrfToken, http.StatusCreated)
 	var parent api.TeamMemberResponse
 	decodeTestJSON(t, parentResponse, &parent)
+	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "1"}, userAuth.Data.CsrfToken, http.StatusBadRequest)
 	childResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "Phase 4 child", "parent_id": parent.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var child api.TeamMemberResponse
 	decodeTestJSON(t, childResponse, &child)
@@ -632,6 +633,17 @@ func TestPhase4APIIntegration(t *testing.T) {
 	decodeTestJSON(t, searchResponse, &searchResult)
 	if len(searchResult.Data.Items) == 0 {
 		t.Fatal("search did not find the user's knowledge item")
+	}
+	filteredSearchResponse := getTestJSON(t, userClient, server.URL, "/api/search?q=Phase%204%20book&modules=knowledge", http.StatusOK)
+	var filteredSearchResult api.SearchResponse
+	decodeTestJSON(t, filteredSearchResponse, &filteredSearchResult)
+	if len(filteredSearchResult.Data.Items) == 0 {
+		t.Fatal("filtered search did not find the user's knowledge item")
+	}
+	for _, item := range filteredSearchResult.Data.Items {
+		if item.Module != "knowledge" {
+			t.Fatalf("filtered search returned module %q, want knowledge", item.Module)
+		}
 	}
 	getTestJSON(t, userClient, server.URL, "/api/files/"+fileResponse.Data.Id.String()+"/content?disposition=inline", http.StatusOK)
 	getTestJSON(t, adminClient, server.URL, "/api/team/members", http.StatusForbidden)

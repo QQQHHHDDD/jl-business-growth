@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -360,7 +361,22 @@ func (h *Handler) Search(ctx echo.Context, params SearchParams) error {
 	if params.PageSize != nil {
 		pageSize = *params.PageSize
 	}
-	items, total, err := h.search.Search(ctx.Request().Context(), userID, params.Q, page, pageSize)
+	modules := []string(nil)
+	if params.Modules != nil {
+		for _, value := range strings.Split(*params.Modules, ",") {
+			value = strings.TrimSpace(value)
+			if value == "" {
+				continue
+			}
+			switch value {
+			case "goals", "calendar", "team", "knowledge", "tags":
+				modules = append(modules, value)
+			default:
+				return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "search module is not supported")
+			}
+		}
+	}
+	items, total, err := h.search.Search(ctx.Request().Context(), userID, params.Q, modules, page, pageSize)
 	if err != nil {
 		return err
 	}

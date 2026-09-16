@@ -4229,6 +4229,8 @@ export interface operations {
         parameters: {
             query: {
                 q: string;
+                /** @description Comma-separated search modules. Empty means all modules. */
+                modules?: string;
                 page?: components["parameters"]["Page"];
                 page_size?: components["parameters"]["PageSize"];
             };

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${APP_ENV:-development}" == "production" ]]; then
+  echo "scripts/dev.sh is for development and UAT only; use make release and the Nginx/systemd deployment templates for production." >&2
+  exit 1
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 backend_pid=""
 frontend_pid=""

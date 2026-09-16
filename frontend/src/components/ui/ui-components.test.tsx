@@ -17,6 +17,7 @@ describe("shared UI primitives", () => {
     );
 
     expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "保存" })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByLabelText("账号")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("账号")).toHaveAttribute("aria-describedby");
     expect(screen.getByText("账号不能为空")).toBeInTheDocument();
@@ -47,7 +48,7 @@ describe("shared UI primitives", () => {
     );
 
     expect(screen.getByText("已启用")).toBeInTheDocument();
-    expect(screen.getByText("正在加载用户...")).toBeInTheDocument();
+    expect(screen.getByText("正在加载用户...", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "暂无用户" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     expect(retry).toHaveBeenCalledOnce();

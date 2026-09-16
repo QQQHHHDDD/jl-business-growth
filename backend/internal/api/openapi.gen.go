@@ -1915,7 +1915,10 @@ type UpdateReviewParamsReviewType string
 
 // SearchParams defines parameters for Search.
 type SearchParams struct {
-	Q        string    `form:"q" json:"q"`
+	Q string `form:"q" json:"q"`
+
+	// Modules Comma-separated search modules. Empty means all modules.
+	Modules  *string   `form:"modules,omitempty" json:"modules,omitempty"`
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 }
@@ -3892,6 +3895,13 @@ func (w *ServerInterfaceWrapper) Search(ctx echo.Context) error {
 	err = runtime.BindQueryParameter("form", true, true, "q", ctx.QueryParams(), &params.Q)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter q: %s", err))
+	}
+
+	// ------------- Optional query parameter "modules" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "modules", ctx.QueryParams(), &params.Modules)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter modules: %s", err))
 	}
 
 	// ------------- Optional query parameter "page" -------------

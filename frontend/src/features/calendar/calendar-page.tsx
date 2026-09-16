@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import FullCalendar from "@fullcalendar/react";
+import FullCalendarBase from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { CalendarDays, Check, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentProps } from "react";
 import type { CalendarEvent, CalendarEventRequest, AuthResponse } from "@/api/client";
 import { deleteCalendarEvent, listCalendarEvents, saveCalendarEvent } from "@/api/client";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { errorMessage } from "@/lib/utils";
+
+import zhCnLocale from "@fullcalendar/core/locales/zh-cn";
+
+const FullCalendar = (props: ComponentProps<typeof FullCalendarBase>) => <FullCalendarBase locale={zhCnLocale} firstDay={1} {...props} />;
 
 type FormState = { title: string; startAt: string; endAt: string; timezone: string; description: string; location: string; recurrence: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY"; interval: number; attendee: string };
 const initialRange = () => { const from = new Date(); from.setDate(1); from.setMonth(from.getMonth() - 1); const to = new Date(from); to.setMonth(to.getMonth() + 4); return { from: from.toISOString(), to: to.toISOString() }; };
