@@ -98,7 +98,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
 
   await page.goto("/app");
   await expect(
-    page.getByRole("heading", { name: "本周经营", exact: true }),
+    page.getByRole("heading", { name: "经营进度", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("本月 PV", { exact: true })).toBeVisible();
 
@@ -125,7 +125,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     page.getByRole("heading", { name: "复盘", exact: true }),
   ).toBeVisible();
   await page.getByLabel("做得好的地方").fill("完成了日历闭环");
-  await page.getByLabel("下一周期聚焦").fill("保持每天记录");
+  await page.getByLabel("明日重点").fill("保持每天记录");
   await page.getByRole("button", { name: "保存复盘" }).click();
   await expect(page.getByRole("status")).toContainText("复盘已保存");
 
@@ -184,7 +184,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(
     page.getByRole("heading", { name: "收入模拟", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("个人圈 PV").fill("1000");
+  await page.getByLabel("个人使用 PV").fill("1000");
   await page.getByRole("button", { name: "计算收入" }).click();
   await expect(page.getByText("¥1125.00")).toBeVisible();
   await page.getByTestId("income-results").getByRole("button", { name: "保存方案" }).click();
