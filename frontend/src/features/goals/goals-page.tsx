@@ -139,7 +139,7 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="方向与执行" title="梦想与目标" description="用层级目标把长期方向拆成可行动的路径，实际进度由真实工作量和营业额自动计算。" action={activeAction} />
+      <PageHeader eyebrow="方向与执行" title="梦想与目标" description="用层级目标把长期方向拆成可行动的路径。设置量化指标后，目标进度可根据已记录的工作量或营业额自动计算。" action={activeAction} />
       {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
       <Tabs value={view} onValueChange={(value) => setView(value as GoalsView)}>
         <TabsList aria-label="目标工作台视图"><TabsTrigger value="map">目标地图</TabsTrigger><TabsTrigger value="list">目标列表</TabsTrigger><TabsTrigger value="dreams">梦想板</TabsTrigger></TabsList>

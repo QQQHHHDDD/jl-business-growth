@@ -301,10 +301,10 @@ function DashboardContent({
               id="weekly-operations-title"
               className="text-base font-bold text-slate-950"
             >
-              本周经营
+              经营进度
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              从本周一到今天的真实行动与营业额。
+              分别查看本周行动、本周 PV 和本月 PV。
             </p>
           </div>
           <Link

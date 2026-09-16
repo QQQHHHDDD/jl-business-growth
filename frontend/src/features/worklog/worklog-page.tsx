@@ -227,7 +227,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
       <PageHeader
         eyebrow="每日行动"
         title="今日工作量"
-        description="记录真实发生的行动；读书、听音频和营业额会进入各自的唯一事实源。"
+        description="记录今天实际完成的行动、学习和营业额，保存后会用于统计、复盘和目标进度。"
         action={
           <div
             className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
@@ -309,7 +309,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
           </p>
         </div>
         <div className="px-2 sm:px-4">
-          <p className="text-xs font-semibold text-slate-500">营业额</p>
+          <p className="text-xs font-semibold text-slate-500">净营业额</p>
           <p className="mt-1 truncate text-xl font-bold tabular-nums text-slate-950">
             {form.watch("turnover_pv").trim()
               ? `${pv || 0} PV`
