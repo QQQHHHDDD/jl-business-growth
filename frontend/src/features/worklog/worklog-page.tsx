@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/state-block";
 import { businessDate, businessDateDaysAgo } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
+import { netAmountFromPV, pvFromNetAmount } from "@/lib/pv";
 
 const countFields = [
   ["open_conversation_count", "开启对话"],
@@ -105,7 +106,7 @@ function fromWorklog(value: Worklog): WorklogForm {
     reading_minutes: value.reading_minutes,
     audio_minutes: value.audio_minutes,
     turnover_pv: value.turnover_pv?.toString() ?? "",
-    turnover_net_amount: value.turnover_net_amount?.toString() ?? "",
+    turnover_net_amount: value.turnover_net_amount == null ? "" : Number(value.turnover_net_amount).toFixed(2),
     note: value.note ?? "",
   };
 }
@@ -197,12 +198,6 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
     (Number(form.watch("audio_minutes")) || 0);
   const pv = Number(form.watch("turnover_pv"));
   const netAmount = Number(form.watch("turnover_net_amount"));
-  const convertedAmount =
-    Number.isFinite(pv) && form.watch("turnover_pv").trim()
-      ? pv * 12.5
-      : Number.isFinite(netAmount) && form.watch("turnover_net_amount").trim()
-        ? netAmount
-        : 0;
   const fieldError = (field: keyof WorklogForm) =>
     form.formState.errors[field]?.message?.toString();
   const selectDate = (date: string) => {
@@ -221,6 +216,16 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
     });
   };
   const recentWorklogs = worklogsQuery.data?.data.items.slice(0, 7) ?? [];
+  const updatePV = (value: string) => {
+    form.setValue("turnover_pv", value, { shouldDirty: true, shouldValidate: true });
+    const converted = netAmountFromPV(value);
+    if (converted !== null) form.setValue("turnover_net_amount", converted, { shouldDirty: true, shouldValidate: true });
+  };
+  const updateNetAmount = (value: string) => {
+    form.setValue("turnover_net_amount", value, { shouldDirty: true, shouldValidate: true });
+    const converted = pvFromNetAmount(value);
+    if (converted !== null) form.setValue("turnover_pv", converted, { shouldDirty: true, shouldValidate: true });
+  };
 
   return (
     <div className="space-y-7">
@@ -311,9 +316,9 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
         <div className="px-2 sm:px-4">
           <p className="text-xs font-semibold text-slate-500">净营业额</p>
           <p className="mt-1 truncate text-xl font-bold tabular-nums text-slate-950">
-            {form.watch("turnover_pv").trim()
-              ? `${pv || 0} PV`
-              : `¥${convertedAmount.toFixed(2)}`}
+            {form.watch("turnover_net_amount").trim()
+              ? `¥${Number.isFinite(netAmount) ? netAmount.toFixed(2) : "0.00"}`
+              : `${pv || 0} PV`}
           </p>
         </div>
       </section>
@@ -453,6 +458,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
                   step="0.01"
                   error={fieldError("turnover_pv")}
                   {...form.register("turnover_pv")}
+                  onChange={(event) => updatePV(event.target.value)}
                 />
                 <Input
                   label="净营业额（可选）"
@@ -461,6 +467,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
                   step="0.01"
                   error={fieldError("turnover_net_amount")}
                   {...form.register("turnover_net_amount")}
+                  onChange={(event) => updateNetAmount(event.target.value)}
                 />
               </div>
               <p className="mt-2 text-xs text-slate-500">

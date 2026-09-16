@@ -137,4 +137,27 @@ describe("WorklogPage", () => {
       ),
     );
   });
+
+  it("synchronizes PV and net turnover in both directions while editing history", async () => {
+    const today = businessDate(account.timezone);
+    const existing = worklog(today, 1);
+    existing.turnover_pv = 40;
+    existing.turnover_net_amount = "500.00";
+    vi.mocked(listWorklogs).mockResolvedValue({ data: { items: [existing] }, request_id: "request-2" });
+    vi.mocked(saveWorklog).mockResolvedValue({ data: existing, request_id: "request-3" });
+    renderPage();
+
+    const pvInput = await screen.findByLabelText("营业额 PV（可选）");
+    const netInput = screen.getByLabelText("净营业额（可选）");
+    await waitFor(() => expect(pvInput).toHaveValue(40));
+    expect(netInput).toHaveValue(500);
+
+    fireEvent.change(pvInput, { target: { value: "100" } });
+    expect(netInput).toHaveValue(1250);
+    fireEvent.change(netInput, { target: { value: "2500.00" } });
+    expect(pvInput).toHaveValue(200);
+
+    fireEvent.click(screen.getByRole("button", { name: "保存今日记录" }));
+    await waitFor(() => expect(saveWorklog).toHaveBeenCalledWith("csrf-token", expect.objectContaining({ turnover_pv: 200, turnover_net_amount: "2500.00" }), true));
+  });
 });
