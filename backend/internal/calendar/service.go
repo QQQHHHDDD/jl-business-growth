@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	stdmail "net/mail"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jl-business-growth/backend/internal/auth"
@@ -40,6 +42,19 @@ type Event struct {
 
 type Attendee struct{ Email, DisplayName string }
 
+type Contact struct {
+	ID                   uuid.UUID
+	UserID               uuid.UUID
+	Name                 *string
+	Email                string
+	CreatedAt, UpdatedAt time.Time
+}
+
+type ContactInput struct {
+	Name  *string
+	Email string
+}
+
 type Input struct {
 	Title, Timezone                   string
 	Description, Location             *string
@@ -62,6 +77,75 @@ type Service struct {
 
 func NewService(pool *pgxpool.Pool, sender mail.Sender) *Service {
 	return &Service{pool: pool, sender: sender}
+}
+
+func (s *Service) ListContacts(ctx context.Context, userID uuid.UUID) ([]Contact, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id,user_id,name,email,created_at,updated_at FROM calendar_contacts WHERE user_id=$1 ORDER BY lower(COALESCE(name,email)),lower(email)`, auth.ToPGUUID(userID))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]Contact, 0)
+	for rows.Next() {
+		var item Contact
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Name, &item.Email, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *Service) SaveContact(ctx context.Context, userID, id uuid.UUID, input ContactInput) (Contact, error) {
+	name, email, err := normalizeContact(input)
+	if err != nil {
+		return Contact{}, err
+	}
+	var item Contact
+	if id == uuid.Nil {
+		id = uuid.New()
+		err = s.pool.QueryRow(ctx, `INSERT INTO calendar_contacts (id,user_id,name,email) VALUES ($1,$2,$3,$4) RETURNING id,user_id,name,email,created_at,updated_at`, auth.ToPGUUID(id), auth.ToPGUUID(userID), name, email).Scan(&item.ID, &item.UserID, &item.Name, &item.Email, &item.CreatedAt, &item.UpdatedAt)
+	} else {
+		err = s.pool.QueryRow(ctx, `UPDATE calendar_contacts SET name=$3,email=$4,updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING id,user_id,name,email,created_at,updated_at`, auth.ToPGUUID(id), auth.ToPGUUID(userID), name, email).Scan(&item.ID, &item.UserID, &item.Name, &item.Email, &item.CreatedAt, &item.UpdatedAt)
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Contact{}, problem.New("NOT_FOUND", http.StatusNotFound, "calendar contact not found")
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return Contact{}, problem.New("CONTACT_EXISTS", http.StatusConflict, "a contact with this email already exists")
+	}
+	return item, err
+}
+
+func (s *Service) DeleteContact(ctx context.Context, userID, id uuid.UUID) error {
+	result, err := s.pool.Exec(ctx, `DELETE FROM calendar_contacts WHERE id=$1 AND user_id=$2`, auth.ToPGUUID(id), auth.ToPGUUID(userID))
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return problem.New("NOT_FOUND", http.StatusNotFound, "calendar contact not found")
+	}
+	return nil
+}
+
+func normalizeContact(input ContactInput) (*string, string, error) {
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+	address, err := stdmail.ParseAddress(email)
+	if err != nil || !strings.EqualFold(address.Address, email) || len(email) > 320 {
+		return nil, "", problem.New("VALIDATION_ERROR", http.StatusBadRequest, "contact email is invalid")
+	}
+	var name *string
+	if input.Name != nil {
+		value := strings.TrimSpace(*input.Name)
+		if len(value) > 200 {
+			return nil, "", problem.New("VALIDATION_ERROR", http.StatusBadRequest, "contact name is too long")
+		}
+		if value != "" {
+			name = &value
+		}
+	}
+	return name, email, nil
 }
 
 func (s *Service) List(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]Event, error) {

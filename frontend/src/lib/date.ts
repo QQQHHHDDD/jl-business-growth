@@ -10,6 +10,48 @@ export function businessDateDaysAgo(timezone: string, days: number): string {
   return businessDate(timezone, new Date(Date.now() - days * 86400000));
 }
 
+function zonedParts(value: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+    second: Number(values.second),
+  };
+}
+
+export function formatDateTimeInTimezone(value: string | Date, timezone: string): string {
+  const parts = zonedParts(typeof value === "string" ? new Date(value) : value, timezone);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
+}
+
+export function zonedDateTimeToISO(value: string, timezone: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) throw new RangeError("datetime-local value is invalid");
+  const [, year, month, day, hour, minute] = match.map(Number);
+  const desiredWallTime = Date.UTC(year, month - 1, day, hour, minute);
+  let candidate = new Date(desiredWallTime);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const parts = zonedParts(candidate, timezone);
+    const representedWallTime = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    candidate = new Date(candidate.getTime() + desiredWallTime - representedWallTime);
+  }
+  return candidate.toISOString();
+}
+
 export type BusinessRangePreset =
   | "week"
   | "month"

@@ -601,6 +601,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/calendar/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List saved contacts owned by the current user */
+        get: operations["listCalendarContacts"];
+        put?: never;
+        /** Create a saved contact for the current user */
+        post: operations["createCalendarContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/contacts/{contact_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a saved contact owned by the current user */
+        put: operations["updateCalendarContact"];
+        post?: never;
+        /** Delete a saved contact owned by the current user */
+        delete: operations["deleteCalendarContact"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviews": {
         parameters: {
             query?: never;
@@ -1753,6 +1789,32 @@ export interface components {
             };
             request_id: string;
         };
+        CalendarContact: {
+            /** Format: uuid */
+            id: string;
+            name?: string | null;
+            /** Format: email */
+            email: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CalendarContactRequest: {
+            name?: string | null;
+            /** Format: email */
+            email: string;
+        };
+        CalendarContactResponse: {
+            data: components["schemas"]["CalendarContact"];
+            request_id: string;
+        };
+        CalendarContactListResponse: {
+            data: {
+                items: components["schemas"]["CalendarContact"][];
+            };
+            request_id: string;
+        };
         ReviewPeriodTotals: {
             worklog_action_count: number;
             turnover_pv: number;
@@ -2303,6 +2365,7 @@ export interface components {
         KnowledgeId: string;
         SessionId: string;
         FileId: string;
+        CalendarContactId: string;
         PromoteChildren: boolean;
         FileDisposition: "inline" | "attachment";
         CategoryId: string;
@@ -3558,6 +3621,100 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Calendar event deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listCalendarContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved calendar contacts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarContactListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createCalendarContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar contact created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarContactResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateCalendarContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: components["parameters"]["CalendarContactId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar contact updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarContactResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteCalendarContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: components["parameters"]["CalendarContactId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar contact deleted */
             204: {
                 headers: {
                     [name: string]: unknown;

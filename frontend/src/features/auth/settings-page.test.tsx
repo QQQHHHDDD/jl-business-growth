@@ -20,4 +20,15 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("link", { name: "打开数据导出" })).toHaveAttribute("href", "/app/data");
     expect(screen.getByRole("button", { name: "永久删除账户" })).toBeVisible();
   });
+
+  it("does not allow an arbitrary timezone to be saved", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<MemoryRouter><QueryClientProvider client={client}><SettingsPage account={account} authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "偏好" }), { button: 0 });
+    fireEvent.change(screen.getByRole("combobox", { name: "IANA 时区" }), { target: { value: "Mars/Olympus" } });
+    expect(screen.getByText("请从列表中选择有效的 IANA 时区")).toBeVisible();
+    expect(screen.getByRole("button", { name: "保存时区" })).toBeDisabled();
+    fireEvent.change(screen.getByRole("combobox", { name: "IANA 时区" }), { target: { value: "America/New_York" } });
+    expect(screen.getByRole("button", { name: "保存时区" })).toBeEnabled();
+  });
 });

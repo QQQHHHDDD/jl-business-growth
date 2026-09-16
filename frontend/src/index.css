@@ -123,20 +123,32 @@ input:not([type="checkbox"]):not([type="radio"]):not(
 }
 
 .fc .fc-daygrid-day-number {
+  position: relative;
+  z-index: 2;
   color: #334155;
   font-size: 0.8125rem;
 }
 
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  margin: 3px;
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  margin: 2px 3px 0 0;
   place-items: center;
   border-radius: 9999px;
   background: #0f766e;
   color: #fff;
   font-weight: 700;
+}
+
+.fc .fc-daygrid-day-top {
+  min-height: 32px;
+}
+
+.fc .fc-daygrid-day-events {
+  position: relative;
+  z-index: 1;
+  margin-top: 2px;
 }
 
 .fc .fc-daygrid-day:hover {

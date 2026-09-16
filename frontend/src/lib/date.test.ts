@@ -2,11 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   businessDate,
   businessRange,
+  formatDateTimeInTimezone,
   reviewPeriodEnd,
   reviewPeriodStart,
+  zonedDateTimeToISO,
 } from "./date";
 
 describe("business date ranges", () => {
+  it("converts account timezone wall time without using the browser timezone", () => {
+    expect(formatDateTimeInTimezone("2026-09-16T06:00:00Z", "Asia/Shanghai")).toBe("2026-09-16T14:00");
+    expect(zonedDateTimeToISO("2026-09-16T14:00", "Asia/Shanghai")).toBe("2026-09-16T06:00:00.000Z");
+    expect(zonedDateTimeToISO("2026-07-01T14:00", "America/New_York")).toBe("2026-07-01T18:00:00.000Z");
+  });
+
   it("uses Monday through Sunday for a natural week", () => {
     const range = businessRange(
       "Asia/Shanghai",

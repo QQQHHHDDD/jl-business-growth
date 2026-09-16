@@ -1051,6 +1051,15 @@ type CalendarAttendee struct {
 	DisplayName pgtype.Text
 }
 
+type CalendarContact struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Name      pgtype.Text
+	Email     string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type CalendarEvent struct {
 	ID                 pgtype.UUID
 	UserID             pgtype.UUID

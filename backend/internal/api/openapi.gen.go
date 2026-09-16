@@ -611,6 +611,35 @@ type CalendarAttendee struct {
 	Email       openapi_types.Email `json:"email"`
 }
 
+// CalendarContact defines model for CalendarContact.
+type CalendarContact struct {
+	CreatedAt time.Time           `json:"created_at"`
+	Email     openapi_types.Email `json:"email"`
+	Id        openapi_types.UUID  `json:"id"`
+	Name      *string             `json:"name"`
+	UpdatedAt time.Time           `json:"updated_at"`
+}
+
+// CalendarContactListResponse defines model for CalendarContactListResponse.
+type CalendarContactListResponse struct {
+	Data struct {
+		Items []CalendarContact `json:"items"`
+	} `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// CalendarContactRequest defines model for CalendarContactRequest.
+type CalendarContactRequest struct {
+	Email openapi_types.Email `json:"email"`
+	Name  *string             `json:"name"`
+}
+
+// CalendarContactResponse defines model for CalendarContactResponse.
+type CalendarContactResponse struct {
+	Data      CalendarContact `json:"data"`
+	RequestId string          `json:"request_id"`
+}
+
 // CalendarEvent defines model for CalendarEvent.
 type CalendarEvent struct {
 	AllDay                  bool                           `json:"all_day"`
@@ -1718,6 +1747,9 @@ type AnalyticsGranularity string
 // BusinessDate defines model for BusinessDate.
 type BusinessDate = openapi_types.Date
 
+// CalendarContactId defines model for CalendarContactId.
+type CalendarContactId = openapi_types.UUID
+
 // CalendarEventId defines model for CalendarEventId.
 type CalendarEventId = openapi_types.UUID
 
@@ -1989,6 +2021,12 @@ type PatchAuthTimezoneJSONRequestBody = TimezoneRequest
 // PostAuthRegisterJSONRequestBody defines body for PostAuthRegister for application/json ContentType.
 type PostAuthRegisterJSONRequestBody = RegisterRequest
 
+// CreateCalendarContactJSONRequestBody defines body for CreateCalendarContact for application/json ContentType.
+type CreateCalendarContactJSONRequestBody = CalendarContactRequest
+
+// UpdateCalendarContactJSONRequestBody defines body for UpdateCalendarContact for application/json ContentType.
+type UpdateCalendarContactJSONRequestBody = CalendarContactRequest
+
 // CreateCalendarEventJSONRequestBody defines body for CreateCalendarEvent for application/json ContentType.
 type CreateCalendarEventJSONRequestBody = CalendarEventRequest
 
@@ -2165,6 +2203,18 @@ type ServerInterface interface {
 	// Register a normal user with an invitation code
 	// (POST /api/auth/register)
 	PostAuthRegister(ctx echo.Context) error
+	// List saved contacts owned by the current user
+	// (GET /api/calendar/contacts)
+	ListCalendarContacts(ctx echo.Context) error
+	// Create a saved contact for the current user
+	// (POST /api/calendar/contacts)
+	CreateCalendarContact(ctx echo.Context) error
+	// Delete a saved contact owned by the current user
+	// (DELETE /api/calendar/contacts/{contact_id})
+	DeleteCalendarContact(ctx echo.Context, contactId CalendarContactId) error
+	// Update a saved contact owned by the current user
+	// (PUT /api/calendar/contacts/{contact_id})
+	UpdateCalendarContact(ctx echo.Context, contactId CalendarContactId) error
 	// List expanded calendar event occurrences in a time range
 	// (GET /api/calendar/events)
 	ListCalendarEvents(ctx echo.Context, params ListCalendarEventsParams) error
@@ -2930,6 +2980,64 @@ func (w *ServerInterfaceWrapper) PostAuthRegister(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostAuthRegister(ctx)
+	return err
+}
+
+// ListCalendarContacts converts echo context to params.
+func (w *ServerInterfaceWrapper) ListCalendarContacts(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListCalendarContacts(ctx)
+	return err
+}
+
+// CreateCalendarContact converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateCalendarContact(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateCalendarContact(ctx)
+	return err
+}
+
+// DeleteCalendarContact converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCalendarContact(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "contact_id" -------------
+	var contactId CalendarContactId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "contact_id", ctx.Param("contact_id"), &contactId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter contact_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCalendarContact(ctx, contactId)
+	return err
+}
+
+// UpdateCalendarContact converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateCalendarContact(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "contact_id" -------------
+	var contactId CalendarContactId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "contact_id", ctx.Param("contact_id"), &contactId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter contact_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateCalendarContact(ctx, contactId)
 	return err
 }
 
@@ -4303,6 +4411,10 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/api/auth/me", wrapper.GetAuthMe)
 	router.PATCH(baseURL+"/api/auth/me/timezone", wrapper.PatchAuthTimezone)
 	router.POST(baseURL+"/api/auth/register", wrapper.PostAuthRegister)
+	router.GET(baseURL+"/api/calendar/contacts", wrapper.ListCalendarContacts)
+	router.POST(baseURL+"/api/calendar/contacts", wrapper.CreateCalendarContact)
+	router.DELETE(baseURL+"/api/calendar/contacts/:contact_id", wrapper.DeleteCalendarContact)
+	router.PUT(baseURL+"/api/calendar/contacts/:contact_id", wrapper.UpdateCalendarContact)
 	router.GET(baseURL+"/api/calendar/events", wrapper.ListCalendarEvents)
 	router.POST(baseURL+"/api/calendar/events", wrapper.CreateCalendarEvent)
 	router.DELETE(baseURL+"/api/calendar/events/:event_id", wrapper.DeleteCalendarEvent)

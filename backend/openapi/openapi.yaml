@@ -934,6 +934,76 @@ paths:
           description: Calendar event deleted
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /api/calendar/contacts:
+    get:
+      operationId: listCalendarContacts
+      tags: [calendar-reviews]
+      summary: List saved contacts owned by the current user
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Saved calendar contacts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarContactListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: createCalendarContact
+      tags: [calendar-reviews]
+      summary: Create a saved contact for the current user
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarContactRequest"
+      responses:
+        "201":
+          description: Calendar contact created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarContactResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/calendar/contacts/{contact_id}:
+    put:
+      operationId: updateCalendarContact
+      tags: [calendar-reviews]
+      summary: Update a saved contact owned by the current user
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CalendarContactId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarContactRequest"
+      responses:
+        "200":
+          description: Calendar contact updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarContactResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: deleteCalendarContact
+      tags: [calendar-reviews]
+      summary: Delete a saved contact owned by the current user
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CalendarContactId"
+      responses:
+        "204":
+          description: Calendar contact deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
   /api/reviews:
     get:
       operationId: listReviews
@@ -2024,6 +2094,13 @@ components:
         format: uuid
     FileId:
       name: file_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CalendarContactId:
+      name: contact_id
       in: path
       required: true
       schema:
@@ -3141,6 +3218,59 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/CalendarEvent"
+        request_id:
+          type: string
+    CalendarContact:
+      type: object
+      required: [id, email, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CalendarContactRequest:
+      type: object
+      required: [email]
+      properties:
+        name:
+          type: string
+          nullable: true
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 320
+    CalendarContactResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/CalendarContact"
+        request_id:
+          type: string
+    CalendarContactListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/CalendarContact"
         request_id:
           type: string
     ReviewPeriodTotals:

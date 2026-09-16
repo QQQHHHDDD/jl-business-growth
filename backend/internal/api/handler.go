@@ -913,6 +913,7 @@ func (h *Handler) saveCalendarEvent(ctx echo.Context, eventID uuid.UUID, status 
 	if err := ctx.Bind(&request); err != nil {
 		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
 	}
+	request.Timezone = account.Timezone
 	item, err := h.calendar.Save(ctx.Request().Context(), account.ID, eventID, calendarInput(request))
 	if err != nil {
 		return err
@@ -932,6 +933,71 @@ func (h *Handler) DeleteCalendarEvent(ctx echo.Context, eventID CalendarEventId)
 		return err
 	}
 	if err := h.calendar.Delete(ctx.Request().Context(), account.ID, uuid.UUID(eventID)); err != nil {
+		return err
+	}
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ListCalendarContacts(ctx echo.Context) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	items, err := h.calendar.ListContacts(ctx.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+	result := make([]CalendarContact, 0, len(items))
+	for _, item := range items {
+		result = append(result, calendarContactDTO(item))
+	}
+	return ctx.JSON(http.StatusOK, CalendarContactListResponse{Data: struct {
+		Items []CalendarContact `json:"items"`
+	}{Items: result}, RequestId: requestID(ctx)})
+}
+
+func (h *Handler) CreateCalendarContact(ctx echo.Context) error {
+	return h.saveCalendarContact(ctx, uuid.Nil, http.StatusCreated)
+}
+
+func (h *Handler) UpdateCalendarContact(ctx echo.Context, contactID CalendarContactId) error {
+	return h.saveCalendarContact(ctx, uuid.UUID(contactID), http.StatusOK)
+}
+
+func (h *Handler) saveCalendarContact(ctx echo.Context, contactID uuid.UUID, status int) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	var request CalendarContactRequest
+	if err := ctx.Bind(&request); err != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
+	}
+	item, err := h.calendar.SaveContact(ctx.Request().Context(), account.ID, contactID, calendar.ContactInput{Name: request.Name, Email: string(request.Email)})
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(status, CalendarContactResponse{Data: calendarContactDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) DeleteCalendarContact(ctx echo.Context, contactID CalendarContactId) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	if err := h.calendar.DeleteContact(ctx.Request().Context(), account.ID, uuid.UUID(contactID)); err != nil {
 		return err
 	}
 	return ctx.NoContent(http.StatusNoContent)
@@ -1306,6 +1372,10 @@ func calendarDTO(value calendar.Event) CalendarEvent {
 	}
 	isException := value.IsException
 	return CalendarEvent{Id: value.ID, OccurrenceId: calendar.EventOccurrenceID(value), Uid: value.UID, Sequence: value.Sequence, Title: value.Title, Description: value.Description, LocationOrLink: value.Location, Timezone: value.Timezone, AllDay: value.AllDay, StartAt: value.StartAt, EndAt: value.EndAt, RecurrenceFreq: CalendarEventRecurrenceFreq(value.RecurrenceFreq), RecurrenceInterval: value.RecurrenceInterval, RecurrenceWeekdays: weekdays, RecurrenceEndType: CalendarEventRecurrenceEndType(value.RecurrenceEndType), RecurrenceUntil: value.RecurrenceUntil, RecurrenceCount: value.RecurrenceCount, OriginalOccurrenceStart: value.OriginalOccurrenceStart, IsException: &isException, Attendees: attendees}
+}
+
+func calendarContactDTO(value calendar.Contact) CalendarContact {
+	return CalendarContact{Id: value.ID, Name: value.Name, Email: openapi_types.Email(value.Email), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func reviewDTO(value reviews.Review) Review {
