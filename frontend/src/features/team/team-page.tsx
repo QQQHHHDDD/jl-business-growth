@@ -1,23 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, Check, Focus, GitBranch, Maximize2, Minus, Plus, Trash2 } from "lucide-react";
+import { Background, Controls, ReactFlow, type Edge, type Node, type ReactFlowInstance } from "@xyflow/react";
+import { Camera, Check, Focus, GitBranch, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { AuthResponse, TeamMember, TeamMemberRequest, TeamSnapshot } from "@/api/client";
 import { createTeamSnapshot, deleteTeamMember, listTeamMembers, listTeamSnapshots, saveTeamMember } from "@/api/client";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/dialog";
+import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { errorMessage } from "@/lib/utils";
+import "@xyflow/react/dist/style.css";
 
 type Form = { name: string; parent_id: string; rank: string; city: string; joined_on: string; status: "ACTIVE" | "INACTIVE"; note: string };
 type TeamView = "graph" | "list" | "snapshots";
-type MemberSheet = { mode: "create" } | { mode: "detail" | "edit"; member: TeamMember } | null;
+type MemberDialog = { mode: "create" } | { mode: "detail" | "edit"; member: TeamMember } | null;
 const emptyForm: Form = { name: "", parent_id: "", rank: "", city: "", joined_on: "", status: "ACTIVE", note: "" };
 
 function teamNameError(name: string): string | null {
@@ -28,9 +29,7 @@ function teamNameError(name: string): string | null {
 }
 
 type GraphMember = { id: string; parent_id?: string | null; name: string; rank?: string | null; city?: string | null; status: "ACTIVE" | "INACTIVE" };
-type TeamGraphNode = { id: string; position: { x: number; y: number }; data: { name: string; rank: string | null; city: string | null; status: "ACTIVE" | "INACTIVE"; isRoot: boolean } };
-
-function graphNodes(members: GraphMember[]): TeamGraphNode[] {
+function graphNodes(members: GraphMember[], selectedID?: string | null): Node[] {
   const membersByID = new Map(members.map((member) => [member.id, member]));
   const depthFor = (member: GraphMember, seen = new Set<string>()): number => {
     if (!member.parent_id || !membersByID.has(member.parent_id) || seen.has(member.id)) return 0;
@@ -39,22 +38,33 @@ function graphNodes(members: GraphMember[]): TeamGraphNode[] {
   };
   const layers = new Map<number, GraphMember[]>();
   members.forEach((member) => { const depth = depthFor(member); layers.set(depth, [...(layers.get(depth) ?? []), member]); });
-  return [...layers.entries()].flatMap(([depth, layer]) => layer.sort((left, right) => left.name.localeCompare(right.name, "zh-CN")).map((member, index) => ({ id: member.id, position: { x: index * 250, y: depth * 170 }, data: { name: member.name, rank: member.rank ?? null, city: member.city ?? null, status: member.status, isRoot: !member.parent_id || !membersByID.has(member.parent_id) } })));
+  return [...layers.entries()].flatMap(([depth, layer]) => layer.sort((left, right) => left.name.localeCompare(right.name, "zh-CN")).map((member, index) => {
+    const isRoot = !member.parent_id || !membersByID.has(member.parent_id);
+    return {
+      id: member.id,
+      position: { x: index * 240, y: depth * 150 },
+      data: { label: member.name },
+      ariaLabel: member.name,
+      style: {
+        width: 180,
+        borderRadius: 8,
+        border: selectedID === member.id ? "2px solid #d97706" : `1px solid ${isRoot ? "#0f766e" : member.status === "ACTIVE" ? "#99f6e4" : "#cbd5e1"}`,
+        background: isRoot ? "#0f766e" : "#ffffff",
+        color: isRoot ? "#ffffff" : "#0f172a",
+        boxShadow: selectedID === member.id ? "0 0 0 3px #fde68a" : "0 1px 3px rgb(15 23 42 / 0.12)",
+        fontWeight: 700,
+        padding: "14px 16px",
+      },
+    } satisfies Node;
+  }));
 }
 
 function TeamGraph({ members, selectedID, onSelect }: { members: GraphMember[]; selectedID?: string | null; onSelect?: (id: string) => void }) {
-  const nodes = graphNodes(members);
-  const edges = members.filter((member) => member.parent_id).map((member) => ({ source: member.parent_id!, target: member.id }));
-  const nodeById = new Map(nodes.map((node) => [node.id, node]));
-  const width = Math.max(720, ...nodes.map((node) => node.position.x + 230));
-  const height = Math.max(480, ...nodes.map((node) => node.position.y + 150));
-  const viewport = useRef<HTMLDivElement | null>(null);
-  const [scale, setScale] = useState(1);
-  const center = () => { const element = viewport.current; if (element) element.scrollTo({ left: Math.max(0, (element.scrollWidth - element.clientWidth) / 2), top: 0, behavior: "smooth" }); };
-  const fit = () => { const element = viewport.current; if (!element) return; setScale(Math.max(0.55, Math.min(1, (element.clientWidth - 24) / width, (element.clientHeight - 24) / height))); window.setTimeout(center, 0); };
-  useEffect(() => { if (!selectedID) return; viewport.current?.querySelector<HTMLElement>(`[data-member-id="${selectedID}"]`)?.scrollIntoView?.({ behavior: "smooth", block: "center", inline: "center" }); }, [selectedID, scale]);
+  const nodes = useMemo(() => graphNodes(members, selectedID), [members, selectedID]);
+  const edges = useMemo<Edge[]>(() => members.filter((member) => member.parent_id).map((member) => ({ id: `${member.parent_id}-${member.id}`, source: member.parent_id!, target: member.id, style: { stroke: "#0f766e", strokeWidth: 2 } })), [members]);
+  const [instance, setInstance] = useState<ReactFlowInstance | null>(null);
   if (!nodes.length) return <div className="grid h-full place-items-center"><EmptyState title="还没有团队成员" description="添加第一位成员后会显示关系图。" /></div>;
-  return <div className="relative h-full overflow-hidden bg-slate-50 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px]" role="img" aria-label="团队关系图"><div className="absolute right-3 top-3 z-10 flex gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm"><Button variant="icon" size="sm" aria-label="缩小关系图" onClick={() => setScale((value) => Math.max(0.5, value - 0.1))}><Minus size={15} /></Button><Button variant="icon" size="sm" aria-label="放大关系图" onClick={() => setScale((value) => Math.min(1.6, value + 0.1))}><Plus size={15} /></Button><Button variant="icon" size="sm" aria-label="适配关系图" onClick={fit}><Maximize2 size={15} /></Button><Button variant="icon" size="sm" aria-label="关系图回到中心" onClick={center}><Focus size={15} /></Button></div><div ref={viewport} className="h-full overflow-auto"><div style={{ width: width * scale, height: height * scale }}><div className="relative origin-top-left" style={{ width, height, transform: `scale(${scale})` }}><svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${width} ${height}`} aria-hidden="true">{edges.map((edge) => { const source = nodeById.get(edge.source); const target = nodeById.get(edge.target); if (!source || !target) return null; return <path key={`${edge.source}-${edge.target}`} d={`M ${source.position.x + 124} ${source.position.y + 106} C ${source.position.x + 124} ${source.position.y + 140}, ${target.position.x + 124} ${target.position.y - 34}, ${target.position.x + 124} ${target.position.y + 20}`} fill="none" stroke="#0f766e" strokeWidth="2" />; })}</svg>{nodes.map((node) => <button key={node.id} data-member-id={node.id} type="button" onClick={() => onSelect?.(node.id)} className={`absolute w-[208px] rounded-xl border p-4 text-left shadow-float transition hover:-translate-y-0.5 hover:shadow-overlay focus:outline-none focus:ring-2 focus:ring-teal-500 ${selectedID === node.id ? "ring-4 ring-amber-300" : ""} ${node.data.isRoot ? "border-teal-700 bg-teal-700 text-white" : "border-teal-200 bg-white text-slate-900"}`} style={{ left: node.position.x + 20, top: node.position.y + 20 }}><span className={`absolute bottom-0 left-0 top-0 w-[3px] rounded-l-xl ${node.data.isRoot ? "bg-teal-300" : "bg-teal-500"}`} aria-hidden="true" /><span className="block font-bold">{node.data.name}</span><span className={`mt-1 block text-xs ${node.data.isRoot ? "text-teal-50" : "text-slate-500"}`}>{node.data.rank ? `级别：${node.data.rank}` : "未设置级别"} · {node.data.city ? `城市：${node.data.city}` : "未设置城市"}</span><span className={`mt-3 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${node.data.status === "ACTIVE" ? (node.data.isRoot ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-700") : "bg-slate-100 text-slate-600"}`}>{node.data.status === "ACTIVE" ? "启用" : "停用"}</span></button>)}</div></div></div></div>;
+  return <div className="relative h-full overflow-hidden bg-slate-50" role="img" aria-label="团队关系图" data-testid="team-graph"><Button className="absolute right-3 top-3 z-10" variant="icon" size="sm" aria-label="关系图回到中心" onClick={() => void instance?.fitView({ padding: 0.2, duration: 250 })}><Focus size={15} /></Button><ReactFlow nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.2 }} minZoom={0.35} maxZoom={1.8} nodesDraggable={false} panOnDrag zoomOnScroll zoomOnPinch preventScrolling onInit={setInstance} onNodeClick={(_, node) => onSelect?.(node.id)}><Controls showInteractive={false} /><Background gap={20} size={1} color="#cbd5e1" /></ReactFlow></div>;
 }
 
 export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
@@ -65,7 +75,7 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
   const members = useMemo(() => membersQuery.data?.data.items ?? [], [membersQuery.data]);
   const [view, setView] = useState<TeamView>("graph");
   const [search, setSearch] = useState("");
-  const [memberSheet, setMemberSheet] = useState<MemberSheet>(null);
+  const [memberSheet, setMemberSheet] = useState<MemberDialog>(null);
   const [form, setForm] = useState<Form>(emptyForm);
   const [nameTouched, setNameTouched] = useState(false);
   const [selectedSnapshot, setSelectedSnapshot] = useState<TeamSnapshot | null>(null);
@@ -79,7 +89,7 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
   const editing = memberSheet?.mode === "edit" ? memberSheet.member : null;
   const filteredMembers = useMemo(() => members.filter((member) => [member.name, member.rank, member.city].some((value) => value?.toLowerCase().includes(search.toLowerCase()))), [members, search]);
 
-  const closeSheet = () => { setMemberSheet(null); window.setTimeout(() => returnFocus.current?.focus(), 0); };
+  const closeSheet = () => { setMemberSheet(null); window.setTimeout(() => returnFocus.current?.focus({ preventScroll: true }), 0); };
   const openCreate = () => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setForm(emptyForm); setNameTouched(false); setMemberSheet({ mode: "create" }); };
   const openDetail = (member: TeamMember) => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setMemberSheet({ mode: "detail", member }); };
   const openEdit = (member: TeamMember, retainFocus = false) => { if (!retainFocus) returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setForm({ name: member.name, parent_id: member.parent_id ?? "", rank: member.rank ?? "", city: member.city ?? "", joined_on: member.joined_on ?? "", status: member.status, note: member.note ?? "" }); setNameTouched(true); setMemberSheet({ mode: "edit", member }); };
@@ -122,9 +132,9 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
     {view === "list" && <MemberList members={filteredMembers} allMembers={members} onView={openDetail} onEdit={openEdit} onDelete={setRemoveTarget} />}
     {view === "snapshots" && <SnapshotsView snapshots={snapshotsQuery.data.data.items} selected={selectedSnapshot} onSelect={setSelectedSnapshot} />}
 
-    <Sheet open={Boolean(memberSheet)} onOpenChange={(open) => !open && closeSheet()}>
-      {memberSheet?.mode === "detail" ? <SheetContent title={memberSheet.member.name} description="查看成员关系与基本信息。" footer={<div className="flex justify-end gap-3"><Button variant="danger" onClick={() => setRemoveTarget(memberSheet.member)}><Trash2 size={16} />删除</Button><Button onClick={() => openEdit(memberSheet.member, true)}>编辑成员</Button></div>}><MemberDetail member={memberSheet.member} members={members} /></SheetContent> : memberSheet ? <SheetContent title={memberSheet.mode === "edit" ? "编辑成员" : "新增成员"} description="成员层级仅通过上级成员字段调整。" footer={<div className="flex justify-end gap-3"><Button variant="secondary" onClick={closeSheet}>取消</Button><Button onClick={() => save.mutate()} loading={save.isPending} disabled={Boolean(teamNameError(form.name))}><Check size={16} />保存成员</Button></div>}><MemberEditor form={form} members={members} editingID={editing?.id} nameTouched={nameTouched} onChange={setForm} onNameTouched={setNameTouched} /></SheetContent> : null}
-    </Sheet>
+    <Dialog open={Boolean(memberSheet)} onOpenChange={(open) => !open && closeSheet()}>
+      {memberSheet && <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{memberSheet.mode === "detail" ? memberSheet.member.name : memberSheet.mode === "edit" ? "编辑成员" : "新增成员"}</DialogTitle><DialogDescription>{memberSheet.mode === "detail" ? "查看成员关系与基本信息。" : "成员层级仅通过上级成员字段调整。"}</DialogDescription></DialogHeader>{memberSheet.mode === "detail" ? <><MemberDetail member={memberSheet.member} members={members} /><div className="mt-6 flex justify-end gap-3"><Button variant="danger" onClick={() => setRemoveTarget(memberSheet.member)}><Trash2 size={16} />删除</Button><Button onClick={() => openEdit(memberSheet.member, true)}>编辑成员</Button></div></> : <><MemberEditor form={form} members={members} editingID={editing?.id} nameTouched={nameTouched} onChange={setForm} onNameTouched={setNameTouched} /><div className="mt-6 flex justify-end gap-3"><Button variant="secondary" onClick={closeSheet}>取消</Button><Button onClick={() => save.mutate()} loading={save.isPending} disabled={Boolean(teamNameError(form.name))}><Check size={16} />保存成员</Button></div></>}</DialogContent>}
+    </Dialog>
     <ConfirmDialog open={Boolean(removeTarget)} onOpenChange={(open) => !open && setRemoveTarget(null)} title="确认删除成员" description={removeTarget ? `确定删除“${removeTarget.name}”吗？存在下属时需要先调整层级。` : ""} confirmLabel="删除" loading={remove.isPending} onConfirm={() => remove.mutate()} />
   </div>;
 }
