@@ -1,0 +1,48 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Account, AuthResponse } from "@/api/client";
+import { listFinanceBudgets, listFinanceCategories, listFinanceSnapshots, listFinanceTransactions } from "@/api/client";
+import { FinancePage } from "./finance-page";
+
+vi.mock("@/api/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/client")>()),
+  listFinanceCategories: vi.fn(),
+  listFinanceTransactions: vi.fn(),
+  listFinanceBudgets: vi.fn(),
+  listFinanceSnapshots: vi.fn(),
+  saveFinanceTransaction: vi.fn(),
+  createFinanceCategory: vi.fn(),
+  archiveFinanceCategory: vi.fn(),
+  saveFinanceBudget: vi.fn(),
+  saveFinanceSnapshot: vi.fn(),
+}));
+
+const account = { id: "00000000-0000-0000-0000-000000000001", username: "owner", role: "USER", status: "ACTIVE", timezone: "Asia/Shanghai", created_at: "2026-01-01T00:00:00Z", last_login_at: null } as Account;
+const authResponse = { data: { account, accounts: [{ ...account, active: true }], csrf_token: "csrf" }, request_id: "request-1" } as AuthResponse;
+
+function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><FinancePage authResponse={authResponse} /></QueryClientProvider>);
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(listFinanceCategories).mockResolvedValue({ data: { items: [{ id: "00000000-0000-0000-0000-000000000002", type: "EXPENSE", name: "交通", archived_at: null, system_default: true }] }, request_id: "2" });
+  vi.mocked(listFinanceTransactions).mockResolvedValue({ data: { items: [{ id: "00000000-0000-0000-0000-000000000003", occurred_on: "2026-09-16", type: "EXPENSE", category_id: "00000000-0000-0000-0000-000000000002", amount: "88.00", description: "出行", note: null, source: "MANUAL", created_at: "2026-09-16T00:00:00Z", updated_at: "2026-09-16T00:00:00Z" }] }, request_id: "3" });
+  vi.mocked(listFinanceBudgets).mockResolvedValue({ data: { items: [] }, request_id: "4" });
+  vi.mocked(listFinanceSnapshots).mockResolvedValue({ data: { items: [] }, request_id: "5" });
+});
+
+describe("FinancePage", () => {
+  it("separates finance views and opens transaction entry in a sheet", async () => {
+    renderPage();
+    expect(await screen.findByRole("tab", { name: "总览" })).toHaveAttribute("data-state", "active");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "流水" }), { button: 0 });
+    expect(screen.getByRole("heading", { name: "流水列表" })).toBeVisible();
+    fireEvent.click(screen.getAllByRole("button", { name: "新增流水" })[0]);
+    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "新增财务流水" })).toBeVisible();
+    expect(screen.getByLabelText("分类", { exact: true })).toBeVisible();
+  });
+});
