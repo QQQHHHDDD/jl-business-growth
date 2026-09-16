@@ -77,7 +77,8 @@ describe("WorklogPage", () => {
     });
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "顾客行动" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "五层对话" })).toBeVisible();
+    expect(screen.queryByRole("img", { name: /说明/ })).not.toBeInTheDocument();
     const actionInput = screen.getByLabelText("开启对话");
 
     fireEvent.click(screen.getByRole("button", { name: "减少开启对话" }));

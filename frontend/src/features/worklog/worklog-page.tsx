@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { TermHelp } from "@/components/ui/term-help";
 import {
   EmptyState,
   ErrorState,
@@ -329,16 +328,10 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
           <section aria-labelledby="worklog-actions" className="pb-7">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <div className="flex items-center">
-                  <h2 id="worklog-actions" className="text-base font-bold text-slate-950">
-                    顾客行动
-                  </h2>
-                  <TermHelp
-                    term="行动总数"
-                    description="当天八类顾客行动数量的合计。"
-                  />
-                </div>
-                <p className="mt-1 text-sm text-slate-500">点击加减快速记录，也可直接输入。</p>
+                <h2 id="worklog-actions" className="text-base font-bold text-slate-950">
+                  五层对话
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">行动总数为当天八类对话行动的合计；可点击加减或直接输入。</p>
               </div>
               <span className="shrink-0 text-sm font-semibold tabular-nums text-teal-800">
                 共 {actionCount} 次
@@ -355,12 +348,6 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
                     className="flex min-h-6 items-center text-sm font-semibold text-slate-700"
                   >
                     {label}
-                    {label === "Buffer" && (
-                      <TermHelp
-                        term="Buffer"
-                        description="按当前产品规则记录的顾客经营行动次数。"
-                      />
-                    )}
                   </label>
                   <div className="mt-2 grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
                     <Button
@@ -407,11 +394,8 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
                 className="mb-4 text-base font-bold text-slate-950"
               >
                 成长投入
-                <TermHelp
-                  term="学习投入"
-                  description="读书和音频分钟会汇总到学习中心，使用同一份事实源。"
-                />
               </h2>
+              <p className="-mt-2 mb-4 text-sm text-slate-500">读书和音频分钟会汇总到学习中心，使用同一份事实源。</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input
                   label="读书分钟"
@@ -437,22 +421,10 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
                 className="mb-4 text-base font-bold text-slate-950"
               >
                 营业额
-                <TermHelp
-                  term="PV"
-                  description="业务量单位，系统按 1 PV = ¥12.5 换算净营业额。"
-                />
               </h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input
-                  label={
-                    <>
-                      营业额 PV（可选）
-                      <TermHelp
-                        term="PV"
-                        description="业务量单位，系统按 1 PV = ¥12.5 换算净营业额。"
-                      />
-                    </>
-                  }
+                  label="营业额 PV（可选）"
                   type="number"
                   min={0}
                   step="0.01"
