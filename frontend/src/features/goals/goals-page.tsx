@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Image as ImageIcon, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { Check, Image as ImageIcon, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, SelectHTMLAttributes } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
@@ -9,7 +9,7 @@ import { Background, Controls, MiniMap, ReactFlow, type Edge, type Node } from "
 import { useSearchParams } from "react-router-dom";
 import "@xyflow/react/dist/style.css";
 import type { AuthResponse, Dream, FileAsset, Goal, GoalRequest } from "@/api/client";
-import { deleteDream, deleteGoal, listDreams, listFiles, listGoals, saveDream, saveGoal, uploadFile } from "@/api/client";
+import { deleteDream, deleteFile, deleteGoal, listDreams, listFiles, listGoals, saveDream, saveGoal, uploadFile } from "@/api/client";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -33,12 +33,17 @@ const goalSchema = z.object({
   metric_code: z.string(),
   target_value: z.number().finite().min(0).optional(),
   unit: z.string().max(32),
+}).superRefine((value, context) => {
+  if (value.metric_code && value.target_value === undefined) {
+    context.addIssue({ code: "custom", path: ["target_value"], message: "选择指标后请输入目标值" });
+  }
 });
 const dreamSchema = z.object({ title: z.string().trim().min(1, "请输入梦想名称").max(200), description: z.string() });
 type GoalForm = z.infer<typeof goalSchema>;
 type DreamForm = z.infer<typeof dreamSchema>;
 type GoalsView = "map" | "list" | "dreams";
 type GoalSheetState = { mode: "create" } | { mode: "edit" | "detail"; goal: Goal } | null;
+type DreamSheetState = { mode: "create" } | { mode: "detail" | "edit"; dream: Dream } | null;
 
 const typeLabels: Record<string, string> = { LONG_TERM: "长期", YEAR: "年度", STAGE: "阶段", MONTH: "月度", WEEK: "周", DAY: "日" };
 const statusLabels: Record<string, string> = { NOT_STARTED: "未开始", IN_PROGRESS: "进行中", COMPLETED: "已完成", PAUSED: "已暂停", CANCELLED: "已取消" };
@@ -58,10 +63,10 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   const filesQuery = useQuery({ queryKey: ["user", accountID, "files"], queryFn: listFiles });
   const [view, setView] = useState<GoalsView>("map");
   const [goalSheet, setGoalSheet] = useState<GoalSheetState>(null);
-  const [dreamSheet, setDreamSheet] = useState<Dream | "new" | null>(null);
+  const [dreamSheet, setDreamSheet] = useState<DreamSheetState>(null);
   const [dreamFiles, setDreamFiles] = useState<string[]>([]);
   const [dreamGoals, setDreamGoals] = useState<string[]>([]);
-  const [dreamFile, setDreamFile] = useState<File | null>(null);
+  const [temporaryDreamFiles, setTemporaryDreamFiles] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -75,6 +80,7 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   const goalFormState = useForm<GoalForm>({ resolver: zodResolver(goalSchema), defaultValues: defaultGoal() });
   const dreamFormState = useForm<DreamForm>({ resolver: zodResolver(dreamSchema), defaultValues: { title: "", description: "" } });
   const editingGoal = goalSheet?.mode === "edit" ? goalSheet.goal : null;
+  const editingDream = dreamSheet?.mode === "edit" ? dreamSheet.dream : null;
 
   const openGoalSheet = (value: NonNullable<GoalSheetState>) => {
     goalReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -84,7 +90,15 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
     setGoalSheet(null);
     window.setTimeout(() => goalReturnFocus.current?.focus(), 0);
   };
-  const closeDreamSheet = () => {
+  const cleanupTemporaryDreamFiles = (fileIDs = temporaryDreamFiles) => {
+    if (!fileIDs.length) return;
+    setTemporaryDreamFiles((current) => current.filter((id) => !fileIDs.includes(id)));
+    void Promise.allSettled(fileIDs.map((id) => deleteFile(authResponse.data.csrf_token, id))).then(() => {
+      void queryClient.invalidateQueries({ queryKey: ["user", accountID, "files"] });
+    });
+  };
+  const closeDreamSheet = (cleanup = true) => {
+    if (cleanup) cleanupTemporaryDreamFiles();
     setDreamSheet(null);
     window.setTimeout(() => dreamReturnFocus.current?.focus(), 0);
   };
@@ -114,14 +128,27 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
     onError: (value) => { setError(errorMessage(value)); setNotice(""); },
   });
   const dreamMutation = useMutation({
-    mutationFn: (value: DreamForm) => saveDream(authResponse.data.csrf_token, { title: value.title, description: value.description || null, goal_ids: dreamGoals, sort_order: dreamSheet === "new" ? 0 : dreamSheet?.sort_order ?? 0, file_ids: dreamFiles }, dreamSheet === "new" ? undefined : dreamSheet?.id),
-    onSuccess: () => { setNotice("梦想已保存。"); setError(""); closeDreamSheet(); void queryClient.invalidateQueries({ queryKey: ["user", accountID, "dreams"] }); },
+    mutationFn: (value: DreamForm) => saveDream(authResponse.data.csrf_token, { title: value.title, description: value.description || null, goal_ids: dreamGoals, sort_order: editingDream?.sort_order ?? 0, file_ids: dreamFiles }, editingDream?.id),
+    onSuccess: () => {
+      cleanupTemporaryDreamFiles(temporaryDreamFiles.filter((id) => !dreamFiles.includes(id)));
+      setTemporaryDreamFiles([]);
+      setNotice("梦想已保存。");
+      setError("");
+      closeDreamSheet(false);
+      void queryClient.invalidateQueries({ queryKey: ["user", accountID, "dreams"] });
+    },
     onError: (value) => { setError(errorMessage(value)); setNotice(""); },
   });
   const uploadMutation = useMutation({
-    mutationFn: () => uploadFile(authResponse.data.csrf_token, dreamFile!, "DREAM_IMAGE"),
-    onSuccess: (value) => { setDreamFile(null); setDreamFiles((current) => [...current, value.data.id]); setNotice("梦想图片已上传，请保存梦想完成关联。"); void queryClient.invalidateQueries({ queryKey: ["user", accountID, "files"] }); },
-    onError: (value) => setError(errorMessage(value)),
+    mutationFn: (file: File) => uploadFile(authResponse.data.csrf_token, file, "DREAM_IMAGE"),
+    onSuccess: (value) => {
+      setDreamFiles((current) => current.includes(value.data.id) ? current : [...current, value.data.id]);
+      setTemporaryDreamFiles((current) => [...current, value.data.id]);
+      setNotice("梦想图片已上传并选中，保存梦想后完成关联。");
+      setError("");
+      void queryClient.invalidateQueries({ queryKey: ["user", accountID, "files"] });
+    },
+    onError: (value) => { setError(errorMessage(value)); setNotice(""); },
   });
   const deleteMutation = useMutation({
     mutationFn: ({ kind, id }: { kind: "goal" | "dream"; id: string }) => kind === "goal" ? deleteGoal(authResponse.data.csrf_token, id) : deleteDream(authResponse.data.csrf_token, id),
@@ -133,22 +160,27 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
     const metrics = value.metric_code ? [{ metric_code: value.metric_code as NonNullable<GoalRequest["metrics"]>[number]["metric_code"], target_value: value.target_value ?? 0, unit: value.unit || "次" }] : [];
     goalMutation.mutate({ title: value.title, type: value.type, parent_id: value.parent_id || null, description: null, start_date: value.start_date || null, due_date: value.due_date || null, status: value.status, sort_order: 0, metrics });
   });
-  const openDream = (value: Dream | "new") => {
+  const openDreamCreate = () => {
     dreamReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setDreamSheet(value);
-    setDreamFile(null);
-    if (value === "new") {
-      setDreamFiles([]); setDreamGoals([]); dreamFormState.reset({ title: "", description: "" });
-    } else {
-      setDreamFiles(value.file_ids); setDreamGoals(value.goal_ids); dreamFormState.reset({ title: value.title, description: value.description ?? "" });
-    }
+    setDreamSheet({ mode: "create" });
+    setTemporaryDreamFiles([]);
+    setDreamFiles([]); setDreamGoals([]); dreamFormState.reset({ title: "", description: "" });
+  };
+  const openDreamDetail = (dream: Dream) => {
+    dreamReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setDreamSheet({ mode: "detail", dream });
+  };
+  const openDreamEdit = (dream: Dream) => {
+    setDreamSheet({ mode: "edit", dream });
+    setTemporaryDreamFiles([]);
+    setDreamFiles(dream.file_ids); setDreamGoals(dream.goal_ids); dreamFormState.reset({ title: dream.title, description: dream.description ?? "" });
   };
 
   if (goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending) return <LoadingState label="正在加载目标工作台" />;
   if (goalsQuery.isError || dreamsQuery.isError || filesQuery.isError) return <ErrorState message="目标数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} />;
 
   const activeAction = view === "dreams"
-    ? <Button onClick={() => openDream("new")}><Plus size={16} />新增梦想</Button>
+    ? <Button onClick={openDreamCreate}><Plus size={16} />新增梦想</Button>
     : <Button onClick={() => openGoalSheet({ mode: "create" })}><Plus size={16} />新建目标</Button>;
 
   return (
@@ -161,7 +193,7 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
 
       {view === "map" && <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />}
       {view === "list" && <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />}
-      {view === "dreams" && <DreamBoard dreams={dreamsQuery.data.data.items} goals={goals} files={files} onSelect={openDream} onCreate={() => openDream("new")} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />}
+      {view === "dreams" && <DreamBoard dreams={dreamsQuery.data.data.items} goals={goals} files={files} onSelect={openDreamDetail} onCreate={openDreamCreate} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />}
 
       <Sheet open={Boolean(goalSheet)} onOpenChange={(open) => !open && closeGoalSheet()}>
         {goalSheet?.mode === "detail" ? (
@@ -176,9 +208,9 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
       </Sheet>
 
       <Sheet open={Boolean(dreamSheet)} onOpenChange={(open) => !open && closeDreamSheet()}>
-        {dreamSheet && <SheetContent title={dreamSheet === "new" ? "新增梦想" : "编辑梦想"} description="用图片、文字和关联目标呈现希望实现的方向。" footer={<div className="flex justify-end gap-3"><Button variant="secondary" onClick={closeDreamSheet}>取消</Button><Button onClick={() => void dreamFormState.handleSubmit((value) => dreamMutation.mutate(value))()} loading={dreamMutation.isPending}><Sparkles size={16} />保存梦想</Button></div>}>
-          <DreamEditor form={dreamFormState} goals={goals} files={files} selectedFiles={dreamFiles} selectedGoals={dreamGoals} pendingFile={dreamFile} uploading={uploadMutation.isPending} onFileChange={setDreamFile} onUpload={() => uploadMutation.mutate()} onToggleFile={(id) => setDreamFiles((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])} onToggleGoal={(id) => setDreamGoals((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])} />
-        </SheetContent>}
+        {dreamSheet?.mode === "detail" ? <SheetContent title={dreamSheet.dream.title} description="梦想详情" footer={<div className="flex justify-end gap-3"><Button variant="danger" onClick={() => setDeleteTarget({ kind: "dream", id: dreamSheet.dream.id, title: dreamSheet.dream.title })}><Trash2 size={16} />删除</Button><Button onClick={() => openDreamEdit(dreamSheet.dream)}>编辑梦想</Button></div>}><DreamDetail dream={dreamSheet.dream} goals={goals} files={files} /></SheetContent> : dreamSheet ? <SheetContent title={dreamSheet.mode === "create" ? "新增梦想" : "编辑梦想"} description="用图片、文字和关联目标呈现希望实现的方向。" footer={<div className="flex justify-end gap-3"><Button variant="secondary" onClick={() => closeDreamSheet()}>取消</Button><Button onClick={() => void dreamFormState.handleSubmit((value) => dreamMutation.mutate(value))()} loading={dreamMutation.isPending} disabled={uploadMutation.isPending}><Sparkles size={16} />保存梦想</Button></div>}>
+          <DreamEditor form={dreamFormState} goals={goals} files={files} selectedFiles={dreamFiles} selectedGoals={dreamGoals} uploading={uploadMutation.isPending} uploadError={uploadMutation.isError ? errorMessage(uploadMutation.error) : ""} onFileChange={(file) => file && uploadMutation.mutate(file)} onRetry={() => uploadMutation.variables && uploadMutation.mutate(uploadMutation.variables)} onToggleFile={(id) => setDreamFiles((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])} onToggleGoal={(id) => setDreamGoals((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])} />
+        </SheetContent> : null}
       </Sheet>
 
       <ConfirmDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)} title="确认删除" description={deleteTarget ? `确定要删除“${deleteTarget.title}”吗？${deleteTarget.kind === "goal" ? "它的子目标和指标也会被删除。" : "关联关系也会被删除。"}` : ""} confirmLabel="删除" loading={deleteMutation.isPending} onConfirm={() => deleteTarget && deleteMutation.mutate({ kind: deleteTarget.kind, id: deleteTarget.id })} />
@@ -200,11 +232,17 @@ function DreamBoard({ dreams, goals, files, onSelect, onCreate, onDelete }: { dr
 }
 
 function GoalEditor({ form, goals, editingID }: { form: UseFormReturn<GoalForm>; goals: Goal[]; editingID?: string }) {
-  return <form className="space-y-5" onSubmit={(event) => event.preventDefault()}><Input label="目标名称" required error={form.formState.errors.title?.message} {...form.register("title")} /><div className="grid gap-4 sm:grid-cols-2"><Select label="目标层级" {...form.register("type")}>{goalTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}</Select><Select label="父目标" {...form.register("parent_id")}><option value="">无父目标</option>{goals.filter((goal) => goal.id !== editingID).map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</Select></div><div className="grid gap-4 sm:grid-cols-2"><Input label="开始日期" type="date" {...form.register("start_date")} /><Input label="截止日期" type="date" {...form.register("due_date")} /></div><Select label="状态" {...form.register("status")}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select><div className="border-t border-slate-200 pt-5"><p className="mb-4 text-sm font-bold text-slate-900">量化指标（可选）</p><div className="space-y-4"><Select label="指标" {...form.register("metric_code")}><option value="">暂不设置</option>{metricCodes.map((code) => <option key={code} value={code}>{metricLabel(code)}</option>)}</Select><div className="grid gap-4 sm:grid-cols-2"><Input label="目标值" type="number" min={0} step="0.01" {...form.register("target_value", { valueAsNumber: true })} /><Input label="单位" placeholder="次 / PV / 分钟" {...form.register("unit")} /></div></div></div></form>;
+  return <form className="space-y-5" onSubmit={(event) => event.preventDefault()}><Input label="目标名称" required error={form.formState.errors.title?.message} {...form.register("title")} /><div className="grid gap-4 sm:grid-cols-2"><Select label="目标层级" {...form.register("type")}>{goalTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}</Select><Select label="父目标" {...form.register("parent_id")}><option value="">无父目标</option>{goals.filter((goal) => goal.id !== editingID).map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</Select></div><div className="grid gap-4 sm:grid-cols-2"><Input label="开始日期" type="date" {...form.register("start_date")} /><Input label="截止日期" type="date" {...form.register("due_date")} /></div><Select label="状态" {...form.register("status")}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select><div className="border-t border-slate-200 pt-5"><p className="mb-4 text-sm font-bold text-slate-900">量化指标（可选）</p><div className="space-y-4"><Select label="指标" {...form.register("metric_code")}><option value="">暂不设置</option>{metricCodes.map((code) => <option key={code} value={code}>{metricLabel(code)}</option>)}</Select><div className="grid gap-4 sm:grid-cols-2"><Input label="目标值" type="number" min={0} step="0.01" error={form.formState.errors.target_value?.message} {...form.register("target_value", { setValueAs: (value) => value === "" ? undefined : Number(value) })} /><Input label="单位" placeholder="次 / PV / 分钟" {...form.register("unit")} /></div></div></div></form>;
 }
 
-function DreamEditor({ form, goals, files, selectedFiles, selectedGoals, pendingFile, uploading, onFileChange, onUpload, onToggleFile, onToggleGoal }: { form: UseFormReturn<DreamForm>; goals: Goal[]; files: FileAsset[]; selectedFiles: string[]; selectedGoals: string[]; pendingFile: File | null; uploading: boolean; onFileChange: (file: File | null) => void; onUpload: () => void; onToggleFile: (id: string) => void; onToggleGoal: (id: string) => void }) {
-  return <form className="space-y-6" onSubmit={(event) => event.preventDefault()}><Input label="梦想标题" required error={form.formState.errors.title?.message} {...form.register("title")} /><label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">梦想描述</span><textarea className="min-h-28 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" placeholder="描述这个方向" {...form.register("description")} /></label><section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">关联目标</h3>{goals.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{goals.map((goal) => <label key={goal.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm"><input type="checkbox" checked={selectedGoals.includes(goal.id)} onChange={() => onToggleGoal(goal.id)} /><span className="font-semibold text-slate-700">{goal.title}</span></label>)}</div> : <p className="mt-2 text-sm text-slate-500">暂无可关联目标。</p>}</section><section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">梦想图片</h3><div className="mt-3 flex flex-wrap items-end gap-3"><label className="min-w-[220px] flex-1 space-y-1.5"><span className="text-sm font-semibold text-slate-700">选择图片</span><input aria-label="选择梦想图片" type="file" accept="image/jpeg,image/png,image/webp" className="block w-full text-sm" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} /></label><Button type="button" variant="secondary" onClick={onUpload} loading={uploading} disabled={!pendingFile}><Upload size={16} />上传</Button></div>{files.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3">{files.map((item) => <label key={item.id} className={`cursor-pointer rounded-lg border p-2 ${selectedFiles.includes(item.id) ? "border-teal-500 bg-teal-50" : "border-slate-200"}`}><input className="sr-only" type="checkbox" checked={selectedFiles.includes(item.id)} onChange={() => onToggleFile(item.id)} /><FileThumb file={item} /><span className="mt-1 block truncate text-xs text-slate-600">{item.original_name}</span></label>)}</div>}</section></form>;
+function DreamEditor({ form, goals, files, selectedFiles, selectedGoals, uploading, uploadError, onFileChange, onRetry, onToggleFile, onToggleGoal }: { form: UseFormReturn<DreamForm>; goals: Goal[]; files: FileAsset[]; selectedFiles: string[]; selectedGoals: string[]; uploading: boolean; uploadError: string; onFileChange: (file: File | null) => void; onRetry: () => void; onToggleFile: (id: string) => void; onToggleGoal: (id: string) => void }) {
+  return <form className="space-y-6" onSubmit={(event) => event.preventDefault()}><Input label="梦想标题" required error={form.formState.errors.title?.message} {...form.register("title")} /><label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">梦想描述</span><textarea className="min-h-28 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" placeholder="描述这个方向" {...form.register("description")} /></label><section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">关联目标</h3>{goals.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{goals.map((goal) => <label key={goal.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm"><input type="checkbox" checked={selectedGoals.includes(goal.id)} onChange={() => onToggleGoal(goal.id)} /><span className="font-semibold text-slate-700">{goal.title}</span></label>)}</div> : <p className="mt-2 text-sm text-slate-500">暂无可关联目标。</p>}</section><section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">梦想图片</h3><label className="mt-3 block space-y-1.5"><span className="text-sm font-semibold text-slate-700">选择图片</span><input aria-label="选择梦想图片" type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} className="block w-full text-sm" onChange={(event) => { onFileChange(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }} /></label>{uploading && <p role="status" className="mt-2 text-sm text-teal-700">正在上传图片...</p>}{uploadError && <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"><span>{uploadError}</span><Button type="button" variant="secondary" size="sm" onClick={onRetry}>重试</Button></div>}{files.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3">{files.map((item) => <label key={item.id} className={`cursor-pointer rounded-lg border p-2 ${selectedFiles.includes(item.id) ? "border-teal-500 bg-teal-50" : "border-slate-200"}`}><input className="sr-only" type="checkbox" checked={selectedFiles.includes(item.id)} onChange={() => onToggleFile(item.id)} /><FileThumb file={item} /><span className="mt-1 block truncate text-xs text-slate-600">{item.original_name}</span></label>)}</div>}</section></form>;
+}
+
+function DreamDetail({ dream, goals, files }: { dream: Dream; goals: Goal[]; files: FileAsset[] }) {
+  const images = files.filter((file) => dream.file_ids.includes(file.id));
+  const linkedGoals = goals.filter((goal) => dream.goal_ids.includes(goal.id));
+  return <div className="space-y-6">{images.length ? <div className="grid gap-3 sm:grid-cols-2">{images.map((file) => <FileThumb key={file.id} file={file} />)}</div> : <div className="grid min-h-40 place-items-center rounded-lg bg-slate-100 text-slate-400"><ImageIcon size={32} /></div>}<section><h3 className="text-sm font-bold text-slate-900">梦想描述</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{dream.description || "未填写描述。"}</p></section><section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">已关联目标</h3>{linkedGoals.length ? <ul className="mt-3 space-y-2">{linkedGoals.map((goal) => <li key={goal.id} className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700">{goal.title}</li>)}</ul> : <p className="mt-2 text-sm text-slate-500">暂无关联目标。</p>}</section></div>;
 }
 
 function GoalDetail({ goal, goals }: { goal: Goal; goals: Goal[] }) {

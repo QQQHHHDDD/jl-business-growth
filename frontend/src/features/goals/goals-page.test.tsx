@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, Dream, Goal } from "@/api/client";
-import { listDreams, listFiles, listGoals } from "@/api/client";
+import { listDreams, listFiles, listGoals, saveGoal, uploadFile } from "@/api/client";
 import { GoalsPage } from "./goals-page";
 
 vi.mock("@xyflow/react", () => ({
@@ -33,6 +33,7 @@ vi.mock("@/api/client", async (importOriginal) => {
     saveGoal: vi.fn(),
     saveDream: vi.fn(),
     uploadFile: vi.fn(),
+    deleteFile: vi.fn(),
     deleteGoal: vi.fn(),
     deleteDream: vi.fn(),
   };
@@ -98,6 +99,8 @@ beforeEach(() => {
   vi.mocked(listGoals).mockResolvedValue({ data: { items: [parentGoal, childGoal] }, request_id: "request-2" });
   vi.mocked(listDreams).mockResolvedValue({ data: { items: [dream] }, request_id: "request-3" });
   vi.mocked(listFiles).mockResolvedValue({ data: { items: [] }, request_id: "request-4" });
+  vi.mocked(saveGoal).mockResolvedValue({ data: parentGoal, request_id: "request-5" });
+  vi.mocked(uploadFile).mockResolvedValue({ data: { id: "00000000-0000-0000-0000-000000000030", category: "DREAM_IMAGE", original_name: "dream.png", mime_type: "image/png", size_bytes: 4, sha256: "hash", created_at: "2026-01-01T00:00:00Z" }, request_id: "request-6" });
 });
 
 describe("GoalsPage", () => {
@@ -138,8 +141,29 @@ describe("GoalsPage", () => {
     expect(screen.getByRole("heading", { name: "有节奏地经营" })).toBeVisible();
     expect(screen.getByText("关联目标 1")).toBeVisible();
     fireEvent.click(screen.getByRole("heading", { name: "有节奏地经营" }).closest("button")!);
+    expect(screen.getByRole("heading", { name: "有节奏地经营" })).toBeVisible();
+    expect(within(screen.getByRole("dialog")).getByText("持续推进重要目标")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "编辑梦想" }));
     expect(screen.getByRole("heading", { name: "编辑梦想" })).toBeVisible();
     expect(screen.getByRole("checkbox", { name: "年度增长目标" })).toBeChecked();
+  });
+
+  it("creates a non-quantified goal with only a title", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "新建目标" }));
+    fireEvent.change(screen.getByLabelText("目标名称"), { target: { value: "只含名称的目标" } });
+    fireEvent.click(screen.getByRole("button", { name: "创建目标" }));
+    await waitFor(() => expect(saveGoal).toHaveBeenCalledWith("csrf-token", expect.objectContaining({ title: "只含名称的目标", metrics: [] }), undefined));
+  });
+
+  it("uploads a selected dream image without a second upload action", async () => {
+    renderPage();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "梦想板" }), { button: 0 });
+    fireEvent.click(screen.getByRole("button", { name: "新增梦想" }));
+    const file = new File(["data"], "dream.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("选择梦想图片"), { target: { files: [file] } });
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledWith("csrf-token", file, "DREAM_IMAGE"));
+    expect(screen.queryByRole("button", { name: "上传" })).not.toBeInTheDocument();
   });
 
   it("restores a record-level goal deep link after refresh", async () => {
