@@ -711,6 +711,25 @@ func TestPhase4APIIntegration(t *testing.T) {
 	if parentSearchResult == nil || !strings.Contains(parentSearchResult.Snippet, "级别：主任") || !strings.Contains(parentSearchResult.Snippet, "城市：上海") {
 		t.Fatalf("team search result = %+v", teamSearch.Data.Items)
 	}
+	for _, query := range []string{"P", "经"} {
+		singleCharacterBody := getTestJSON(t, userClient, server.URL, "/api/search?q="+url.QueryEscape(query), http.StatusOK)
+		var singleCharacterResult api.SearchResponse
+		decodeTestJSON(t, singleCharacterBody, &singleCharacterResult)
+		if len(singleCharacterResult.Data.Items) == 0 {
+			t.Fatalf("single-character search %q returned no results", query)
+		}
+	}
+	getTestJSON(t, userClient, server.URL, "/api/search?q=%20", http.StatusBadRequest)
+	isolatedClient := newTestClient(t)
+	isolatedRegistration := postTestJSON(t, isolatedClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase4-isolated", "password": "phase4-isolated-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
+	var isolatedAuth api.AuthResponse
+	decodeTestJSON(t, isolatedRegistration, &isolatedAuth)
+	isolatedSearchBody := getTestJSON(t, isolatedClient, server.URL, "/api/search?q=P", http.StatusOK)
+	var isolatedSearch api.SearchResponse
+	decodeTestJSON(t, isolatedSearchBody, &isolatedSearch)
+	if len(isolatedSearch.Data.Items) != 0 {
+		t.Fatalf("single-character search leaked records across accounts: %+v", isolatedSearch.Data.Items)
+	}
 	getTestJSON(t, userClient, server.URL, "/api/files/"+fileResponse.Data.Id.String()+"/content?disposition=inline", http.StatusOK)
 	getTestJSON(t, adminClient, server.URL, "/api/team/members", http.StatusForbidden)
 	getTestJSON(t, adminClient, server.URL, "/api/knowledge", http.StatusForbidden)
