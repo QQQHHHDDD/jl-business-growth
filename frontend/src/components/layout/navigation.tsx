@@ -346,7 +346,7 @@ export function HealthIndicator({
 
 export function PageContainer({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-[1360px] px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
+    <div className="mx-auto min-w-0 max-w-[1360px] overflow-x-clip px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
       {children}
     </div>
   );

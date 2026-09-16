@@ -9,7 +9,7 @@ export function DataTable({
   className?: string;
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-panel">
+    <div className="max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-panel">
       <table
         className={cn(
           "w-full min-w-[760px] table-fixed text-left text-sm",

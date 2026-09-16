@@ -25,7 +25,7 @@ export function SheetContent({
       <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[1px]" />
       <DialogPrimitive.Content
         className={cn(
-          "fixed inset-0 z-50 flex flex-col bg-white shadow-overlay focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[min(92vw,520px)] sm:border-l sm:border-slate-200",
+          "fixed inset-0 z-50 flex min-w-0 flex-col overflow-hidden bg-white shadow-overlay focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[min(92vw,560px)] sm:border-l sm:border-slate-200",
           className,
         )}
       >
@@ -47,7 +47,7 @@ export function SheetContent({
           {children}
         </div>
         {footer && (
-          <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-4 sm:px-6">
+          <footer className="shrink-0 border-t border-slate-200 bg-white px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
             {footer}
           </footer>
         )}

@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, LoadingState } from "./state-block";
 import { StatusBadge } from "./badge";
 import { DataTable, TableBody, TableCell, TableHead, TableRow } from "./table";
 import { Sheet, SheetContent } from "./sheet";
+import { Tabs, TabsList, TabsTrigger } from "./tabs";
 
 describe("shared UI primitives", () => {
   it("exposes loading and disabled state on Button and validation state on Input", () => {
@@ -99,7 +100,13 @@ describe("shared UI primitives", () => {
     const sheet = screen.getByRole("dialog", { name: "编辑目标" });
     expect(sheet).toHaveClass("inset-0");
     expect(sheet).toHaveClass("sm:right-0");
-    expect(sheet).toHaveClass("sm:w-[min(92vw,520px)]");
+    expect(sheet).toHaveClass("sm:w-[min(92vw,560px)]");
     expect(screen.getByRole("button", { name: "保存" })).toBeVisible();
+  });
+
+  it("keeps long tab sets on one horizontally scrollable row", () => {
+    render(<Tabs defaultValue="one"><TabsList><TabsTrigger value="one">第一个</TabsTrigger><TabsTrigger value="two">第二个</TabsTrigger></TabsList></Tabs>);
+    expect(screen.getByRole("tablist")).toHaveClass("overflow-x-auto", "flex-nowrap");
+    expect(screen.getByRole("tab", { name: "第一个" })).toHaveClass("shrink-0");
   });
 });

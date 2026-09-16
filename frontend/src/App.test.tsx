@@ -354,7 +354,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "账号设置" }));
     await waitFor(() =>
       expect(
-        screen.getByRole("heading", { name: "账号设置" }),
+        screen.getByRole("heading", { name: "设置" }),
       ).toBeInTheDocument(),
     );
     fireEvent.change(screen.getByLabelText("当前密码"), {

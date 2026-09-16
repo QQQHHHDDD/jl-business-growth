@@ -134,7 +134,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     page.getByRole("heading", { name: "数据统计", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "聚合结果", exact: true }),
+    page.getByRole("heading", { name: "工作量趋势", exact: true }),
   ).toBeVisible();
 
   await page.goto("/app/team");
@@ -150,6 +150,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(
     page.getByRole("heading", { name: "学习中心", exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "新增学习" }).first().click();
   await page.getByLabel("学习项目标题").fill("E2E 学习项目");
   await page.getByRole("button", { name: "保存项目" }).click();
   await expect(page.getByRole("status")).toContainText("学习项目已保存");
@@ -159,18 +160,24 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     page.getByRole("heading", { name: "全局搜索", exact: true }),
   ).toBeVisible();
   await page.getByLabel("搜索关键词").fill("E2E 学习项目");
-  await page.getByRole("button", { name: "搜索" }).click();
+  await page.getByRole("button", { name: "搜索", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "E2E 学习项目", exact: true }),
+    page.getByText("E2E 学习项目", { exact: true }).first(),
   ).toBeVisible();
 
   await page.goto("/app/finance");
   await expect(
     page.getByRole("heading", { name: "财务", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("流水分类", { exact: true }).selectOption({ index: 1 });
-  await page.getByLabel("金额").first().fill("123.45");
-  await page.getByRole("button", { name: "保存流水" }).click();
+  await page.getByRole("button", { name: "新增流水" }).first().click();
+  const transactionSheet = page.getByRole("dialog");
+  await transactionSheet
+    .getByRole("combobox", { name: "分类" })
+    .selectOption({ index: 1 });
+  await transactionSheet
+    .getByRole("spinbutton", { name: "金额" })
+    .fill("123.45");
+  await transactionSheet.getByRole("button", { name: "保存流水" }).click();
   await expect(page.getByRole("status")).toContainText("财务流水已保存");
 
   await page.goto("/app/income-simulator");
@@ -180,7 +187,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await page.getByLabel("个人圈 PV").fill("1000");
   await page.getByRole("button", { name: "计算收入" }).click();
   await expect(page.getByText("¥1125.00")).toBeVisible();
-  await page.getByRole("button", { name: "保存方案" }).click();
+  await page.getByTestId("income-results").getByRole("button", { name: "保存方案" }).click();
   await expect(page.getByRole("status")).toContainText("收入模拟方案已保存");
 
   await page.goto("/app/data");
@@ -188,7 +195,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     page.getByRole("heading", { name: "导入 / 导出", exact: true }),
   ).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "下载模板" }).click();
+  await page.getByRole("button", { name: /下载.*模板/ }).click();
   const templateDownload = await downloadPromise;
   const templatePath = await templateDownload.path();
   expect(templatePath).toBeTruthy();
@@ -200,8 +207,41 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   });
   await page.getByRole("button", { name: "上传并校验" }).click();
   await expect(page.getByText("VALIDATED", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "确认导入" }).click();
+  await page.getByRole("button", { name: "5. 确认导入" }).click();
   await expect(page.getByRole("status")).toContainText("数据已导入");
+
+  const responsiveRoutes = [
+    ["/app/finance", "财务"],
+    ["/app/knowledge", "学习中心"],
+    ["/app/income-simulator", "收入模拟"],
+    ["/app/reviews", "复盘"],
+    ["/app/analytics", "数据统计"],
+    ["/app/data", "导入 / 导出"],
+    ["/app/settings", "设置"],
+  ] as const;
+  for (const width of [1440, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: width >= 1024 ? 900 : 844 });
+    for (const [path, heading] of responsiveRoutes) {
+      await page.goto(path);
+      await expect(
+        page.getByRole("heading", { name: heading, exact: true }),
+      ).toBeVisible();
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth + 1,
+        ),
+      ).toBe(true);
+    }
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/app/finance");
+  await page.getByRole("button", { name: "新增流水" }).first().click();
+  const financeSheet = await page.getByRole("dialog").boundingBox();
+  expect(financeSheet?.width).toBeLessThanOrEqual(390);
+  await page.getByRole("button", { name: "关闭" }).click();
 
   await page
     .getByRole("button", { name: new RegExp(`账号菜单 ${firstUsername}`) })
