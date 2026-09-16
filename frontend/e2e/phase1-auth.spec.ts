@@ -68,8 +68,8 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(
     page.getByRole("heading", { name: "今日工作量", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("开启对话").fill("1");
-  await page.getByLabel("会面").fill("2");
+  await page.getByRole("spinbutton", { name: "开启对话", exact: true }).fill("1");
+  await page.getByRole("spinbutton", { name: "会面", exact: true }).fill("2");
   await page.getByLabel("读书分钟").fill("30");
   await page.getByLabel("听音频分钟").fill("15");
   await page.getByLabel("营业额 PV（可选）").fill("2");
@@ -80,20 +80,21 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(
     page.getByRole("heading", { name: "梦想与目标", exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "新建目标" }).first().click();
   await page.getByLabel("目标名称").fill("本周会面目标");
   await page.getByLabel("指标").selectOption("meeting_count");
   await page.getByLabel("目标值").fill("2");
   await page.getByLabel("单位").fill("次");
   await page.getByRole("button", { name: "创建目标" }).click();
-  await expect(
-    page.locator("p").filter({ hasText: "本周会面目标" }).first(),
-  ).toBeVisible();
-  await expect(
-    page.locator("span").filter({ hasText: "100%" }).first(),
-  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("目标已创建");
+  await page.getByRole("tab", { name: "目标列表" }).click();
+  await expect(page.getByText("本周会面目标", { exact: true }).first()).toBeVisible();
+  await page.getByRole("tab", { name: "梦想板" }).click();
+  await page.getByRole("button", { name: "新增梦想" }).first().click();
   await page.getByLabel("梦想标题").fill("更有节奏的经营");
   await page.getByRole("button", { name: "保存梦想" }).click();
-  await expect(page.getByText("更有节奏的经营")).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("梦想已保存");
+  await expect(page.getByRole("heading", { name: "更有节奏的经营" })).toBeVisible();
 
   await page.goto("/app");
   await expect(
