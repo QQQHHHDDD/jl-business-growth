@@ -7,8 +7,12 @@ import { listCalendarEvents, saveCalendarEvent } from "@/api/client";
 import { CalendarPage } from "./calendar-page";
 
 vi.mock("@fullcalendar/react", () => ({
-  default: ({ events, dateClick, eventClick }: { events: Array<{ id: string; title: string; extendedProps: { event: CalendarEvent } }>; dateClick: (info: { dateStr: string }) => void; eventClick: (info: { event: { extendedProps: { event: CalendarEvent } } }) => void; children?: ReactNode }) => (
+  default: ({ events, dateClick, eventClick, buttonText, initialView }: { events: Array<{ id: string; title: string; extendedProps: { event: CalendarEvent } }>; dateClick: (info: { dateStr: string }) => void; eventClick: (info: { event: { extendedProps: { event: CalendarEvent } } }) => void; buttonText: Record<string, string>; initialView: string; children?: ReactNode }) => (
     <div data-testid="full-calendar">
+      <span data-testid="initial-calendar-view">{initialView}</span>
+      <button type="button">{buttonText.month}</button>
+      <button type="button">{buttonText.week}</button>
+      <button type="button">{buttonText.day}</button>
       <button type="button" onClick={() => dateClick({ dateStr: "2026-09-16" })}>选择 2026-09-16</button>
       {events.map((event) => <button key={event.id} type="button" onClick={() => eventClick({ event })}>{event.title}</button>)}
     </div>
@@ -76,6 +80,10 @@ describe("CalendarPage", () => {
   it("keeps the calendar primary and opens day details without a permanent event list", async () => {
     renderPage();
     expect(await screen.findByTestId("full-calendar")).toBeVisible();
+    expect(screen.getByTestId("initial-calendar-view")).toHaveTextContent("dayGridMonth");
+    expect(screen.getByRole("button", { name: "月" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "周" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "日" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "已加载日程" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "选择 2026-09-16" }));

@@ -6,6 +6,7 @@ import { Input } from "./input";
 import { EmptyState, ErrorState, LoadingState } from "./state-block";
 import { StatusBadge } from "./badge";
 import { DataTable, TableBody, TableCell, TableHead, TableRow } from "./table";
+import { Sheet, SheetContent } from "./sheet";
 
 describe("shared UI primitives", () => {
   it("exposes loading and disabled state on Button and validation state on Input", () => {
@@ -84,5 +85,21 @@ describe("shared UI primitives", () => {
     rerender(<PromptDialog open onOpenChange={onOpenChange} title="设置临时密码" description="请输入一次性密码。" label="临时密码" value="" onValueChange={() => undefined} onConfirm={onPromptConfirm} loading />);
     expect(screen.getByRole("button", { name: "确认" })).toBeDisabled();
     expect(screen.getByLabelText("临时密码")).toBeInTheDocument();
+  });
+
+  it("uses a full-screen mobile sheet and a bounded desktop drawer", () => {
+    render(
+      <Sheet open>
+        <SheetContent title="编辑目标" footer={<Button>保存</Button>}>
+          <Input label="目标名称" />
+        </SheetContent>
+      </Sheet>,
+    );
+
+    const sheet = screen.getByRole("dialog", { name: "编辑目标" });
+    expect(sheet).toHaveClass("inset-0");
+    expect(sheet).toHaveClass("sm:right-0");
+    expect(sheet).toHaveClass("sm:w-[min(92vw,520px)]");
+    expect(screen.getByRole("button", { name: "保存" })).toBeVisible();
   });
 });

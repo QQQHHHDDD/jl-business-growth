@@ -106,6 +106,7 @@ describe("TeamPage", () => {
   it("provides searchable list and an independent snapshot view", async () => {
     renderPage();
     await screen.findByRole("tab", { name: "成员列表" });
+    expect(screen.getByRole("button", { name: "保存快照" })).toBeVisible();
     fireEvent.mouseDown(screen.getByRole("tab", { name: "成员列表" }), { button: 0 });
     fireEvent.change(screen.getByLabelText("搜索成员"), { target: { value: "杭州" } });
     expect(screen.getByText("业务伙伴", { exact: true })).toBeVisible();

@@ -80,6 +80,8 @@ describe("WorklogPage", () => {
     expect(await screen.findByRole("heading", { name: "顾客行动" })).toBeVisible();
     const actionInput = screen.getByLabelText("开启对话");
 
+    fireEvent.click(screen.getByRole("button", { name: "减少开启对话" }));
+    expect(actionInput).toHaveValue(0);
     fireEvent.click(screen.getByRole("button", { name: "增加开启对话" }));
     expect(actionInput).toHaveValue(1);
     expect(screen.getByLabelText("今日概览")).toHaveTextContent("行动1");
