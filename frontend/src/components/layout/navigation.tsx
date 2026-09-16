@@ -128,18 +128,18 @@ function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       to="/"
-      className={cn("flex items-center gap-3", compact && "justify-center")}
+      className={cn("flex min-w-0 items-center gap-3", compact && "justify-center")}
       aria-label="返回系统首页"
     >
       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-teal-700 text-sm font-black text-white">
         JL
       </span>
       {!compact && (
-        <span>
+        <span className="min-w-0 flex-1">
           <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-teal-700">
             JL Growth
           </span>
-          <span className="mt-0.5 block whitespace-nowrap text-sm font-bold text-slate-950">
+          <span className="mt-0.5 block text-xs font-bold leading-4 text-slate-950">
             JL团队生意成长管理系统
           </span>
         </span>
@@ -346,7 +346,7 @@ export function HealthIndicator({
 
 export function PageContainer({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto min-w-0 max-w-[1360px] overflow-x-clip px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
+    <div data-testid="page-container" className="mx-auto w-full min-w-0 max-w-[1360px] overflow-x-clip px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
       {children}
     </div>
   );
