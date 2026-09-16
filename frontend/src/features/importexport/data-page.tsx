@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { Check, Download, FileUp, RefreshCcw, Trash2 } from "lucide-react";
+import { Check, Download, FileSpreadsheet, FileUp, RefreshCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { commitImport, createImport, deleteImport, downloadImportTemplate, exportData, type AuthResponse, type ExportFormat, type ExportType, type ImportJob, type ImportType, validateImport } from "@/api/client";
 import { Button } from "@/components/ui/button";
@@ -9,64 +9,36 @@ import { StatusBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/state-block";
 import { errorMessage } from "@/lib/utils";
 
-const importTypes: { value: ImportType; label: string }[] = [
-  { value: "WORKLOG", label: "每日工作量" },
-  { value: "TURNOVER", label: "营业额历史" },
-  { value: "FINANCE", label: "财务流水" },
-  { value: "TEAM", label: "团队成员" },
-];
-const exportTypes: { value: ExportType; label: string; formats: ExportFormat[] }[] = [
-  { value: "WORKLOG", label: "工作量", formats: ["csv", "xlsx"] },
-  { value: "TURNOVER", label: "营业额", formats: ["csv", "xlsx"] },
-  { value: "FINANCE", label: "财务", formats: ["csv", "xlsx"] },
-  { value: "TEAM", label: "团队", formats: ["csv", "xlsx"] },
-  { value: "KNOWLEDGE", label: "知识", formats: ["json", "markdown"] },
-  { value: "ACCOUNT", label: "完整账户", formats: ["zip"] },
-];
+const importTypes: { value: ImportType; label: string }[] = [{ value: "WORKLOG", label: "每日工作量" }, { value: "TURNOVER", label: "营业额历史" }, { value: "FINANCE", label: "财务流水" }, { value: "TEAM", label: "团队成员" }];
+const exportTypes: { value: ExportType; label: string; formats: ExportFormat[] }[] = [{ value: "WORKLOG", label: "工作量", formats: ["csv", "xlsx"] }, { value: "TURNOVER", label: "营业额", formats: ["csv", "xlsx"] }, { value: "FINANCE", label: "财务", formats: ["csv", "xlsx"] }, { value: "TEAM", label: "团队", formats: ["csv", "xlsx"] }, { value: "KNOWLEDGE", label: "知识", formats: ["json", "markdown"] }, { value: "ACCOUNT", label: "完整账户", formats: ["zip"] }];
+const steps = ["选择类型", "下载模板", "上传文件", "校验预览", "确认导入"];
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
+function downloadBlob(blob: Blob, filename: string) { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click(); URL.revokeObjectURL(url); }
 
 export function DataPage({ authResponse }: { authResponse: AuthResponse }) {
   const [type, setType] = useState<ImportType>("WORKLOG");
+  const [templateReady, setTemplateReady] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [job, setJob] = useState<ImportJob | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const csrfToken = authResponse.data.csrf_token;
-  const run = async <T,>(operation: () => Promise<T>, success: (value: T) => void) => {
-    setError("");
-    try { success(await operation()); } catch (value) { setError(errorMessage(value)); }
-  };
+  const run = async <T,>(operation: () => Promise<T>, success: (value: T) => void) => { setError(""); try { success(await operation()); } catch (value) { setError(errorMessage(value)); } };
+  const downloadTemplate = () => void run(() => downloadImportTemplate(type), (blob) => { downloadBlob(blob, `jl-business-${type.toLowerCase()}-template.xlsx`); setTemplateReady(true); setNotice("模板已下载，请按模板填写后上传。"); });
   const uploadMutation = useMutation({ mutationFn: () => file ? createImport(csrfToken, type, file) : Promise.reject(new Error("请选择 XLSX 文件")), onSuccess: (response) => { setJob(response.data); setNotice(response.data.invalid_count ? "文件已校验，请先修正错误行。" : "文件已校验，可以确认导入。"); setError(""); }, onError: (value) => setError(errorMessage(value)) });
   const validateMutation = useMutation({ mutationFn: () => validateImport(csrfToken, job!.id), onSuccess: (response) => { setJob(response.data); setNotice("文件已重新校验。"); setError(""); }, onError: (value) => setError(errorMessage(value)) });
   const commitMutation = useMutation({ mutationFn: () => commitImport(csrfToken, job!.id), onSuccess: (response) => { setJob(response.data); setNotice("数据已导入，临时文件已清理。"); setError(""); }, onError: (value) => setError(errorMessage(value)) });
-  const discardMutation = useMutation({ mutationFn: () => deleteImport(csrfToken, job!.id), onSuccess: () => { setJob(null); setNotice("导入任务已丢弃。"); setError(""); }, onError: (value) => setError(errorMessage(value)) });
+  const discardMutation = useMutation({ mutationFn: () => deleteImport(csrfToken, job!.id), onSuccess: () => { setJob(null); setFile(null); setNotice("导入任务已丢弃。"); setError(""); }, onError: (value) => setError(errorMessage(value)) });
+  const currentStep = job?.status === "COMMITTED" ? 5 : job ? 4 : file ? 3 : templateReady ? 2 : 1;
   const busy = uploadMutation.isPending || validateMutation.isPending || commitMutation.isPending || discardMutation.isPending;
-  return <div className="space-y-7">
-    <PageHeader eyebrow="数据治理" title="导入 / 导出" description="使用系统模板迁移结构化数据，导入确认前不会写入业务表。" action={<FileUp className="text-teal-700" size={28} aria-hidden="true" />} />
+  return <div className="space-y-6">
+    <PageHeader eyebrow="数据治理" title="导入 / 导出" description="使用官方模板迁移结构化数据，明确确认前不会写入业务表。" />
     {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
-    <div className="grid gap-5 xl:grid-cols-2">
-      <Panel title="模板导入" description="仅支持本系统下载的 XLSX 模板。">
-        <div className="space-y-4">
-          <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">导入类型</span><select aria-label="导入类型" className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm" value={type} onChange={(event) => setType(event.target.value as ImportType)}>{importTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-          <Button variant="secondary" size="sm" onClick={() => void run(() => downloadImportTemplate(type), (blob) => downloadBlob(blob, `jl-business-${type.toLowerCase()}-template.xlsx`))}><Download size={15} />下载模板</Button>
-          <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">选择 XLSX 文件</span><input aria-label="选择 XLSX 文件" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:border-0 file:bg-transparent file:font-semibold" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
-          <Button onClick={() => uploadMutation.mutate()} loading={uploadMutation.isPending}><FileUp size={15} />{uploadMutation.isPending ? "处理中..." : "上传并校验"}</Button>
-        </div>
-      </Panel>
-      <Panel title="结构化导出" description="导出内容仅属于当前账号；完整账户 ZIP 不包含密码、Session 和审计日志。">
-        <div className="space-y-3">{exportTypes.map((item) => <div key={item.value} className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0"><span className="text-sm font-semibold text-slate-800">{item.label}</span><div className="flex flex-wrap gap-2">{item.formats.map((format) => <Button key={format} variant="secondary" size="sm" onClick={() => void run(() => exportData(item.value, format), (blob) => downloadBlob(blob, `${item.value.toLowerCase()}.${format}`))}><Download size={14} />{format.toUpperCase()}</Button>)}</div></div>)}</div>
-      </Panel>
-    </div>
-    <Panel title="导入预览" description="逐行校验通过后，明确确认才会执行事务导入。">
-      {!job ? <EmptyState title="还没有导入任务" description="下载模板、填写数据并上传后，在这里查看校验预览。" /> : <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><StatusBadge tone={job.status === "VALIDATED" ? "success" : job.status === "COMMITTED" ? "info" : "danger"}>{job.status}</StatusBadge><span className="text-sm text-slate-600">共 {job.row_count} 行，通过 {job.valid_count} 行，错误 {job.invalid_count} 行</span></div><div className="flex gap-2"><Button variant="secondary" size="sm" onClick={() => validateMutation.mutate()} loading={validateMutation.isPending}><RefreshCcw size={14} />重新校验</Button>{job.status !== "COMMITTED" && <Button variant="icon" size="sm" aria-label="丢弃导入任务" onClick={() => discardMutation.mutate()} disabled={busy}><Trash2 size={15} /></Button>}</div></div>{job.rows.length > 0 && <div className="overflow-x-auto"><table className="min-w-[680px] w-full text-left text-sm"><thead><tr className="border-b border-slate-200 text-xs text-slate-500"><th className="px-3 py-2">行号</th><th className="px-3 py-2">数据</th><th className="px-3 py-2">校验结果</th></tr></thead><tbody>{job.rows.slice(0, 100).map((row) => <tr key={row.row_number} className="border-b border-slate-100 align-top"><td className="px-3 py-3 font-mono text-xs">{row.row_number}</td><td className="max-w-xl px-3 py-3 text-xs text-slate-600">{Object.entries(row.values).filter(([, value]) => value).map(([key, value]) => <span key={key} className="mr-3 inline-block"><strong>{key}:</strong> {value}</span>)}</td><td className="px-3 py-3 text-xs">{row.errors.length ? <span className="text-rose-700">{row.errors.join("；")}</span> : <span className="inline-flex items-center gap-1 text-teal-700"><Check size={14} />通过</span>}</td></tr>)}</tbody></table></div>}{job.status === "VALIDATED" && job.invalid_count === 0 && <Button onClick={() => commitMutation.mutate()} loading={commitMutation.isPending}><Check size={15} />{commitMutation.isPending ? "处理中..." : "确认导入"}</Button>}</div>}
-    </Panel>
+    <ol className="grid gap-2 sm:grid-cols-5" aria-label="导入步骤">{steps.map((label, index) => { const number = index + 1; const active = number === currentStep; const complete = number < currentStep; return <li key={label} className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm ${active ? "border-teal-500 bg-teal-50 text-teal-900" : complete ? "border-teal-200 bg-white text-teal-700" : "border-slate-200 bg-white text-slate-400"}`}><span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${active ? "bg-teal-700 text-white" : complete ? "bg-teal-100 text-teal-800" : "bg-slate-100"}`}>{complete ? <Check size={14} /> : number}</span><span className="font-semibold">{label}</span></li>; })}</ol>
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]"><Panel title="模板导入" description="仅支持从本系统下载并填写的 XLSX 模板。"><div className="space-y-6"><section><StepTitle number="1" title="选择类型" /><div className="mt-3 grid gap-2 sm:grid-cols-2">{importTypes.map((item) => <label key={item.value} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm font-semibold ${type === item.value ? "border-teal-500 bg-teal-50 text-teal-900" : "border-slate-200 text-slate-600"}`}><input type="radio" name="import-type" value={item.value} checked={type === item.value} onChange={() => { setType(item.value); setTemplateReady(false); setFile(null); setJob(null); }} />{item.label}</label>)}</div></section><section className="border-t border-slate-100 pt-5"><StepTitle number="2" title="下载并填写模板" /><Button className="mt-3" variant="secondary" onClick={downloadTemplate}><Download size={15} />下载 {importTypes.find((item) => item.value === type)?.label}模板</Button></section><section className="border-t border-slate-100 pt-5"><StepTitle number="3" title="上传文件" /><label className="mt-3 block rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center"><FileSpreadsheet className="mx-auto text-teal-700" size={28} /><span className="mt-2 block text-sm font-semibold text-slate-800">选择 XLSX 文件</span><input aria-label="选择 XLSX 文件" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="mt-3 block w-full text-sm" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label><Button className="mt-3" onClick={() => uploadMutation.mutate()} loading={uploadMutation.isPending} disabled={!file}><FileUp size={15} />{uploadMutation.isPending ? "处理中..." : "上传并校验"}</Button></section></div></Panel><ExportList run={run} /></div>
+    <Panel title="4. 校验预览" description="错误和警告会在确认前显示；只有全部校验通过才能提交。">{!job ? <EmptyState title="等待上传文件" description="完成前三步后，在这里查看逐行校验结果。" /> : <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-3"><StatusBadge tone={job.status === "VALIDATED" ? "success" : job.status === "COMMITTED" ? "info" : "danger"}>{job.status}</StatusBadge><span className="text-sm text-slate-600">共 {job.row_count} 行，通过 {job.valid_count} 行，错误 {job.invalid_count} 行</span></div><div className="flex gap-2"><Button variant="secondary" size="sm" onClick={() => validateMutation.mutate()} loading={validateMutation.isPending}><RefreshCcw size={14} />重新校验</Button>{job.status !== "COMMITTED" && <Button variant="icon" size="sm" aria-label="丢弃导入任务" onClick={() => discardMutation.mutate()} disabled={busy}><Trash2 size={15} /></Button>}</div></div>{job.rows.length > 0 && <div className="overflow-x-auto"><table className="min-w-[680px] w-full text-left text-sm"><thead><tr className="border-b border-slate-200 text-xs text-slate-500"><th className="px-3 py-2">行号</th><th className="px-3 py-2">数据</th><th className="px-3 py-2">校验结果</th></tr></thead><tbody>{job.rows.slice(0, 100).map((row) => <tr key={row.row_number} className="border-b border-slate-100 align-top"><td className="px-3 py-3 font-mono text-xs">{row.row_number}</td><td className="max-w-xl px-3 py-3 text-xs text-slate-600">{Object.entries(row.values).filter(([, value]) => value).map(([key, value]) => <span key={key} className="mr-3 inline-block"><strong>{key}:</strong> {value}</span>)}</td><td className="px-3 py-3 text-xs">{row.errors.length ? <span className="text-rose-700">{row.errors.join("；")}</span> : <span className="inline-flex items-center gap-1 text-teal-700"><Check size={14} />通过</span>}</td></tr>)}</tbody></table></div>}<div className="flex justify-end border-t border-slate-100 pt-4">{job.status === "VALIDATED" && job.invalid_count === 0 && <Button onClick={() => commitMutation.mutate()} loading={commitMutation.isPending}><Check size={15} />{commitMutation.isPending ? "处理中..." : "5. 确认导入"}</Button>}{job.status === "COMMITTED" && <StatusBadge tone="success">导入已完成</StatusBadge>}</div></div>}</Panel>
   </div>;
 }
+
+function ExportList({ run }: { run: <T>(operation: () => Promise<T>, success: (value: T) => void) => Promise<void> }) { return <Panel title="结构化导出" description="导出只包含当前账号数据；完整账户 ZIP 不含密码和 Session。"><div className="divide-y divide-slate-100">{exportTypes.map((item) => <div key={item.value} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><span className="text-sm font-semibold text-slate-800">{item.label}</span><div className="flex flex-wrap justify-end gap-2">{item.formats.map((format) => <Button key={format} variant="ghost" size="sm" onClick={() => void run(() => exportData(item.value, format), (blob) => downloadBlob(blob, `${item.value.toLowerCase()}.${format}`))}><Download size={14} />{format.toUpperCase()}</Button>)}</div></div>)}</div></Panel>; }
+function StepTitle({ number, title }: { number: string; title: string }) { return <div className="flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-teal-100 text-xs font-bold text-teal-800">{number}</span><h2 className="font-bold text-slate-900">{title}</h2></div>; }
