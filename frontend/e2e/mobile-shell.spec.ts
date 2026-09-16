@@ -19,8 +19,8 @@ test("supports the mobile administrator shell", async ({ page }) => {
   await expect(quickNavigation.getByRole("link", { name: "管理员管理" })).toBeVisible();
   await expect(quickNavigation.getByRole("link", { name: "设置" })).toBeVisible();
 
-  const main = page.locator("main");
-  expect(await main.evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingBottom))).toBeGreaterThanOrEqual(112);
+  const pageContainer = page.locator("main > div");
+  expect(await pageContainer.evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingBottom))).toBeGreaterThanOrEqual(112);
 
   await page.getByRole("button", { name: "打开导航" }).click();
   await expect(page.getByRole("dialog", { name: "应用导航" })).toBeVisible();

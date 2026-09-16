@@ -1,50 +1,395 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, FileText, Goal as GoalIcon, Settings2 } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  CircleDollarSign,
+  Goal as GoalIcon,
+  Plus,
+  Users,
+} from "lucide-react";
 import { Link } from "react-router-dom";
-import type { Account, AuthResponse, DashboardResponse, Goal } from "@/api/client";
+import type {
+  Account,
+  AuthResponse,
+  DashboardResponse,
+  Goal,
+} from "@/api/client";
 import { getDashboard } from "@/api/client";
-import { AccountSwitcher } from "@/features/dashboard/account-switcher";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
+import { ErrorState, LoadingState } from "@/components/ui/state-block";
 import { businessDate } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
 
-const quickLinks = [
-  { href: "/app/worklog", title: "记录今日工作", description: "用一分钟沉淀今天的关键行动", icon: FileText },
-  { href: "/app/turnover", title: "登记营业额", description: "同步记录 PV 和净营业额", icon: ArrowRight },
-  { href: "/app/goals", title: "查看目标地图", description: "确认今天要推进的方向", icon: GoalIcon },
-];
+function dateInTimezone(value: string, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
 
-function worklogTotal(period: DashboardResponse["data"]["today"]): number {
-  const values = period.worklogs;
-  return values.open_conversation_count + values.deep_conversation_count + values.buffer_count + values.story_share_count + values.screening_count + values.opportunity_count + values.meeting_count + values.customer_followup_count;
+function dashboardDateLabel(date: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
+
+function greeting(timezone: string) {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      hourCycle: "h23",
+      timeZone: timezone,
+    }).format(new Date()),
+  );
+  if (hour < 11) return "上午好";
+  if (hour < 18) return "下午好";
+  return "晚上好";
+}
+
+function eventTime(value: string, timezone: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: timezone,
+  }).format(new Date(value));
 }
 
 function GoalProgress({ goal }: { goal: Goal }) {
-  return <div className="space-y-2 border-b border-slate-100 pb-4 last:border-0 last:pb-0"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{goal.title}</p><p className="mt-0.5 text-xs text-slate-500">{goal.metrics.length ? `${goal.metrics.length} 个量化指标` : "未设置量化指标"}</p></div><span className="shrink-0 text-sm font-bold text-teal-700">{Math.round(goal.progress * 100)}%</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-teal-600 transition-all" style={{ width: `${Math.max(0, Math.min(100, goal.progress * 100))}%` }} /></div></div>;
+  const progress = Math.max(0, Math.min(100, Math.round(goal.progress * 100)));
+  return (
+    <div className="border-b border-slate-100 py-3 first:pt-0 last:border-0 last:pb-0">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900">
+            {goal.title}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {goal.metrics.length
+              ? `${goal.metrics.length} 个量化指标`
+              : "未设置量化指标"}
+          </p>
+        </div>
+        <span className="shrink-0 text-sm font-bold tabular-nums text-teal-800">
+          {progress}%
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-teal-600"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
 }
 
-export function DashboardPage({ account, authResponse }: { account: Account; authResponse: AuthResponse }) {
+function OperatingMetric({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: number | string;
+  suffix?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums text-slate-950">
+        {value}
+        <span className="ml-1 text-xs font-medium text-slate-400">
+          {suffix}
+        </span>
+      </p>
+    </div>
+  );
+}
+
+function SummaryLink({
+  href,
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  href: string;
+  icon: typeof Users;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <Link
+      to={href}
+      className="group flex items-start gap-3 rounded-lg px-1 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+    >
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-teal-50 text-teal-700">
+        <Icon size={18} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs font-semibold text-slate-500">
+          {label}
+        </span>
+        <strong className="mt-1 block truncate text-lg font-bold tabular-nums text-slate-950">
+          {value}
+        </strong>
+        <span className="mt-1 block truncate text-xs text-slate-500">
+          {detail}
+        </span>
+      </span>
+      <ArrowRight
+        size={16}
+        className="mt-3 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-teal-700"
+      />
+    </Link>
+  );
+}
+
+export function DashboardPage({
+  account,
+}: {
+  account: Account;
+  authResponse: AuthResponse;
+}) {
   const date = businessDate(account.timezone);
-  const dashboardQuery = useQuery({ queryKey: ["user", account.id, "dashboard", date], queryFn: () => getDashboard(date) });
-  return <div className="space-y-7"><PageHeader eyebrow="今日工作台" title={account.username} description={`你好，${account.username}。这里汇总你的真实经营记录，业务日期按 ${account.timezone} 计算。`} action={<Button asChild variant="secondary"><Link to="/app/settings"><Settings2 size={16} />账号设置</Link></Button>} />
-    {dashboardQuery.isPending && <LoadingState label="正在加载今日工作台" />}
-    {dashboardQuery.isError && <ErrorState message="工作台数据暂时无法加载" onRetry={() => void dashboardQuery.refetch()} />}
-    {dashboardQuery.data && <DashboardContent data={dashboardQuery.data} />}
-    <section><div className="mb-3 flex items-center justify-between"><h2 className="text-base font-bold text-slate-950">快速入口</h2><span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Today</span></div><div className="grid gap-3 md:grid-cols-3">{quickLinks.map(({ href, title, description, icon: Icon }) => <Link key={href} to={href} className="group rounded-lg border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md"><div className="flex items-center justify-between"><span className="grid h-9 w-9 place-items-center rounded-md bg-teal-50 text-teal-700"><Icon size={18} /></span><ArrowRight size={17} className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-teal-700" /></div><h3 className="mt-5 font-bold text-slate-950">{title}</h3><p className="mt-1 text-sm text-slate-500">{description}</p></Link>)}</div></section>
-    <AccountSwitcher authResponse={authResponse} />
-  </div>;
+  const dashboardQuery = useQuery({
+    queryKey: ["user", account.id, "dashboard", date],
+    queryFn: () => getDashboard(date),
+  });
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col gap-2 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-[28px] font-bold leading-tight text-slate-950">
+            {greeting(account.timezone)}，{account.username}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            今天优先看计划、目标和经营进度。
+          </p>
+        </div>
+        <time className="text-sm font-semibold text-slate-500" dateTime={date}>
+          {dashboardDateLabel(date)}
+        </time>
+      </header>
+      {dashboardQuery.isPending && <LoadingState label="正在加载今日工作台" />}
+      {dashboardQuery.isError && (
+        <ErrorState
+          message="工作台数据暂时无法加载"
+          onRetry={() => void dashboardQuery.refetch()}
+        />
+      )}
+      {dashboardQuery.data && (
+        <DashboardContent
+          data={dashboardQuery.data}
+          timezone={account.timezone}
+        />
+      )}
+    </div>
+  );
 }
 
-function DashboardContent({ data }: { data: DashboardResponse }) {
-  const { today, week, month } = data.data;
-  return <><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Panel title="今日工作量"><p className="text-2xl font-bold text-slate-950">{worklogTotal(today)}</p><p className="mt-1 text-sm text-slate-500">个行动记录</p></Panel><Panel title="本周工作量"><p className="text-2xl font-bold text-slate-950">{worklogTotal(week)}</p><p className="mt-1 text-sm text-slate-500">个行动记录</p></Panel><Panel title="本月 PV"><p className="text-2xl font-bold text-slate-950">{month.turnover.pv.toLocaleString("zh-CN")}</p><p className="mt-1 text-sm text-slate-500">净营业额 {formatMoney(month.turnover.net_amount)}</p></Panel><Panel title="梦想数量"><p className="text-2xl font-bold text-slate-950">{data.data.dreams_count}</p><p className="mt-1 text-sm text-slate-500">已保存的方向</p></Panel></div><div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]"><Panel title="营业额节奏" description="营业额来自每日营业额唯一事实源。"><div className="grid gap-4 sm:grid-cols-3"><PeriodValue label="今日" pv={today.turnover.pv} amount={today.turnover.net_amount} /><PeriodValue label="本周" pv={week.turnover.pv} amount={week.turnover.net_amount} /><PeriodValue label="本月" pv={month.turnover.pv} amount={month.turnover.net_amount} /></div></Panel><Panel title="当前目标" description="进度由目标日期范围内的真实记录实时计算。">{data.data.active_goals.length ? <div className="space-y-4">{data.data.active_goals.map((goal) => <GoalProgress key={goal.id} goal={goal} />)}</div> : <EmptyState title="还没有进行中的目标" description="建立一个目标后，工作台会显示真实进度。" action={<Button asChild variant="secondary" size="sm"><Link to="/app/goals"><GoalIcon size={15} />建立目标</Link></Button>} />}</Panel></div><div className="grid gap-5 lg:grid-cols-2"><Panel title="接下来 7 天" description="来自日历中的真实安排。">{data.data.upcoming_events.length ? <div className="space-y-3">{data.data.upcoming_events.map((event) => <div key={event.id} className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3 last:border-0"><div><p className="font-semibold text-slate-900">{event.title}</p><p className="mt-1 text-xs text-slate-500">{new Date(event.start_at).toLocaleString("zh-CN")} - {new Date(event.end_at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</p></div><Link className="text-sm font-semibold text-teal-700 hover:underline" to="/app/calendar">查看日历</Link></div>)}</div> : <EmptyState title="未来 7 天没有日程" description="创建一条日程后，这里会显示真实安排。" action={<Button asChild variant="secondary" size="sm"><Link to="/app/calendar">添加日程</Link></Button>} />}</Panel><Panel title="真实经营摘要" description="仅汇总当前账号已经保存的数据。"><div className="grid gap-3 sm:grid-cols-3"><SummaryValue label="团队成员" value={`${data.data.team_summary.active_members} / ${data.data.team_summary.total_members}`} /><SummaryValue label="学习时长" value={`${data.data.learning_summary.reading_minutes + data.data.learning_summary.audio_minutes} 分钟`} /><SummaryValue label="本月净现金流" value={formatMoney(data.data.finance_summary.net_cash_flow)} /></div><div className="mt-4 text-xs text-slate-500">本月收入 {formatMoney(data.data.finance_summary.income)}，支出 {formatMoney(data.data.finance_summary.expense)}。</div></Panel></div></>;
-}
+function DashboardContent({
+  data,
+  timezone,
+}: {
+  data: DashboardResponse;
+  timezone: string;
+}) {
+  const { date, week, month } = data.data;
+  const todayEvents = data.data.upcoming_events
+    .filter((event) => dateInTimezone(event.start_at, timezone) === date)
+    .slice(0, 4);
+  const activeGoals = data.data.active_goals.slice(0, 3);
+  const learningMinutes =
+    data.data.learning_summary.reading_minutes +
+    data.data.learning_summary.audio_minutes;
+  return (
+    <>
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+        <Panel
+          title="今日计划"
+          description={
+            todayEvents.length
+              ? `${todayEvents.length} 项安排`
+              : "今天还没有安排"
+          }
+          action={
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/app/calendar">
+                <Plus size={15} />
+                添加日程
+              </Link>
+            </Button>
+          }
+        >
+          {todayEvents.length ? (
+            <div>
+              {todayEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-4 border-b border-slate-100 py-3 first:pt-0 last:border-0 last:pb-0"
+                >
+                  <time className="w-12 shrink-0 text-sm font-bold tabular-nums text-teal-800">
+                    {eventTime(event.start_at, timezone)}
+                  </time>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900">
+                      {event.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      至 {eventTime(event.end_at, timezone)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 py-5 text-sm text-slate-500">
+              <CalendarDays size={18} className="text-teal-700" />
+              今天暂无日程，可以留出时间推进最重要的目标。
+            </div>
+          )}
+        </Panel>
+        <Panel
+          title="当前目标"
+          description={
+            activeGoals.length ? "优先推进的进行中目标" : "还没有进行中的目标"
+          }
+          action={
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/app/goals">
+                查看全部
+                <ArrowRight size={15} />
+              </Link>
+            </Button>
+          }
+        >
+          {activeGoals.length ? (
+            <div>
+              {activeGoals.map((goal) => (
+                <GoalProgress key={goal.id} goal={goal} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 py-5 text-sm text-slate-500">
+              <GoalIcon size={18} className="text-teal-700" />
+              建立目标后，这里会显示真实完成进度。
+            </div>
+          )}
+        </Panel>
+      </div>
 
-function PeriodValue({ label, pv, amount }: { label: string; pv: number; amount: string }) {
-  return <div className="rounded-md bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-2 text-lg font-bold text-slate-950">{pv.toLocaleString("zh-CN")} PV</p><p className="mt-1 text-xs text-slate-500">{formatMoney(amount)}</p></div>;
-}
+      <section
+        className="rounded-xl border border-slate-200 bg-white px-5 py-5 shadow-panel"
+        aria-labelledby="weekly-operations-title"
+      >
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2
+              id="weekly-operations-title"
+              className="text-base font-bold text-slate-950"
+            >
+              本周经营
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              从本周一到今天的真实行动与营业额。
+            </p>
+          </div>
+          <Link
+            to="/app/analytics"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-teal-700 hover:text-teal-900"
+          >
+            查看统计
+            <ArrowRight size={15} />
+          </Link>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 lg:grid-cols-6">
+          <OperatingMetric
+            label="开启"
+            value={week.worklogs.open_conversation_count}
+            suffix="次"
+          />
+          <OperatingMetric
+            label="深入"
+            value={week.worklogs.deep_conversation_count}
+            suffix="次"
+          />
+          <OperatingMetric
+            label="Buffer"
+            value={week.worklogs.buffer_count}
+            suffix="次"
+          />
+          <OperatingMetric
+            label="会面"
+            value={week.worklogs.meeting_count}
+            suffix="次"
+          />
+          <OperatingMetric
+            label="本周 PV"
+            value={week.turnover.pv.toLocaleString("zh-CN")}
+          />
+          <OperatingMetric
+            label="本月 PV"
+            value={month.turnover.pv.toLocaleString("zh-CN")}
+          />
+        </div>
+      </section>
 
-function SummaryValue({ label, value }: { label: string; value: string }) { return <div className="rounded-md border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-2 text-lg font-bold text-slate-950">{value}</p></div>; }
+      <section
+        className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-panel"
+        aria-labelledby="business-summary-title"
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <h2
+            id="business-summary-title"
+            className="text-base font-bold text-slate-950"
+          >
+            经营摘要
+          </h2>
+          <span className="text-xs text-slate-400">本月与当前状态</span>
+        </div>
+        <div className="grid divide-y divide-slate-100 md:grid-cols-3 md:divide-x md:divide-y-0">
+          <div className="py-2 md:pr-5">
+            <SummaryLink
+              href="/app/team"
+              icon={Users}
+              label="团队"
+              value={`${data.data.team_summary.active_members} 位活跃`}
+              detail={`共 ${data.data.team_summary.total_members} 位成员`}
+            />
+          </div>
+          <div className="py-2 md:px-5">
+            <SummaryLink
+              href="/app/knowledge"
+              icon={BookOpen}
+              label="学习"
+              value={`${learningMinutes} 分钟`}
+              detail={`阅读 ${data.data.learning_summary.reading_minutes} / 音频 ${data.data.learning_summary.audio_minutes}`}
+            />
+          </div>
+          <div className="py-2 md:pl-5">
+            <SummaryLink
+              href="/app/finance"
+              icon={CircleDollarSign}
+              label="财务"
+              value={formatMoney(data.data.finance_summary.net_cash_flow)}
+              detail={`收入 ${formatMoney(data.data.finance_summary.income)} · 支出 ${formatMoney(data.data.finance_summary.expense)}`}
+            />
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
