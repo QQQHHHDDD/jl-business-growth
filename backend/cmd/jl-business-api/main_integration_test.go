@@ -464,8 +464,22 @@ func TestPhase3APIIntegration(t *testing.T) {
 	review := putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/reviews/DAILY/"+period, map[string]string{"good": "完成首次日历闭环", "next_focus": "保持节奏"}, userAuth.Data.CsrfToken, http.StatusOK)
 	var reviewResponse api.ReviewResponse
 	decodeTestJSON(t, review, &reviewResponse)
-	if reviewResponse.Data.Good != "完成首次日历闭环" {
+	if reviewResponse.Data.Good != "完成首次日历闭环" || reviewResponse.Data.CreatedAt == nil || reviewResponse.Data.UpdatedAt == nil {
 		t.Fatalf("review = %+v", reviewResponse.Data)
+	}
+	firstUpdatedAt := *reviewResponse.Data.UpdatedAt
+	review = putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/reviews/DAILY/"+period, map[string]string{"good": "更新后的每日复盘", "next_focus": "继续保持节奏"}, userAuth.Data.CsrfToken, http.StatusOK)
+	decodeTestJSON(t, review, &reviewResponse)
+	if reviewResponse.Data.UpdatedAt == nil || reviewResponse.Data.UpdatedAt.Before(firstUpdatedAt) || reviewResponse.Data.Good != "更新后的每日复盘" {
+		t.Fatalf("updated review = %+v", reviewResponse.Data)
+	}
+	weeklyPeriod := start.AddDate(0, 0, -7).Format("2006-01-02")
+	putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/reviews/WEEKLY/"+weeklyPeriod, map[string]string{"good": "已保存的每周复盘"}, userAuth.Data.CsrfToken, http.StatusOK)
+	reviewListBody := getTestJSON(t, userClient, server.URL, "/api/reviews?from="+weeklyPeriod+"&to="+period, http.StatusOK)
+	var reviewList api.ReviewListResponse
+	decodeTestJSON(t, reviewListBody, &reviewList)
+	if len(reviewList.Data.Items) != 2 || reviewList.Data.Items[0].Type != api.ReviewTypeDAILY || reviewList.Data.Items[1].Type != api.ReviewTypeWEEKLY {
+		t.Fatalf("saved review history = %+v", reviewList.Data.Items)
 	}
 	analyticsResponse := getTestJSON(t, userClient, server.URL, "/api/analytics/turnover?from="+period+"&to="+period+"&granularity=day", http.StatusOK)
 	var analyticsResult api.AnalyticsResponse

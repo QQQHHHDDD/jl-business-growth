@@ -1310,11 +1310,13 @@ func calendarDTO(value calendar.Event) CalendarEvent {
 
 func reviewDTO(value reviews.Review) Review {
 	var id *openapi_types.UUID
+	var createdAt, updatedAt *time.Time
 	if value.ID != uuid.Nil {
 		converted := openapi_types.UUID(value.ID)
 		id = &converted
+		createdAt, updatedAt = &value.CreatedAt, &value.UpdatedAt
 	}
-	return Review{Id: id, Type: ReviewType(value.Type), PeriodStart: apiDate(value.PeriodStart), Good: stringPointerValue(value.Good), Problems: stringPointerValue(value.Problems), Improvements: stringPointerValue(value.Improvements), NextFocus: stringPointerValue(value.NextFocus), Summary: value.Summary, Totals: ReviewPeriodTotals{WorklogActionCount: int(value.WorklogActionCount), TurnoverPv: float32(value.TurnoverPV), TurnoverNetAmount: formatFloatMoney(value.TurnoverNetAmount)}}
+	return Review{Id: id, Type: ReviewType(value.Type), PeriodStart: apiDate(value.PeriodStart), Good: stringPointerValue(value.Good), Problems: stringPointerValue(value.Problems), Improvements: stringPointerValue(value.Improvements), NextFocus: stringPointerValue(value.NextFocus), Summary: value.Summary, CreatedAt: createdAt, UpdatedAt: updatedAt, Totals: ReviewPeriodTotals{WorklogActionCount: int(value.WorklogActionCount), TurnoverPv: float32(value.TurnoverPV), TurnoverNetAmount: formatFloatMoney(value.TurnoverNetAmount)}}
 }
 
 func stringPointerValue(value *string) string {

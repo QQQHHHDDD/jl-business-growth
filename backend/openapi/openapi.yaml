@@ -3179,6 +3179,12 @@ components:
         summary:
           type: string
           nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
         totals:
           $ref: "#/components/schemas/ReviewPeriodTotals"
     ReviewRequest:

@@ -366,6 +366,13 @@ export function getReview(type: "DAILY" | "WEEKLY" | "MONTHLY", periodStart: str
   return request(`/api/reviews/${type}/${encodeURIComponent(periodStart)}`);
 }
 
+export function listReviews(from?: string, to?: string): Promise<components["schemas"]["ReviewListResponse"]> {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  return request(`/api/reviews${params.size ? `?${params}` : ""}`);
+}
+
 export function saveReview(csrfToken: string, type: "DAILY" | "WEEKLY" | "MONTHLY", periodStart: string, input: ReviewRequest): Promise<components["schemas"]["ReviewResponse"]> {
   return request(`/api/reviews/${type}/${encodeURIComponent(periodStart)}`, withCsrf(csrfToken, input, "PUT"));
 }

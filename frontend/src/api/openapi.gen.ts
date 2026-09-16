@@ -1770,6 +1770,10 @@ export interface components {
             improvements: string;
             next_focus: string;
             summary?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
             totals: components["schemas"]["ReviewPeriodTotals"];
         };
         ReviewRequest: {

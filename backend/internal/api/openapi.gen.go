@@ -1389,6 +1389,7 @@ type ResetPasswordResponse struct {
 
 // Review defines model for Review.
 type Review struct {
+	CreatedAt    *time.Time          `json:"created_at,omitempty"`
 	Good         string              `json:"good"`
 	Id           *openapi_types.UUID `json:"id"`
 	Improvements string              `json:"improvements"`
@@ -1398,6 +1399,7 @@ type Review struct {
 	Summary      *string             `json:"summary"`
 	Totals       ReviewPeriodTotals  `json:"totals"`
 	Type         ReviewType          `json:"type"`
+	UpdatedAt    *time.Time          `json:"updated_at,omitempty"`
 }
 
 // ReviewType defines model for Review.Type.
