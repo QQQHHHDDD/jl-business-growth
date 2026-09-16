@@ -140,7 +140,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
             JL Growth
           </span>
           <span className="mt-0.5 block whitespace-nowrap text-sm font-bold text-slate-950">
-            生意成长管理系统
+            JL团队生意成长管理系统
           </span>
         </span>
       )}
