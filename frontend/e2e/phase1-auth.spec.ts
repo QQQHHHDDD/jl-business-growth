@@ -194,11 +194,13 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(
     page.getByRole("heading", { name: "导入 / 导出", exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "每日工作量" }).click();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /下载.*模板/ }).click();
   const templateDownload = await downloadPromise;
   const templatePath = await templateDownload.path();
   expect(templatePath).toBeTruthy();
+  await page.getByRole("button", { name: "下一步" }).click();
   await page.getByLabel("选择 XLSX 文件").setInputFiles({
     name: "phase6-worklog.xlsx",
     mimeType:
@@ -207,8 +209,43 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   });
   await page.getByRole("button", { name: "上传并校验" }).click();
   await expect(page.getByText("VALIDATED", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "5. 确认导入" }).click();
+  await page.getByRole("button", { name: "下一步" }).click();
+  await page.getByRole("button", { name: "确认导入", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("数据已导入");
+
+  for (const width of [1440, 1280, 1024]) {
+    await page.setViewportSize({ width, height: 760 });
+    await page.goto("/app");
+    const brand = page.getByText("JL团队生意成长管理系统", { exact: true });
+    await expect(brand).toBeVisible();
+    expect(await brand.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  }
+
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/app/goals");
+  const pageContainer = page.getByTestId("page-container");
+  const initialContainer = await pageContainer.boundingBox();
+  for (const tab of ["目标列表", "梦想板", "目标地图"]) {
+    await page.getByRole("tab", { name: tab }).click();
+    const currentContainer = await pageContainer.boundingBox();
+    expect(Math.abs((currentContainer?.x ?? 0) - (initialContainer?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((currentContainer?.width ?? 0) - (initialContainer?.width ?? 0))).toBeLessThanOrEqual(1);
+  }
+
+  await page.goto("/app/calendar");
+  const todayNumber = page.locator(".fc-day-today .fc-daygrid-day-number").first();
+  await expect(todayNumber).toBeVisible();
+  const todayNumberBox = await todayNumber.boundingBox();
+  const todayEvents = page.locator(".fc-day-today .fc-daygrid-day-events").first();
+  const todayEventsBox = await todayEvents.boundingBox();
+  if (todayNumberBox && todayEventsBox) expect(todayNumberBox.y + todayNumberBox.height).toBeLessThanOrEqual(todayEventsBox.y + 1);
+
+  await page.goto("/app/team");
+  await page.evaluate(() => window.scrollTo(0, 360));
+  const graphScrollPosition = await page.evaluate(() => window.scrollY);
+  await page.getByRole("tab", { name: "成员列表" }).click();
+  await page.getByRole("tab", { name: "关系图" }).click();
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - graphScrollPosition)).toBeLessThanOrEqual(2);
 
   const responsiveRoutes = [
     ["/app/finance", "财务"],
