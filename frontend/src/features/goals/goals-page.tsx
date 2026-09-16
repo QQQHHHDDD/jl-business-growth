@@ -6,6 +6,7 @@ import { useForm, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Background, Controls, MiniMap, ReactFlow, type Edge, type Node } from "@xyflow/react";
+import { useSearchParams } from "react-router-dom";
 import "@xyflow/react/dist/style.css";
 import type { AuthResponse, Dream, FileAsset, Goal, GoalRequest } from "@/api/client";
 import { deleteDream, deleteGoal, listDreams, listFiles, listGoals, saveDream, saveGoal, uploadFile } from "@/api/client";
@@ -67,6 +68,8 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   const [deleteTarget, setDeleteTarget] = useState<{ kind: "goal" | "dream"; id: string; title: string } | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [searchParams] = useSearchParams();
+  const handledDeepLink = useRef<string | null>(null);
   const goalReturnFocus = useRef<HTMLElement | null>(null);
   const dreamReturnFocus = useRef<HTMLElement | null>(null);
   const goalFormState = useForm<GoalForm>({ resolver: zodResolver(goalSchema), defaultValues: defaultGoal() });
@@ -93,6 +96,17 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   const goals = useMemo(() => goalsQuery.data?.data.items ?? [], [goalsQuery.data]);
   const files = filesQuery.data?.data.items.filter((file) => file.category === "DREAM_IMAGE") ?? [];
   const filteredGoals = goals.filter((goal) => goal.title.toLowerCase().includes(search.toLowerCase()) && (!typeFilter || goal.type === typeFilter) && (!statusFilter || goal.status === statusFilter));
+
+  useEffect(() => {
+    const goalID = searchParams.get("goal");
+    if (!goalID || handledDeepLink.current === goalID || goalsQuery.isPending) return;
+    handledDeepLink.current = goalID;
+    const goal = goals.find((item) => item.id === goalID);
+    if (goal) {
+      setView("list");
+      openGoalSheet({ mode: "detail", goal });
+    }
+  }, [goals, goalsQuery.isPending, searchParams]);
 
   const goalMutation = useMutation({
     mutationFn: (value: GoalRequest) => saveGoal(authResponse.data.csrf_token, value, editingGoal?.id),
@@ -145,7 +159,7 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
         <TabsList aria-label="目标工作台视图"><TabsTrigger value="map">目标地图</TabsTrigger><TabsTrigger value="list">目标列表</TabsTrigger><TabsTrigger value="dreams">梦想板</TabsTrigger></TabsList>
       </Tabs>
 
-      {view === "map" && <GoalMap goals={goals} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />}
+      {view === "map" && <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />}
       {view === "list" && <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />}
       {view === "dreams" && <DreamBoard dreams={dreamsQuery.data.data.items} goals={goals} files={files} onSelect={openDream} onCreate={() => openDream("new")} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />}
 
@@ -172,8 +186,8 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   );
 }
 
-function GoalMap({ goals, onSelect, onCreate }: { goals: Goal[]; onSelect: (goal: Goal) => void; onCreate: () => void }) {
-  return <Panel title="目标地图" description="父子目标以连线表达，点击节点查看详细信息和自动进度。"><div className="h-[min(68vh,720px)] min-h-[480px] overflow-hidden rounded-lg border border-slate-200 bg-slate-50">{goals.length ? <ReactFlow nodes={goalNodes(goals)} edges={goalEdges(goals)} fitView minZoom={0.35} maxZoom={1.8} nodesDraggable={false} onNodeClick={(_, node) => { const goal = goals.find((item) => item.id === node.id); if (goal) onSelect(goal); }}><MiniMap pannable zoomable /><Controls /><Background gap={20} size={1} /></ReactFlow> : <div className="grid h-full place-items-center px-6"><div className="max-w-sm text-center"><p className="font-bold text-slate-950">还没有目标</p><p className="mt-2 text-sm leading-6 text-slate-500">建立第一个目标后，这里会呈现清晰的执行路径。</p><Button className="mt-4" onClick={onCreate}><Plus size={16} />新建目标</Button></div></div>}</div></Panel>;
+function GoalMap({ goals, selectedID, onSelect, onCreate }: { goals: Goal[]; selectedID: string | null; onSelect: (goal: Goal) => void; onCreate: () => void }) {
+  return <Panel title="目标地图" description="父子目标以连线表达；画布支持缩放和适配，点击节点可查看并高亮关联路径。"><div className="h-[min(68vh,720px)] min-h-[480px] overflow-hidden rounded-lg border border-slate-200 bg-slate-50">{goals.length ? <ReactFlow nodes={goalNodes(goals, selectedID)} edges={goalEdges(goals, selectedID)} fitView minZoom={0.35} maxZoom={1.8} nodesDraggable={false} onNodeClick={(_, node) => { const goal = goals.find((item) => item.id === node.id); if (goal) onSelect(goal); }}><MiniMap pannable zoomable /><Controls /><Background gap={20} size={1} /></ReactFlow> : <div className="grid h-full place-items-center px-6"><div className="max-w-sm text-center"><p className="font-bold text-slate-950">还没有目标</p><p className="mt-2 text-sm leading-6 text-slate-500">建立第一个目标后，这里会呈现清晰的执行路径。</p><Button className="mt-4" onClick={onCreate}><Plus size={16} />新建目标</Button></div></div>}</div></Panel>;
 }
 
 function GoalListView({ goals, search, typeFilter, statusFilter, onSearch, onTypeFilter, onStatusFilter, onView, onEdit, onDelete }: { goals: Goal[]; search: string; typeFilter: string; statusFilter: string; onSearch: (value: string) => void; onTypeFilter: (value: string) => void; onStatusFilter: (value: string) => void; onView: (goal: Goal) => void; onEdit: (goal: Goal) => void; onDelete: (goal: Goal) => void }) {
@@ -204,5 +218,6 @@ function Select({ label, children, ...props }: { label: string; children: ReactN
 }
 function FileThumb({ file }: { file: FileAsset }) { return <img className="h-24 w-full rounded-md object-cover" src={`/api/files/${file.id}/content?disposition=inline`} alt={file.original_name} />; }
 function metricLabel(code: string): string { const labels: Record<string, string> = { conversation_open_count: "开启对话", deep_conversation_count: "深入对话", buffer_count: "Buffer", story_share_count: "分享故事", screening_count: "筛选", opportunity_count: "提供机会", meeting_count: "会面", customer_followup_count: "顾客跟进", reading_minutes: "读书分钟", audio_minutes: "听音频分钟", turnover_pv: "营业额 PV", turnover_net_amount: "净营业额" }; return labels[code] ?? code; }
-function goalNodes(goals: Goal[]): Node[] { const byID = new Map(goals.map((goal) => [goal.id, goal])); const rowsByDepth = new Map<number, number>(); return goals.map((goal) => { let depth = 0; let parent = goal.parent_id; const visited = new Set<string>(); while (parent && byID.has(parent) && !visited.has(parent)) { visited.add(parent); depth += 1; parent = byID.get(parent)?.parent_id; } const row = rowsByDepth.get(depth) ?? 0; rowsByDepth.set(depth, row + 1); return { id: goal.id, position: { x: depth * 300, y: row * 130 }, data: { label: `${goal.title}  ${Math.round(goal.progress * 100)}%` }, draggable: false, style: { width: 220, border: "1px solid #cbd5e1", borderRadius: 8, background: "#ffffff", color: "#0f172a", fontWeight: 700, padding: 14, boxShadow: "0 1px 3px rgb(15 23 42 / 0.08)" } }; }); }
-function goalEdges(goals: Goal[]): Edge[] { return goals.filter((goal) => goal.parent_id).map((goal) => ({ id: `${goal.parent_id}-${goal.id}`, source: goal.parent_id!, target: goal.id, type: "smoothstep", style: { stroke: "#0f766e", strokeWidth: 1.5 } })); }
+function highlightedGoals(goals: Goal[], selectedID: string | null): Set<string> { const result = new Set<string>(); if (!selectedID) return result; const byID = new Map(goals.map((goal) => [goal.id, goal])); let current: string | null | undefined = selectedID; while (current && !result.has(current)) { result.add(current); current = byID.get(current)?.parent_id; } const addChildren = (id: string) => goals.filter((goal) => goal.parent_id === id).forEach((goal) => { if (!result.has(goal.id)) { result.add(goal.id); addChildren(goal.id); } }); addChildren(selectedID); return result; }
+function goalNodes(goals: Goal[], selectedID: string | null): Node[] { const byID = new Map(goals.map((goal) => [goal.id, goal])); const highlighted = highlightedGoals(goals, selectedID); const rowsByDepth = new Map<number, number>(); return goals.map((goal) => { let depth = 0; let parent = goal.parent_id; const visited = new Set<string>(); while (parent && byID.has(parent) && !visited.has(parent)) { visited.add(parent); depth += 1; parent = byID.get(parent)?.parent_id; } const row = rowsByDepth.get(depth) ?? 0; rowsByDepth.set(depth, row + 1); const selected = goal.id === selectedID; return { id: goal.id, position: { x: depth * 300, y: row * 130 }, data: { label: `${goal.title}  ${Math.round(goal.progress * 100)}%` }, draggable: false, style: { width: 220, border: selected ? "3px solid #d97706" : highlighted.has(goal.id) ? "2px solid #0f766e" : "1px solid #cbd5e1", borderRadius: 8, background: selected ? "#fffbeb" : "#ffffff", color: "#0f172a", fontWeight: 700, padding: 14, boxShadow: selected ? "0 0 0 3px rgb(251 191 36 / 0.25)" : "0 1px 3px rgb(15 23 42 / 0.08)" } }; }); }
+function goalEdges(goals: Goal[], selectedID: string | null): Edge[] { const highlighted = highlightedGoals(goals, selectedID); return goals.filter((goal) => goal.parent_id).map((goal) => ({ id: `${goal.parent_id}-${goal.id}`, source: goal.parent_id!, target: goal.id, type: "smoothstep", style: { stroke: highlighted.has(goal.id) && highlighted.has(goal.parent_id!) ? "#d97706" : "#0f766e", strokeWidth: highlighted.has(goal.id) && highlighted.has(goal.parent_id!) ? 3 : 1.5 } })); }

@@ -665,6 +665,12 @@ func TestPhase4APIIntegration(t *testing.T) {
 			t.Fatalf("filtered search returned module %q, want knowledge", item.Module)
 		}
 	}
+	teamSearchBody := getTestJSON(t, userClient, server.URL, "/api/search?q=Phase%204%20root&modules=team", http.StatusOK)
+	var teamSearch api.SearchResponse
+	decodeTestJSON(t, teamSearchBody, &teamSearch)
+	if len(teamSearch.Data.Items) != 1 || teamSearch.Data.Items[0].Id != parent.Data.Id || !strings.Contains(teamSearch.Data.Items[0].Snippet, "级别：主任") || !strings.Contains(teamSearch.Data.Items[0].Snippet, "城市：上海") {
+		t.Fatalf("team search result = %+v", teamSearch.Data.Items)
+	}
 	getTestJSON(t, userClient, server.URL, "/api/files/"+fileResponse.Data.Id.String()+"/content?disposition=inline", http.StatusOK)
 	getTestJSON(t, adminClient, server.URL, "/api/team/members", http.StatusForbidden)
 	getTestJSON(t, adminClient, server.URL, "/api/knowledge", http.StatusForbidden)

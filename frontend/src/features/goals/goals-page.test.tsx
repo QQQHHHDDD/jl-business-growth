@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, Dream, Goal } from "@/api/client";
 import { listDreams, listFiles, listGoals } from "@/api/client";
@@ -83,12 +84,12 @@ const dream = {
   updated_at: "2026-01-01T00:00:00Z",
 } as Dream;
 
-function renderPage() {
+function renderPage(entry = "/app/goals") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={client}>
+    <MemoryRouter initialEntries={[entry]}><QueryClientProvider client={client}>
       <GoalsPage authResponse={authResponse} />
-    </QueryClientProvider>,
+    </QueryClientProvider></MemoryRouter>,
   );
 }
 
@@ -139,5 +140,12 @@ describe("GoalsPage", () => {
     fireEvent.click(screen.getByRole("heading", { name: "有节奏地经营" }).closest("button")!);
     expect(screen.getByRole("heading", { name: "编辑梦想" })).toBeVisible();
     expect(screen.getByRole("checkbox", { name: "年度增长目标" })).toBeChecked();
+  });
+
+  it("restores a record-level goal deep link after refresh", async () => {
+    renderPage(`/app/goals?goal=${childGoal.id}`);
+    expect(await screen.findByRole("heading", { name: "本月会面目标" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    expect(screen.getByRole("tab", { name: "目标列表" })).toHaveAttribute("data-state", "active");
   });
 });

@@ -2,8 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 import type { Account, AuthResponse, CalendarEvent } from "@/api/client";
-import { listCalendarEvents, saveCalendarEvent } from "@/api/client";
+import { getCalendarEvent, listCalendarEvents, saveCalendarEvent } from "@/api/client";
 import { CalendarPage } from "./calendar-page";
 
 vi.mock("@fullcalendar/react", () => ({
@@ -23,6 +24,7 @@ vi.mock("@/api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/client")>();
   return {
     ...actual,
+    getCalendarEvent: vi.fn(),
     listCalendarEvents: vi.fn(),
     saveCalendarEvent: vi.fn(),
     deleteCalendarEvent: vi.fn(),
@@ -65,14 +67,15 @@ const recurringEvent = {
   attendees: [{ email: "guest@example.test", display_name: null }],
 } as CalendarEvent;
 
-function renderPage() {
+function renderPage(entry = "/app/calendar") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}><CalendarPage authResponse={authResponse} /></QueryClientProvider>);
+  return render(<MemoryRouter initialEntries={[entry]}><QueryClientProvider client={client}><CalendarPage authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(listCalendarEvents).mockResolvedValue({ data: { items: [recurringEvent] }, request_id: "request-2" });
+  vi.mocked(getCalendarEvent).mockResolvedValue({ data: recurringEvent, request_id: "request-2" });
   vi.mocked(saveCalendarEvent).mockResolvedValue({ data: recurringEvent, request_id: "request-3" });
 });
 
@@ -107,5 +110,11 @@ describe("CalendarPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存日程" }));
 
     await waitFor(() => expect(saveCalendarEvent).toHaveBeenCalledWith("csrf-token", expect.objectContaining({ recurrence_freq: "WEEKLY", recurrence_weekdays: [3], recurrence_end_type: "COUNT", recurrence_count: 6, edit_scope: "THIS_AND_FOLLOWING", occurrence_start: recurringEvent.original_occurrence_start, timezone: "Asia/Shanghai", attendees: [{ email: "guest@example.test", display_name: null }] }), recurringEvent.id));
+  });
+
+  it("restores an event deep link even when opened directly", async () => {
+    renderPage(`/app/calendar?event=${recurringEvent.id}`);
+    expect(await screen.findByRole("heading", { name: "编辑日程" })).toBeVisible();
+    expect(screen.getByLabelText("日程标题")).toHaveValue("每周经营复盘");
   });
 });

@@ -354,6 +354,10 @@ export function listCalendarEvents(from: string, to: string): Promise<components
   return request(`/api/calendar/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
 }
 
+export function getCalendarEvent(id: string): Promise<components["schemas"]["CalendarEventResponse"]> {
+  return request(`/api/calendar/events/${encodeURIComponent(id)}`);
+}
+
 export function saveCalendarEvent(csrfToken: string, input: CalendarEventRequest, id?: string): Promise<components["schemas"]["CalendarEventResponse"]> {
   return request(id ? `/api/calendar/events/${encodeURIComponent(id)}` : "/api/calendar/events", withCsrf(csrfToken, input, id ? "PUT" : "POST"));
 }

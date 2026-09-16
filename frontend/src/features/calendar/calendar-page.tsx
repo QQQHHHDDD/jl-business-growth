@@ -5,9 +5,10 @@ import interactionPlugin from "@fullcalendar/interaction";
 import FullCalendarBase from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { CalendarDays, Check, Clock, MapPin, Plus, Repeat2, Trash2 } from "lucide-react";
-import { useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { AuthResponse, CalendarEvent, CalendarEventRequest } from "@/api/client";
-import { deleteCalendarEvent, listCalendarEvents, saveCalendarEvent } from "@/api/client";
+import { deleteCalendarEvent, getCalendarEvent, listCalendarEvents, saveCalendarEvent } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,9 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   const queryClient = useQueryClient();
   const range = useMemo(initialRange, []);
   const eventsQuery = useQuery({ queryKey: ["user", accountId, "calendar", range.from, range.to], queryFn: () => listCalendarEvents(range.from, range.to) });
+  const [searchParams] = useSearchParams();
+  const deepLinkEventID = searchParams.get("event");
+  const deepLinkQuery = useQuery({ queryKey: ["user", accountId, "calendar", "event", deepLinkEventID], queryFn: () => getCalendarEvent(deepLinkEventID!), enabled: Boolean(deepLinkEventID), retry: false });
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
@@ -66,12 +70,21 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   const [error, setError] = useState("");
   const editorReturnFocus = useRef<HTMLElement | null>(null);
   const dayReturnFocus = useRef<HTMLElement | null>(null);
+  const handledDeepLink = useRef<string | null>(null);
 
   const closeEditor = () => { setEditorOpen(false); window.setTimeout(() => editorReturnFocus.current?.focus(), 0); };
   const closeDay = () => { setSelectedDate(null); window.setTimeout(() => dayReturnFocus.current?.focus(), 0); };
   const openNew = (date?: string) => { editorReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setEditing(null); setForm(emptyForm(timezone, date)); setEditorOpen(true); };
   const openEdit = (event: CalendarEvent) => { editorReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setEditing(event); setForm(formFromEvent(event)); setEditorOpen(true); };
   const openDay = (date: string) => { dayReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setSelectedDate(date); };
+
+  useEffect(() => {
+    if (!deepLinkEventID || handledDeepLink.current === deepLinkEventID || !deepLinkQuery.data) return;
+    handledDeepLink.current = deepLinkEventID;
+    setEditing(deepLinkQuery.data.data);
+    setForm(formFromEvent(deepLinkQuery.data.data));
+    setEditorOpen(true);
+  }, [deepLinkEventID, deepLinkQuery.data]);
 
   const saveMutation = useMutation({
     mutationFn: () => saveCalendarEvent(authResponse.data.csrf_token, buildRequest(form, editing), editing?.id),

@@ -41,13 +41,17 @@ func (s *Service) Search(ctx context.Context, userID uuid.UUID, query string, mo
 	}
 	pattern := "%" + query + "%"
 	const source = `WITH hits AS (
-		SELECT 'goals'::text AS module, id, title, COALESCE(description,'') AS searchable, updated_at FROM goals WHERE user_id=$1
-		UNION ALL SELECT 'calendar'::text, id, title, concat_ws(' ',title,description,location_or_link), updated_at FROM calendar_events WHERE user_id=$1
-		UNION ALL SELECT 'team'::text, id, name, concat_ws(' ',name,rank,city,note), updated_at FROM team_members WHERE user_id=$1
-		UNION ALL SELECT 'knowledge'::text, id, title, concat_ws(' ',title,raw_text,summary,understanding,action_items), updated_at FROM knowledge_items WHERE user_id=$1
-		UNION ALL SELECT 'tags'::text, t.id, t.name, t.name, now() FROM tags t WHERE t.user_id=$1
+		SELECT 'goals'::text AS module, id, title, concat_ws(' ',title,description) AS searchable,
+			COALESCE(NULLIF(btrim(description),''),'目标') AS snippet, updated_at FROM goals WHERE user_id=$1
+		UNION ALL SELECT 'calendar'::text, id, title, concat_ws(' ',title,description,location_or_link),
+			COALESCE(NULLIF(concat_ws(' · ',NULLIF(btrim(location_or_link),''),NULLIF(btrim(description),'')),''),'日历事项'), updated_at FROM calendar_events WHERE user_id=$1
+		UNION ALL SELECT 'team'::text, id, name, concat_ws(' ',name,rank,city,note),
+			COALESCE(NULLIF(concat_ws(' · ',CASE WHEN btrim(COALESCE(rank,''))<>'' THEN '级别：'||rank END,CASE WHEN btrim(COALESCE(city,''))<>'' THEN '城市：'||city END),''),'团队成员'), updated_at FROM team_members WHERE user_id=$1
+		UNION ALL SELECT 'knowledge'::text, id, title, concat_ws(' ',title,raw_text,summary,understanding,action_items),
+			COALESCE(NULLIF(btrim(summary),''),NULLIF(btrim(raw_text),''),'学习项目'), updated_at FROM knowledge_items WHERE user_id=$1
+		UNION ALL SELECT 'tags'::text, t.id, t.name, t.name, '标签', now() FROM tags t WHERE t.user_id=$1
 	)
-	SELECT module,id,title,searchable,updated_at,
+	SELECT module,id,title,snippet,updated_at,
 		CASE WHEN searchable ILIKE $2 THEN 1.0 ELSE similarity(searchable,$3) END AS score
 	FROM hits WHERE (searchable ILIKE $2 OR (length($3) >= 3 AND similarity(searchable,$3) >= 0.15))
 		AND ($6::text[] IS NULL OR module = ANY($6::text[]))
@@ -70,7 +74,7 @@ func (s *Service) Search(ctx context.Context, userID uuid.UUID, query string, mo
 	}
 	var total int
 	err = s.pool.QueryRow(ctx, `WITH hits AS (
-		SELECT 'goals'::text AS module, title AS searchable FROM goals WHERE user_id=$1
+		SELECT 'goals'::text AS module, concat_ws(' ',title,description) AS searchable FROM goals WHERE user_id=$1
 		UNION ALL SELECT 'calendar'::text, concat_ws(' ',title,description,location_or_link) FROM calendar_events WHERE user_id=$1
 		UNION ALL SELECT 'team'::text, concat_ws(' ',name,rank,city,note) FROM team_members WHERE user_id=$1
 		UNION ALL SELECT 'knowledge'::text, concat_ws(' ',title,raw_text,summary,understanding,action_items) FROM knowledge_items WHERE user_id=$1

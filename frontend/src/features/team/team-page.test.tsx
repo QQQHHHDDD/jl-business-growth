@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, TeamMember, TeamSnapshot } from "@/api/client";
 import { listTeamMembers, listTeamSnapshots } from "@/api/client";
@@ -76,9 +77,9 @@ const snapshot = {
   ],
 } as TeamSnapshot;
 
-function renderPage() {
+function renderPage(entry = "/app/team") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}><TeamPage authResponse={authResponse} /></QueryClientProvider>);
+  return render(<MemoryRouter initialEntries={[entry]}><QueryClientProvider client={client}><TeamPage authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
 }
 
 beforeEach(() => {
@@ -96,8 +97,9 @@ describe("TeamPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /团队负责人/ }));
     expect(screen.getByRole("heading", { name: "团队负责人" })).toBeVisible();
+    fireEvent.click(screen.getByText("高级信息"));
     expect(screen.getByText("JL-001", { exact: true })).toBeVisible();
-    expect(screen.getByText(/业务伙伴 · JL-002/)).toBeVisible();
+    expect(screen.getAllByText("业务伙伴", { exact: true }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "编辑成员" }));
     expect(screen.getByRole("heading", { name: "编辑成员" })).toBeVisible();
     expect(screen.getByLabelText("团队成员姓名")).toHaveValue("团队负责人");
@@ -111,9 +113,18 @@ describe("TeamPage", () => {
     fireEvent.change(screen.getByLabelText("搜索成员"), { target: { value: "杭州" } });
     expect(screen.getByText("业务伙伴", { exact: true })).toBeVisible();
     expect(screen.getAllByRole("row")).toHaveLength(2);
+    expect(screen.queryByText("JL-002", { exact: true })).not.toBeInTheDocument();
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: "历史快照" }), { button: 0 });
     expect(screen.getByText(/延迟捕获/)).toBeVisible();
     expect(screen.getByRole("heading", { name: "2026-08-01 团队结构" })).toBeVisible();
+  });
+
+  it("restores a member deep link and exposes graph controls", async () => {
+    renderPage(`/app/team?member=${child.id}`);
+    expect(await screen.findByRole("heading", { name: "业务伙伴" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    expect(screen.getByRole("button", { name: "放大关系图" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "适配关系图" })).toBeVisible();
   });
 });
