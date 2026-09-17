@@ -60,4 +60,32 @@ describe("DataPage", () => {
     await waitFor(() => expect(commitImport).toHaveBeenCalledWith("csrf", validatedJob.id));
     expect(await screen.findByText("导入已完成")).toBeVisible();
   });
+
+  it("preserves compatible wizard state when navigating backward", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "每日工作量" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
+    const file = new File(["xlsx"], "worklog.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    fireEvent.change(screen.getByLabelText("选择 XLSX 文件"), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "上传并校验" }));
+    expect(await screen.findByRole("heading", { name: "校验预览" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "上一步" }));
+    expect(screen.getByText("已选择：worklog.xlsx")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "返回校验预览" }));
+    expect(screen.getByText("VALIDATED", { exact: true })).toBeVisible();
+    expect(createImport).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "上一步" }));
+    fireEvent.click(screen.getByRole("button", { name: "上一步" }));
+    fireEvent.click(screen.getByRole("button", { name: "上一步" }));
+    expect(screen.getByRole("button", { name: "每日工作量" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "每日工作量" }));
+    expect(screen.getByRole("heading", { name: "下载模板" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "上一步" }));
+    fireEvent.click(screen.getByRole("button", { name: "财务流水" }));
+    expect(screen.getByRole("dialog", { name: "切换导入类型" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "切换并清除" }));
+    expect(screen.getByText("当前类型：财务流水")).toBeVisible();
+  });
 });
