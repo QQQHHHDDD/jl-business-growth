@@ -2758,6 +2758,8 @@ components:
             format: uuid
         file_ids:
           type: array
+          maxItems: 10
+          uniqueItems: true
           items:
             type: string
             format: uuid
@@ -2790,6 +2792,8 @@ components:
           default: 0
         file_ids:
           type: array
+          maxItems: 10
+          uniqueItems: true
           items:
             type: string
             format: uuid

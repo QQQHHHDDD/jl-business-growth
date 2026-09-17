@@ -3,8 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Account, AuthResponse, Dream, Goal } from "@/api/client";
-import { listDreams, listFiles, listGoals, saveGoal, uploadFile } from "@/api/client";
+import type { Account, AuthResponse, Dream, FileAsset, Goal } from "@/api/client";
+import { deleteFile, listDreams, listFiles, listGoals, saveDream, saveGoal, uploadFile } from "@/api/client";
 import { businessDate } from "@/lib/date";
 import { GoalsPage } from "./goals-page";
 
@@ -86,6 +86,10 @@ const dream = {
   updated_at: "2026-01-01T00:00:00Z",
 } as Dream;
 
+function dreamImage(id: string, name: string): FileAsset {
+  return { id, category: "DREAM_IMAGE", original_name: name, mime_type: "image/png", size_bytes: 4, sha256: `hash-${id}`, created_at: "2026-01-01T00:00:00Z" };
+}
+
 function renderPage(entry = "/app/goals") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -101,6 +105,8 @@ beforeEach(() => {
   vi.mocked(listDreams).mockResolvedValue({ data: { items: [dream] }, request_id: "request-3" });
   vi.mocked(listFiles).mockResolvedValue({ data: { items: [] }, request_id: "request-4" });
   vi.mocked(saveGoal).mockResolvedValue({ data: parentGoal, request_id: "request-5" });
+  vi.mocked(saveDream).mockResolvedValue({ data: dream, request_id: "request-dream" });
+  vi.mocked(deleteFile).mockResolvedValue(undefined);
   vi.mocked(uploadFile).mockResolvedValue({ data: { id: "00000000-0000-0000-0000-000000000030", category: "DREAM_IMAGE", original_name: "dream.png", mime_type: "image/png", size_bytes: 4, sha256: "hash", created_at: "2026-01-01T00:00:00Z" }, request_id: "request-6" });
 });
 
@@ -167,6 +173,57 @@ describe("GoalsPage", () => {
     fireEvent.change(screen.getByLabelText("选择梦想图片"), { target: { files: [file] } });
     await waitFor(() => expect(uploadFile).toHaveBeenCalledWith("csrf-token", file, "DREAM_IMAGE"));
     expect(screen.queryByRole("button", { name: "上传" })).not.toBeInTheDocument();
+  });
+
+  it("uploads multiple dream images and rejects selections above ten", async () => {
+    const firstAsset = dreamImage("00000000-0000-0000-0000-000000000031", "first.png");
+    const secondAsset = dreamImage("00000000-0000-0000-0000-000000000032", "second.png");
+    vi.mocked(uploadFile).mockResolvedValueOnce({ data: firstAsset, request_id: "upload-1" }).mockResolvedValueOnce({ data: secondAsset, request_id: "upload-2" });
+    renderPage();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "梦想板" }), { button: 0 });
+    fireEvent.click(screen.getByRole("button", { name: "新增梦想" }));
+    const first = new File(["first"], "first.png", { type: "image/png" });
+    const second = new File(["second"], "second.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("选择梦想图片"), { target: { files: [first, second] } });
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("2 / 10")).toBeVisible();
+
+    const tooMany = Array.from({ length: 9 }, (_, index) => new File([String(index)], `extra-${index}.png`, { type: "image/png" }));
+    fireEvent.change(screen.getByLabelText("选择梦想图片"), { target: { files: tooMany } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("一个梦想最多可添加 10 张图片");
+    expect(uploadFile).toHaveBeenCalledTimes(2);
+  });
+
+  it("persists image order and removes an existing dream image", async () => {
+    const first = dreamImage("00000000-0000-0000-0000-000000000041", "first.png");
+    const second = dreamImage("00000000-0000-0000-0000-000000000042", "second.png");
+    const multiDream = { ...dream, file_ids: [first.id, second.id] };
+    vi.mocked(listDreams).mockResolvedValue({ data: { items: [multiDream] }, request_id: "dreams-multi" });
+    vi.mocked(listFiles).mockResolvedValue({ data: { items: [first, second] }, request_id: "files-multi" });
+    vi.mocked(saveDream).mockResolvedValue({ data: { ...multiDream, file_ids: [second.id] }, request_id: "saved" });
+    renderPage();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "梦想板" }), { button: 0 });
+    fireEvent.click(screen.getByRole("heading", { name: dream.title }).closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "编辑梦想" }));
+    fireEvent.click(screen.getByRole("button", { name: "后移图片 first.png" }));
+    fireEvent.click(screen.getByRole("button", { name: "删除图片 first.png" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存梦想" }));
+    await waitFor(() => expect(saveDream).toHaveBeenCalledWith("csrf-token", expect.objectContaining({ file_ids: [second.id] }), dream.id));
+    await waitFor(() => expect(deleteFile).toHaveBeenCalledWith("csrf-token", first.id));
+  });
+
+  it("navigates the ordered dream image carousel", async () => {
+    const first = dreamImage("00000000-0000-0000-0000-000000000051", "first.png");
+    const second = dreamImage("00000000-0000-0000-0000-000000000052", "second.png");
+    vi.mocked(listDreams).mockResolvedValue({ data: { items: [{ ...dream, file_ids: [first.id, second.id] }] }, request_id: "dreams-carousel" });
+    vi.mocked(listFiles).mockResolvedValue({ data: { items: [first, second] }, request_id: "files-carousel" });
+    renderPage();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "梦想板" }), { button: 0 });
+    fireEvent.click(screen.getByRole("heading", { name: dream.title }).closest("button")!);
+    expect(screen.getByText("1 / 2")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "下一张梦想图片" }));
+    expect(screen.getByText("2 / 2")).toBeVisible();
+    expect(screen.getByRole("img", { name: "second.png" })).toBeVisible();
   });
 
   it("restores a record-level goal deep link after refresh", async () => {

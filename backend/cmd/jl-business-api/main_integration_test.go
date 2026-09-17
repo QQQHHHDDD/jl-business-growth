@@ -371,6 +371,32 @@ func TestPhase2APIIntegration(t *testing.T) {
 	if len(dream.Data.GoalIds) != 1 || dream.Data.GoalIds[0] != goal.Data.Id {
 		t.Fatalf("dream response = %+v, want linked goal", dream.Data)
 	}
+	dreamFileIDs := make([]uuid.UUID, 11)
+	for index := range dreamFileIDs {
+		dreamFileIDs[index] = uuid.New()
+		if _, err := pool.Exec(ctx, `INSERT INTO file_assets (id,user_id,category,original_name,storage_name,mime_type,size_bytes,sha256) VALUES ($1,$2,'DREAM_IMAGE',$3,$4,'image/png',4,$5)`, dreamFileIDs[index], userAuth.Data.Account.Id, fmt.Sprintf("dream-%02d.png", index), fmt.Sprintf("dream-%02d-storage.png", index), fmt.Sprintf("%064x", index+1)); err != nil {
+			t.Fatalf("insert dream image %d: %v", index, err)
+		}
+	}
+	tenFileIDs := make([]string, 10)
+	for index := range tenFileIDs {
+		tenFileIDs[index] = dreamFileIDs[index].String()
+	}
+	orderedDreamBody := putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/dreams/"+dream.Data.Id.String(), map[string]interface{}{"title": dream.Data.Title, "description": dream.Data.Description, "goal_ids": []string{goal.Data.Id.String()}, "file_ids": tenFileIDs}, userAuth.Data.CsrfToken, http.StatusOK)
+	var orderedDream api.DreamResponse
+	decodeTestJSON(t, orderedDreamBody, &orderedDream)
+	if len(orderedDream.Data.FileIds) != 10 || orderedDream.Data.FileIds[0] != dreamFileIDs[0] || orderedDream.Data.FileIds[9] != dreamFileIDs[9] {
+		t.Fatalf("dream file order = %v, want first ten images in request order", orderedDream.Data.FileIds)
+	}
+	reorderedIDs := []string{dreamFileIDs[2].String(), dreamFileIDs[0].String(), dreamFileIDs[1].String()}
+	reorderedDreamBody := putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/dreams/"+dream.Data.Id.String(), map[string]interface{}{"title": dream.Data.Title, "goal_ids": []string{goal.Data.Id.String()}, "file_ids": reorderedIDs}, userAuth.Data.CsrfToken, http.StatusOK)
+	var reorderedDream api.DreamResponse
+	decodeTestJSON(t, reorderedDreamBody, &reorderedDream)
+	if len(reorderedDream.Data.FileIds) != 3 || reorderedDream.Data.FileIds[0] != dreamFileIDs[2] || reorderedDream.Data.FileIds[2] != dreamFileIDs[1] {
+		t.Fatalf("reordered dream files = %v, want deterministic request order", reorderedDream.Data.FileIds)
+	}
+	elevenFileIDs := append(append([]string{}, tenFileIDs...), dreamFileIDs[10].String())
+	putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/dreams/"+dream.Data.Id.String(), map[string]interface{}{"title": dream.Data.Title, "file_ids": elevenFileIDs}, userAuth.Data.CsrfToken, http.StatusBadRequest)
 
 	dashboardResponse := getTestJSON(t, userClient, server.URL, "/api/dashboard?date="+dailyDate, http.StatusOK)
 	var dashboard api.DashboardResponse

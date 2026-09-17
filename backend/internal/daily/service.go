@@ -399,6 +399,16 @@ func (s *Service) SaveDream(ctx context.Context, userID, dreamID uuid.UUID, inpu
 	if err := s.validateGoalIDs(ctx, userID, input.GoalIDs); err != nil {
 		return Dream{}, err
 	}
+	if len(input.FileIDs) > 10 {
+		return Dream{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "a dream can contain at most 10 images")
+	}
+	seenFiles := make(map[uuid.UUID]struct{}, len(input.FileIDs))
+	for _, fileID := range input.FileIDs {
+		if _, exists := seenFiles[fileID]; exists {
+			return Dream{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "dream images must be unique")
+		}
+		seenFiles[fileID] = struct{}{}
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Dream{}, err
