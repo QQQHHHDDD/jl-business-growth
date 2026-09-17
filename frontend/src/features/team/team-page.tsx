@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
 import "@xyflow/react/dist/style.css";
 
@@ -38,25 +39,35 @@ function graphNodes(members: GraphMember[], selectedID?: string | null): Node[] 
   };
   const layers = new Map<number, GraphMember[]>();
   members.forEach((member) => { const depth = depthFor(member); layers.set(depth, [...(layers.get(depth) ?? []), member]); });
-  return [...layers.entries()].flatMap(([depth, layer]) => layer.sort((left, right) => left.name.localeCompare(right.name, "zh-CN")).map((member, index) => {
-    const isRoot = !member.parent_id || !membersByID.has(member.parent_id);
-    return {
+  return [...layers.entries()].flatMap(([depth, layer]) => {
+    let nextX = 0;
+    return layer.sort((left, right) => left.name.localeCompare(right.name, "zh-CN")).map((member) => {
+      const isRoot = !member.parent_id || !membersByID.has(member.parent_id);
+      const width = Math.min(220, Math.max(96, Array.from(member.name).length * 16 + 36));
+      const x = nextX;
+      nextX += width + 60;
+      return {
       id: member.id,
-      position: { x: index * 240, y: depth * 150 },
+      position: { x, y: depth * 150 },
       data: { label: member.name },
       ariaLabel: member.name,
       style: {
-        width: 180,
+        width,
+        height: 48,
         borderRadius: 8,
         border: selectedID === member.id ? "2px solid #d97706" : `1px solid ${isRoot ? "#0f766e" : member.status === "ACTIVE" ? "#99f6e4" : "#cbd5e1"}`,
         background: isRoot ? "#0f766e" : "#ffffff",
         color: isRoot ? "#ffffff" : "#0f172a",
         boxShadow: selectedID === member.id ? "0 0 0 3px #fde68a" : "0 1px 3px rgb(15 23 42 / 0.12)",
         fontWeight: 700,
-        padding: "14px 16px",
+        overflow: "hidden",
+        padding: "12px 16px",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
       },
-    } satisfies Node;
-  }));
+      } satisfies Node;
+    });
+  });
 }
 
 function TeamGraph({ members, selectedID, onSelect }: { members: GraphMember[]; selectedID?: string | null; onSelect?: (id: string) => void }) {
@@ -90,7 +101,7 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
   const filteredMembers = useMemo(() => members.filter((member) => [member.name, member.rank, member.city].some((value) => value?.toLowerCase().includes(search.toLowerCase()))), [members, search]);
 
   const closeSheet = () => { setMemberSheet(null); window.setTimeout(() => returnFocus.current?.focus({ preventScroll: true }), 0); };
-  const openCreate = () => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setForm(emptyForm); setNameTouched(false); setMemberSheet({ mode: "create" }); };
+  const openCreate = () => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setForm({ ...emptyForm, joined_on: businessDate(authResponse.data.account.timezone) }); setNameTouched(false); setMemberSheet({ mode: "create" }); };
   const openDetail = (member: TeamMember) => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setMemberSheet({ mode: "detail", member }); };
   const openEdit = (member: TeamMember, retainFocus = false) => { if (!retainFocus) returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setForm({ name: member.name, parent_id: member.parent_id ?? "", rank: member.rank ?? "", city: member.city ?? "", joined_on: member.joined_on ?? "", status: member.status, note: member.note ?? "" }); setNameTouched(true); setMemberSheet({ mode: "edit", member }); };
 
@@ -127,9 +138,9 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
     <PageHeader eyebrow="关系与成长" title="团队" description="查看当前组织结构，并用月末快照保留历史状态。" action={<div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => snapshot.mutate()} loading={snapshot.isPending}><Camera size={16} />保存快照</Button><Button onClick={openCreate}><Plus size={16} />新增成员</Button></div>} />
     {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
     <section aria-label="团队概览" className="grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white px-2 py-3 shadow-sm sm:px-4"><Summary label="成员" value={members.length} /><Summary label="启用" value={activeCount} /><Summary label="停用" value={members.length - activeCount} /></section>
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><Tabs value={view} onValueChange={(value) => setView(value as TeamView)}><TabsList aria-label="团队视图"><TabsTrigger value="graph">关系图</TabsTrigger><TabsTrigger value="list">成员列表</TabsTrigger><TabsTrigger value="snapshots">历史快照</TabsTrigger></TabsList></Tabs>{view !== "snapshots" && <div className="w-full sm:max-w-xs"><Input label="搜索成员" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="姓名、级别或城市" /></div>}</div>
-    {view === "graph" && <Panel title="团队关系图" description="搜索可定位成员；使用画布控制调整视图，点击成员打开详情。"><div className={`${members.length ? "h-[min(68vh,720px)] min-h-[500px]" : "min-h-[240px]"} overflow-hidden rounded-xl border border-slate-200`}><TeamGraph members={members} selectedID={selectedGraphID} onSelect={(id) => { const member = members.find((item) => item.id === id); if (member) { setSelectedGraphID(id); openDetail(member); } }} /></div></Panel>}
-    {view === "list" && <MemberList members={filteredMembers} allMembers={members} onView={openDetail} onEdit={openEdit} onDelete={setRemoveTarget} />}
+    <Tabs value={view} onValueChange={(value) => setView(value as TeamView)}><TabsList aria-label="团队视图"><TabsTrigger value="graph">关系图</TabsTrigger><TabsTrigger value="list">成员列表</TabsTrigger><TabsTrigger value="snapshots">历史快照</TabsTrigger></TabsList></Tabs>
+    {view === "graph" && <Panel title="团队关系图" description="搜索可定位成员；使用画布控制调整视图，点击成员打开详情。" action={<TeamSearch value={search} onChange={setSearch} />}><div className={`${members.length ? "h-[min(68vh,720px)] min-h-[500px]" : "min-h-[240px]"} overflow-hidden rounded-xl border border-slate-200`}><TeamGraph members={members} selectedID={selectedGraphID} onSelect={(id) => { const member = members.find((item) => item.id === id); if (member) { setSelectedGraphID(id); openDetail(member); } }} /></div></Panel>}
+    {view === "list" && <MemberList members={filteredMembers} allMembers={members} search={search} onSearch={setSearch} onView={openDetail} onEdit={openEdit} onDelete={setRemoveTarget} />}
     {view === "snapshots" && <SnapshotsView snapshots={snapshotsQuery.data.data.items} selected={selectedSnapshot} onSelect={setSelectedSnapshot} />}
 
     <Dialog open={Boolean(memberSheet)} onOpenChange={(open) => !open && closeSheet()}>
@@ -151,9 +162,12 @@ function MemberDetail({ member, members }: { member: TeamMember; members: TeamMe
   return <div className="space-y-6"><div className="flex justify-between"><StatusBadge tone={member.status === "ACTIVE" ? "success" : "neutral"}>{member.status === "ACTIVE" ? "启用" : "停用"}</StatusBadge><span className="text-sm font-semibold text-slate-500">{member.rank ? `级别：${member.rank}` : "未设置级别"}</span></div><dl className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm"><dt className="text-slate-500">上级成员</dt><dd className="font-semibold text-slate-900">{parent?.name ?? "直属根节点"}</dd><dt className="text-slate-500">城市</dt><dd className="font-semibold text-slate-900">{member.city || "未设置"}</dd><dt className="text-slate-500">加入日期</dt><dd className="font-semibold text-slate-900">{member.joined_on || "未设置"}</dd></dl>{member.note && <section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">备注</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{member.note}</p></section>}<section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">直属成员</h3>{children.length ? <ul className="mt-3 space-y-2">{children.map((child) => <li key={child.id} className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700">{child.name}</li>)}</ul> : <p className="mt-2 text-sm text-slate-500">暂无直属成员。</p>}</section><details className="border-t border-slate-200 pt-5"><summary className="cursor-pointer text-sm font-semibold text-slate-600">高级信息</summary><dl className="mt-3 grid grid-cols-[96px_minmax(0,1fr)] gap-x-4 text-sm"><dt className="text-slate-500">成员编码</dt><dd className="break-all font-mono text-xs text-slate-700">{member.member_code}</dd></dl></details></div>;
 }
 
-function MemberList({ members, allMembers, onView, onEdit, onDelete }: { members: TeamMember[]; allMembers: TeamMember[]; onView: (member: TeamMember) => void; onEdit: (member: TeamMember) => void; onDelete: (member: TeamMember) => void }) {
-  if (!members.length) return <Panel><EmptyState title="没有匹配的成员" description="调整搜索关键词或添加新成员。" /></Panel>;
-  return <Panel title="成员列表" description="查看状态、层级与上级，或快速进入编辑。"><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="border-b border-slate-200 text-xs font-bold text-slate-500"><tr><th className="px-3 py-3">成员</th><th className="px-3 py-3">上级</th><th className="px-3 py-3">级别 / 城市</th><th className="px-3 py-3">状态</th><th className="px-3 py-3 text-right">操作</th></tr></thead><tbody>{members.map((member) => <tr key={member.id} className="border-b border-slate-100 last:border-0"><td className="px-3 py-3"><button type="button" className="font-bold text-slate-900 hover:text-teal-800" onClick={() => onView(member)}>{member.name}</button></td><td className="px-3 py-3 text-slate-600">{allMembers.find((item) => item.id === member.parent_id)?.name ?? "根节点"}</td><td className="px-3 py-3 text-slate-600">{member.rank ? `级别：${member.rank}` : "未设置级别"} · {member.city ? `城市：${member.city}` : "未设置城市"}</td><td className="px-3 py-3"><StatusBadge tone={member.status === "ACTIVE" ? "success" : "neutral"}>{member.status === "ACTIVE" ? "启用" : "停用"}</StatusBadge></td><td className="px-3 py-3"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => onEdit(member)}>编辑</Button><Button variant="icon" size="sm" aria-label={`删除成员 ${member.name}`} onClick={() => onDelete(member)}><Trash2 size={15} /></Button></div></td></tr>)}</tbody></table></div></Panel>;
+function TeamSearch({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return <div className="w-full sm:w-72"><Input label="搜索成员" value={value} onChange={(event) => onChange(event.target.value)} placeholder="姓名、级别或城市" /></div>;
+}
+
+function MemberList({ members, allMembers, search, onSearch, onView, onEdit, onDelete }: { members: TeamMember[]; allMembers: TeamMember[]; search: string; onSearch: (value: string) => void; onView: (member: TeamMember) => void; onEdit: (member: TeamMember) => void; onDelete: (member: TeamMember) => void }) {
+  return <Panel title="成员列表" description="查看状态、层级与上级，或快速进入编辑。" action={<TeamSearch value={search} onChange={onSearch} />}>{members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="border-b border-slate-200 text-xs font-bold text-slate-500"><tr><th className="px-3 py-3">成员</th><th className="px-3 py-3">上级</th><th className="px-3 py-3">级别 / 城市</th><th className="px-3 py-3">状态</th><th className="px-3 py-3 text-right">操作</th></tr></thead><tbody>{members.map((member) => <tr key={member.id} className="border-b border-slate-100 last:border-0"><td className="px-3 py-3"><button type="button" className="font-bold text-slate-900 hover:text-teal-800" onClick={() => onView(member)}>{member.name}</button></td><td className="px-3 py-3 text-slate-600">{allMembers.find((item) => item.id === member.parent_id)?.name ?? "根节点"}</td><td className="px-3 py-3 text-slate-600">{member.rank ? `级别：${member.rank}` : "未设置级别"} · {member.city ? `城市：${member.city}` : "未设置城市"}</td><td className="px-3 py-3"><StatusBadge tone={member.status === "ACTIVE" ? "success" : "neutral"}>{member.status === "ACTIVE" ? "启用" : "停用"}</StatusBadge></td><td className="px-3 py-3"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => onEdit(member)}>编辑</Button><Button variant="icon" size="sm" aria-label={`删除成员 ${member.name}`} onClick={() => onDelete(member)}><Trash2 size={15} /></Button></div></td></tr>)}</tbody></table></div> : <EmptyState title="没有匹配的成员" description="调整搜索关键词或添加新成员。" />}</Panel>;
 }
 
 function SnapshotsView({ snapshots, selected, onSelect }: { snapshots: TeamSnapshot[]; selected: TeamSnapshot | null; onSelect: (snapshot: TeamSnapshot) => void }) {

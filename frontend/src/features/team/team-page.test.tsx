@@ -5,10 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import type { Account, AuthResponse, TeamMember, TeamSnapshot } from "@/api/client";
 import { listTeamMembers, listTeamSnapshots } from "@/api/client";
+import { businessDate } from "@/lib/date";
 import { TeamPage } from "./team-page";
 
 vi.mock("@xyflow/react", () => ({
-  ReactFlow: ({ nodes, onNodeClick, children, fitView, panOnDrag }: { nodes: Array<{ id: string; data: { label: string } }>; onNodeClick?: (event: unknown, node: { id: string }) => void; children: ReactNode; fitView?: boolean; panOnDrag?: boolean }) => <div data-testid="react-flow" data-fit-view={String(fitView)} data-pan-on-drag={String(panOnDrag)}>{nodes.map((node) => <button key={node.id} type="button" onClick={() => onNodeClick?.({}, node)}>{node.data.label}</button>)}{children}</div>,
+  ReactFlow: ({ nodes, onNodeClick, children, fitView, panOnDrag }: { nodes: Array<{ id: string; data: { label: string }; style?: { width?: number } }>; onNodeClick?: (event: unknown, node: { id: string }) => void; children: ReactNode; fitView?: boolean; panOnDrag?: boolean }) => <div data-testid="react-flow" data-fit-view={String(fitView)} data-pan-on-drag={String(panOnDrag)}>{nodes.map((node) => <button key={node.id} type="button" data-node-width={node.style?.width} onClick={() => onNodeClick?.({}, node)}>{node.data.label}</button>)}{children}</div>,
   Controls: () => <div><button type="button" aria-label="放大关系图">+</button><button type="button" aria-label="缩小关系图">-</button><button type="button" aria-label="适配关系图">fit</button></div>,
   Background: () => null,
 }));
@@ -105,6 +106,11 @@ describe("TeamPage", () => {
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-pan-on-drag", "true");
     expect(within(screen.getByTestId("team-graph")).queryByText("经理", { exact: true })).not.toBeInTheDocument();
     expect(within(screen.getByTestId("team-graph")).queryByText("上海", { exact: true })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("搜索成员").closest("header")).not.toBeNull();
+    const graphButtons = within(screen.getByTestId("team-graph")).getAllByRole("button");
+    const leaderNode = graphButtons.find((button) => button.textContent === "团队负责人");
+    const partnerNode = graphButtons.find((button) => button.textContent === "业务伙伴");
+    expect(Number(leaderNode?.dataset.nodeWidth)).toBeGreaterThan(Number(partnerNode?.dataset.nodeWidth));
 
     fireEvent.click(within(screen.getByTestId("team-graph")).getByRole("button", { name: "团队负责人" }));
     expect(screen.getByRole("dialog")).toBeVisible();
@@ -122,14 +128,23 @@ describe("TeamPage", () => {
     await screen.findByRole("tab", { name: "成员列表" });
     expect(screen.getByRole("button", { name: "保存快照" })).toBeVisible();
     fireEvent.mouseDown(screen.getByRole("tab", { name: "成员列表" }), { button: 0 });
+    expect(screen.getByLabelText("搜索成员").closest("header")).not.toBeNull();
     fireEvent.change(screen.getByLabelText("搜索成员"), { target: { value: "杭州" } });
     expect(screen.getByText("业务伙伴", { exact: true })).toBeVisible();
     expect(screen.getAllByRole("row")).toHaveLength(2);
     expect(screen.queryByText("JL-002", { exact: true })).not.toBeInTheDocument();
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: "历史快照" }), { button: 0 });
+    expect(screen.queryByLabelText("搜索成员")).not.toBeInTheDocument();
     expect(screen.getByText(/延迟捕获/)).toBeVisible();
     expect(screen.getByRole("heading", { name: "2026-08-01 团队结构" })).toBeVisible();
+  });
+
+  it("defaults a new member join date from the account timezone", async () => {
+    renderPage();
+    await screen.findByRole("button", { name: "新增成员" });
+    fireEvent.click(screen.getByRole("button", { name: "新增成员" }));
+    expect(screen.getByLabelText("加入日期")).toHaveValue(businessDate(account.timezone));
   });
 
   it("restores a member deep link and exposes graph controls", async () => {
