@@ -31,6 +31,7 @@ import (
 	"jl-business-growth/backend/internal/config"
 	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
+	pvcalc "jl-business-growth/backend/internal/pv"
 )
 
 const (
@@ -753,8 +754,7 @@ func validateParsed(kind string, item *parsedRow) {
 		if pv != "" && net != "" {
 			pvValue, _ := strconv.ParseFloat(pv, 64)
 			netValue, _ := money.Parse(net)
-			calculated, _ := money.FromFloat(pvValue * 12.5)
-			if calculated != netValue {
+			if !pvcalc.Matches(pvValue, netValue) {
 				item.Preview.Errors = append(item.Preview.Errors, "turnover_net_amount must equal turnover_pv × 12.5")
 			}
 		}
@@ -786,8 +786,7 @@ func validateParsed(kind string, item *parsedRow) {
 		if value("pv") != "" && value("net_amount") != "" {
 			pv, _ := strconv.ParseFloat(value("pv"), 64)
 			net, _ := money.Parse(value("net_amount"))
-			calculated, _ := money.FromFloat(pv * 12.5)
-			if calculated != net {
+			if !pvcalc.Matches(pv, net) {
 				item.Preview.Errors = append(item.Preview.Errors, "net_amount must equal pv × 12.5")
 			}
 		}

@@ -18,9 +18,8 @@ import (
 	"jl-business-growth/backend/internal/auth"
 	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
+	pvcalc "jl-business-growth/backend/internal/pv"
 )
-
-const pvToNetAmount = 12.5
 
 var metricCodes = map[string]struct{}{
 	"conversation_open_count": {},
@@ -831,16 +830,23 @@ func normalizeTurnover(pv *float64, netAmount *money.Cents) (float64, money.Cent
 		return 0, 0, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "turnover values must be non-negative numbers")
 	}
 	if pv == nil {
-		return float64(*netAmount) / (pvToNetAmount * 100), *netAmount, nil
+		return pvcalc.FromNetAmount(*netAmount), *netAmount, nil
 	}
-	calculated, err := money.FromFloat(*pv * pvToNetAmount)
+	roundedPV, err := pvcalc.Round(*pv)
 	if err != nil {
 		return 0, 0, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "turnover values must be finite")
 	}
-	if netAmount != nil && calculated != *netAmount {
+	if netAmount != nil {
+		if !pvcalc.Matches(roundedPV, *netAmount) {
+			return 0, 0, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "pv and net amount do not match")
+		}
+		return pvcalc.FromNetAmount(*netAmount), *netAmount, nil
+	}
+	calculated, err := pvcalc.NetAmount(roundedPV)
+	if err != nil {
 		return 0, 0, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "pv and net amount do not match")
 	}
-	return roundMoney(*pv), calculated, nil
+	return roundedPV, calculated, nil
 }
 
 func numericValue(value float64) pgtype.Numeric {
@@ -953,8 +959,4 @@ func uuidFromPG(value pgtype.UUID) uuid.UUID {
 		return uuid.Nil
 	}
 	return value.Bytes
-}
-
-func roundMoney(value float64) float64 {
-	return math.Round(value*100) / 100
 }

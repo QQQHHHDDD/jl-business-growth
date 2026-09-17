@@ -13,13 +13,13 @@ import { Panel } from "@/components/ui/panel";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { businessDate, businessDateDaysAgo } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
-import { netAmountFromPV, pvFromNetAmount } from "@/lib/pv";
+import { netAmountFromPV, pvAndNetAmountMatch, pvFromNetAmount } from "@/lib/pv";
 import { errorMessage } from "@/lib/utils";
 
 const optionalDecimal = z.string().refine((value) => !value.trim() || Number.isFinite(Number(value)) && Number(value) >= 0, "请输入不小于 0 的数字");
 const turnoverSchema = z.object({ turnover_date: z.string().min(1), pv: optionalDecimal, net_amount: optionalDecimal, note: z.string() })
   .refine((value) => value.pv.trim() || value.net_amount.trim(), { message: "PV 或净营业额至少填写一项", path: ["pv"] })
-  .refine((value) => !value.pv.trim() || !value.net_amount.trim() || Math.abs(Math.round(Number(value.pv) * 12.5 * 100) / 100 - Math.round(Number(value.net_amount) * 100) / 100) <= 0.01, { message: "PV 与净营业额不一致", path: ["net_amount"] });
+  .refine((value) => !value.pv.trim() || !value.net_amount.trim() || pvAndNetAmountMatch(value.pv, value.net_amount), { message: "PV 与净营业额不一致", path: ["net_amount"] });
 type TurnoverForm = z.infer<typeof turnoverSchema>;
 
 function formDefaults(date: string): TurnoverForm {

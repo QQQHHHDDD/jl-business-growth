@@ -45,6 +45,23 @@ func TestValidateRowsRejectsInconsistentTurnover(t *testing.T) {
 	}
 }
 
+func TestValidateRowsAcceptsAmountToPVRounding(t *testing.T) {
+	rows := [][]string{
+		importColumns[ImportTurnover],
+		{"2026-09-14", "0.88", "11.00", "rounded"},
+		{"2026-09-15", "0.80", "10.01", "non-reversible"},
+	}
+	preview, _, err := validateRows(ImportTurnover, rows)
+	if err != nil {
+		t.Fatalf("validate rows: %v", err)
+	}
+	for _, row := range preview {
+		if len(row.Errors) != 0 {
+			t.Fatalf("row %d errors = %v, want none", row.RowNumber, row.Errors)
+		}
+	}
+}
+
 func TestValidateRowsAllowsParentFromExistingAccount(t *testing.T) {
 	rows := [][]string{
 		importColumns[ImportTeam],

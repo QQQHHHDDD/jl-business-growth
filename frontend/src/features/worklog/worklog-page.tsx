@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/state-block";
 import { businessDate, businessDateDaysAgo } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
-import { netAmountFromPV, pvFromNetAmount } from "@/lib/pv";
+import { netAmountFromPV, pvAndNetAmountMatch, pvFromNetAmount } from "@/lib/pv";
 
 const countFields = [
   ["open_conversation_count", "开启对话"],
@@ -66,10 +66,7 @@ const worklogSchema = z
     (value) =>
       !value.turnover_pv.trim() ||
       !value.turnover_net_amount.trim() ||
-      Math.abs(
-        Math.round(Number(value.turnover_pv) * 12.5 * 100) / 100 -
-          Math.round(Number(value.turnover_net_amount) * 100) / 100,
-      ) <= 0.01,
+      pvAndNetAmountMatch(value.turnover_pv, value.turnover_net_amount),
     { message: "PV 与净营业额不一致", path: ["turnover_net_amount"] },
   );
 

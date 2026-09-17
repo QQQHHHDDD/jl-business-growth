@@ -348,6 +348,13 @@ func TestPhase2APIIntegration(t *testing.T) {
 		t.Fatalf("turnover response = %+v, want 3 PV and 37.5 amount", turnover.Data)
 	}
 	postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/turnover", map[string]interface{}{"turnover_date": dailyDate, "pv": 2, "net_amount": "30.00"}, userAuth.Data.CsrfToken, http.StatusBadRequest)
+	roundingDate := time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02")
+	roundingResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/turnover", map[string]interface{}{"turnover_date": roundingDate, "pv": 0.88, "net_amount": "11.00"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	var roundedTurnover api.TurnoverResponse
+	decodeTestJSON(t, roundingResponse, &roundedTurnover)
+	if roundedTurnover.Data.Pv != 0.88 || roundedTurnover.Data.NetAmount != "11.00" {
+		t.Fatalf("rounded turnover response = %+v, want 0.88 PV and 11.00 amount", roundedTurnover.Data)
+	}
 
 	goalResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/goals", map[string]interface{}{
 		"type": "YEAR", "title": "Phase 2 meeting goal", "start_date": dailyDate, "due_date": dailyDate, "status": "IN_PROGRESS",
