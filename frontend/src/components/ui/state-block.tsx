@@ -1,9 +1,45 @@
 import { AlertCircle, Inbox, RefreshCcw } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 
 export function LoadingState({ label = "正在加载" }: { label?: string }) {
   return <div role="status" aria-live="polite" className="min-h-40 rounded-md border border-slate-200 bg-white p-6"><span className="sr-only">{label}...</span><div className="space-y-4" aria-hidden="true"><div className="h-4 w-36 animate-pulse rounded bg-slate-200" /><div className="grid gap-3 sm:grid-cols-3"><div className="h-20 animate-pulse rounded bg-slate-100" /><div className="h-20 animate-pulse rounded bg-slate-100" /><div className="h-20 animate-pulse rounded bg-slate-100" /></div><div className="h-24 animate-pulse rounded bg-slate-100" /></div><p className="mt-4 text-sm text-slate-500">{label}...</p></div>;
+}
+
+export function PageLoadingState({
+  eyebrow,
+  title,
+  description,
+  label = "正在加载",
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  label?: string;
+}) {
+  return (
+    <div className="space-y-6">
+      <PageHeader eyebrow={eyebrow} title={title} description={description} />
+      <div
+        role="status"
+        aria-live="polite"
+        className="min-h-[420px] rounded-lg border border-slate-200 bg-white p-6 shadow-panel"
+      >
+        <span className="sr-only">{label}...</span>
+        <div className="space-y-5" aria-hidden="true">
+          <div className="h-5 w-48 animate-pulse rounded bg-slate-200" />
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="h-24 animate-pulse rounded bg-slate-100" />
+            <div className="h-24 animate-pulse rounded bg-slate-100" />
+            <div className="h-24 animate-pulse rounded bg-slate-100" />
+          </div>
+          <div className="h-48 animate-pulse rounded bg-slate-100" />
+        </div>
+        <p className="mt-5 text-sm text-slate-500">{label}...</p>
+      </div>
+    </div>
+  );
 }
 
 export function EmptyState({ title = "暂无内容", description, action, compact = false }: { title?: string; description?: string; action?: ReactNode; compact?: boolean }) {

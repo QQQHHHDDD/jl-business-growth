@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, PageLoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
@@ -220,7 +220,7 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
     setDreamFiles(dream.file_ids); setDreamGoals(dream.goal_ids); dreamFormState.reset({ title: dream.title, description: dream.description ?? "" });
   };
 
-  if (goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending) return <LoadingState label="正在加载目标工作台" />;
+  if (goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending) return <PageLoadingState eyebrow="方向与执行" title="梦想与目标" description="建立梦想和目标之间的清晰路径。" label="正在加载目标工作台" />;
   if (goalsQuery.isError || dreamsQuery.isError || filesQuery.isError) return <ErrorState message="目标数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} />;
 
   const activeAction = view === "dreams"

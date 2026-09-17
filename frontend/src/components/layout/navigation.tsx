@@ -31,6 +31,7 @@ import type { AuthResponse, HealthResponse } from "@/api/client";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
+import { LoadingState } from "@/components/ui/state-block";
 import { SearchOverlay } from "@/features/search/search-page";
 import { cn } from "@/lib/utils";
 
@@ -348,6 +349,41 @@ export function PageContainer({ children }: { children: ReactNode }) {
   return (
     <div data-testid="page-container" className="mx-auto w-full min-w-0 max-w-[1360px] overflow-x-clip px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
       {children}
+    </div>
+  );
+}
+
+export function AppLoadingShell({ label }: { label: string }) {
+  return (
+    <div data-testid="app-loading-shell" className="min-h-screen bg-[#f6f8fa] text-slate-950">
+      <aside className="fixed inset-y-0 left-0 hidden w-[220px] flex-col border-r border-slate-200 bg-white lg:flex">
+        <div className="flex h-16 items-center border-b border-slate-200 px-4">
+          <div className="h-9 w-9 animate-pulse rounded-lg bg-teal-100" />
+          <div className="ml-3 space-y-2">
+            <div className="h-2.5 w-20 animate-pulse rounded bg-slate-200" />
+            <div className="h-3 w-36 animate-pulse rounded bg-slate-100" />
+          </div>
+        </div>
+        <div className="space-y-3 px-3 py-5" aria-hidden="true">
+          <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
+          <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
+          <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
+          <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
+        </div>
+      </aside>
+      <div className="lg:pl-[220px]">
+        <header className="h-16 border-b border-slate-200 bg-white">
+          <div className="mx-auto flex h-full max-w-[1360px] items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="h-4 w-28 animate-pulse rounded bg-slate-200" aria-hidden="true" />
+            <div className="h-9 w-28 animate-pulse rounded-lg bg-slate-100" aria-hidden="true" />
+          </div>
+        </header>
+        <main>
+          <PageContainer>
+            <LoadingState label={label} />
+          </PageContainer>
+        </main>
+      </div>
     </div>
   );
 }

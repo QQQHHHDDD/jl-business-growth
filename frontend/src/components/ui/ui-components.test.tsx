@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Button } from "./button";
 import { ConfirmDialog, PromptDialog } from "./dialog";
 import { Input } from "./input";
-import { EmptyState, ErrorState, LoadingState } from "./state-block";
+import { EmptyState, ErrorState, LoadingState, PageLoadingState } from "./state-block";
 import { StatusBadge } from "./badge";
 import { DataTable, TableBody, TableCell, TableHead, TableRow } from "./table";
 import { Sheet, SheetContent } from "./sheet";
@@ -55,6 +55,21 @@ describe("shared UI primitives", () => {
     expect(screen.getByRole("heading", { name: "暂无用户" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the page identity visible while page data is loading", () => {
+    render(
+      <PageLoadingState
+        eyebrow="经营记录"
+        title="财务"
+        description="管理经营过程中的财务信息。"
+        label="正在加载财务工作台"
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "财务" })).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载财务工作台");
+    expect(screen.queryByText("暂无内容")).not.toBeInTheDocument();
   });
 
   it("keeps tables readable with a minimum width and semantic column headers", () => {

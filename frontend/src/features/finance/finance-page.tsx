@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { StatusBadge } from "@/components/ui/badge";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, PageLoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
@@ -51,7 +51,7 @@ export function FinancePage({ authResponse }: { authResponse: AuthResponse }) {
   const snapshotMutation = useMutation({ mutationFn: () => saveFinanceSnapshot(authResponse.data.csrf_token, { snapshot_date: snapshot.date, kind: snapshot.kind, amount: snapshot.amount, note: snapshot.note.trim() || null }), onSuccess: () => { setSnapshotOpen(false); setNotice("资金快照已保存"); setError(""); invalidate("finance-snapshots"); }, onError: (value) => { setError(errorMessage(value)); setNotice(""); } });
   const month = today.slice(0, 7);
   const summary = useMemo(() => transactions.filter((item) => item.occurred_on.startsWith(month)).reduce((result, item) => { const amount = Number(item.amount); if (item.type === "INCOME") result.income += amount; else result.expense += amount; return result; }, { income: 0, expense: 0 }), [month, transactions]);
-  if (categoriesQuery.isPending || transactionsQuery.isPending || budgetsQuery.isPending || snapshotsQuery.isPending) return <LoadingState label="正在加载财务工作台" />;
+  if (categoriesQuery.isPending || transactionsQuery.isPending || budgetsQuery.isPending || snapshotsQuery.isPending) return <PageLoadingState eyebrow="经营记录" title="财务" description="管理经营过程中的财务信息。" label="正在加载财务工作台" />;
   if (categoriesQuery.isError || transactionsQuery.isError || budgetsQuery.isError || snapshotsQuery.isError) return <ErrorState message="财务数据暂时无法加载" onRetry={() => { void categoriesQuery.refetch(); void transactionsQuery.refetch(); void budgetsQuery.refetch(); void snapshotsQuery.refetch(); }} />;
   const currentBudget = budgetsQuery.data.data.items.find((item) => item.month.startsWith(month));
   const budgetUsed = Math.min(100, currentBudget ? (summary.expense / Number(currentBudget.amount)) * 100 : 0);

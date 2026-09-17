@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { StatusBadge } from "@/components/ui/badge";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, PageLoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
@@ -66,7 +66,7 @@ export function KnowledgePage({ authResponse }: { authResponse: AuthResponse }) 
       setEditorOpen(true);
     }
   }, [items, itemsQuery.isPending, searchParams]);
-  if (itemsQuery.isPending || filesQuery.isPending || sessionsQuery.isPending) return <LoadingState label="正在加载学习中心" />;
+  if (itemsQuery.isPending || filesQuery.isPending || sessionsQuery.isPending) return <PageLoadingState eyebrow="输入与沉淀" title="学习中心" description="整理长期学习投入。" label="正在加载学习中心" />;
   if (itemsQuery.isError || filesQuery.isError || sessionsQuery.isError) return <ErrorState message="学习中心数据暂时无法加载" onRetry={() => { void itemsQuery.refetch(); void filesQuery.refetch(); void sessionsQuery.refetch(); }} />;
   const tags = [...new Set(items.flatMap((item) => item.tags))].sort();
   const filteredItems = items.filter((item) => (type === "ALL" || item.type === type) && (status === "ALL" || item.status === status) && (tag === "ALL" || item.tags.includes(tag)) && `${item.title} ${item.tags.join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()));

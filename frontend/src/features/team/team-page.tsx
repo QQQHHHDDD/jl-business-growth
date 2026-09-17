@@ -11,7 +11,7 @@ import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogHeader, 
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, PageLoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
@@ -130,7 +130,7 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
   const remove = useMutation({ mutationFn: () => deleteTeamMember(authResponse.data.csrf_token, removeTarget!.id), onSuccess: () => { setRemoveTarget(null); closeSheet(); setNotice("团队成员已删除"); setError(""); void client.invalidateQueries({ queryKey: ["user", accountId, "team"] }); }, onError: (value) => setError(errorMessage(value)) });
   const snapshot = useMutation({ mutationFn: () => createTeamSnapshot(authResponse.data.csrf_token, { snapshot_type: "MANUAL", captured_late: false }), onSuccess: (value) => { setNotice("团队快照已保存"); setSelectedSnapshot(value.data); setView("snapshots"); void client.invalidateQueries({ queryKey: ["user", accountId, "team", "snapshots"] }); }, onError: (value) => setError(errorMessage(value)) });
 
-  if (membersQuery.isPending || snapshotsQuery.isPending) return <LoadingState label="正在加载团队" />;
+  if (membersQuery.isPending || snapshotsQuery.isPending) return <PageLoadingState eyebrow="组织与协作" title="团队" description="查看团队成长结构。" label="正在加载团队" />;
   if (membersQuery.isError || snapshotsQuery.isError) return <ErrorState message="团队数据暂时无法加载" onRetry={() => { void membersQuery.refetch(); void snapshotsQuery.refetch(); }} />;
 
   const activeCount = members.filter((member) => member.status === "ACTIVE").length;

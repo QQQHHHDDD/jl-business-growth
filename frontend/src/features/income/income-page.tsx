@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, PageLoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { errorMessage } from "@/lib/utils";
 import { formatMoney } from "@/lib/money";
@@ -38,7 +38,7 @@ export function IncomePage({ authResponse }: { authResponse: AuthResponse }) {
   const duplicate = useMutation({ mutationFn: (id: string) => duplicateIncomeSimulation(authResponse.data.csrf_token, id), onSuccess: () => { setNotice("方案已复制"); void client.invalidateQueries({ queryKey: ["user", accountId, "income-simulations"] }); }, onError: (value) => setError(errorMessage(value)) });
   const remove = useMutation({ mutationFn: () => deleteIncomeSimulation(authResponse.data.csrf_token, removeTarget!.id), onSuccess: () => { setRemoveTarget(null); setNotice("方案已删除"); void client.invalidateQueries({ queryKey: ["user", accountId, "income-simulations"] }); }, onError: (value) => setError(errorMessage(value)) });
   const compare = useMutation({ mutationFn: () => compareIncomeSimulations(compareIds), onSuccess: (value) => { setCompareResult(value.data.items); setNotice("方案比较已更新"); }, onError: (value) => setError(errorMessage(value)) });
-  if (simulationsQuery.isPending) return <LoadingState label="正在加载收入模拟" />;
+  if (simulationsQuery.isPending) return <PageLoadingState eyebrow="版本化测算" title="收入模拟" description="比较不同经营方案的结果。" label="正在加载收入模拟" />;
   if (simulationsQuery.isError) return <ErrorState message="收入模拟方案暂时无法加载" onRetry={() => void simulationsQuery.refetch()} />;
   const simulations = simulationsQuery.data.data.items;
   const setMarket = (index: number, value: string) => { const markets = [...input.markets]; markets[index] = Number(value); setInput({ ...input, markets }); };

@@ -10,8 +10,8 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { getLiveHealth, getMe, logout, type AuthResponse } from "@/api/client";
-import { AppShell } from "@/components/layout/navigation";
-import { ErrorState, LoadingState } from "@/components/ui/state-block";
+import { AppLoadingShell, AppShell } from "@/components/layout/navigation";
+import { ErrorState, LoadingState, PageLoadingState } from "@/components/ui/state-block";
 import {
   AdminAdminsPage,
   AdminHomePage,
@@ -69,9 +69,17 @@ type HealthQuery = ReturnType<
   typeof useQuery<Awaited<ReturnType<typeof getLiveHealth>>>
 >;
 
-function DeferredPage({ children }: { children: ReactNode }) {
+function DeferredPage({
+  children,
+  title,
+  description,
+}: {
+  children: ReactNode;
+  title: string;
+  description: string;
+}) {
   return (
-    <Suspense fallback={<LoadingState label="正在加载页面" />}>
+    <Suspense fallback={<PageLoadingState title={title} description={description} label={`正在加载${title}`} />}>
       {children}
     </Suspense>
   );
@@ -85,7 +93,7 @@ function ProtectedRoute({
   children?: ReactNode;
 }) {
   const location = useLocation();
-  if (meQuery.isPending) return <LoadingState label="正在确认登录状态" />;
+  if (meQuery.isPending) return <AppLoadingShell label="正在确认登录状态" />;
   if (meQuery.isError)
     return (
       <ErrorState
@@ -202,7 +210,7 @@ function UserDashboardRoute({ meQuery }: { meQuery: MeQuery }) {
 
 function UserGoalsRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? (
-    <DeferredPage>
+    <DeferredPage title="梦想与目标" description="建立梦想和目标之间的清晰路径。">
       <GoalsPage authResponse={meQuery.data} />
     </DeferredPage>
   ) : null;
@@ -218,7 +226,7 @@ function UserTurnoverRoute({ meQuery }: { meQuery: MeQuery }) {
 
 function UserCalendarRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? (
-    <DeferredPage>
+    <DeferredPage title="日历" description="安排需要持续推进的工作。">
       <CalendarPage authResponse={meQuery.data} />
     </DeferredPage>
   ) : null;
@@ -234,7 +242,7 @@ function UserAnalyticsRoute({ meQuery }: { meQuery: MeQuery }) {
 
 function UserTeamRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? (
-    <DeferredPage>
+    <DeferredPage title="团队" description="查看团队成长结构。">
       <TeamPage authResponse={meQuery.data} />
     </DeferredPage>
   ) : null;
