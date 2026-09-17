@@ -70,6 +70,22 @@ beforeEach(() => {
 });
 
 describe("CalendarPage", () => {
+  it("shows contact loading without briefly rendering the empty state", async () => {
+    vi.mocked(listCalendarContacts).mockImplementationOnce(() => new Promise(() => undefined));
+    renderPage();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "常用联系人" }), { button: 0 });
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载常用联系人");
+    expect(screen.queryByText("还没有常用联系人")).not.toBeInTheDocument();
+  });
+
+  it("shows the contact empty state only after a successful empty response", async () => {
+    vi.mocked(listCalendarContacts).mockResolvedValueOnce({ data: { items: [] }, request_id: "request-empty" });
+    renderPage();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "常用联系人" }), { button: 0 });
+    expect(await screen.findByText("还没有常用联系人")).toBeVisible();
+    expect(screen.queryByText("常用联系人暂时无法加载")).not.toBeInTheDocument();
+  });
+
   it("keeps the calendar primary, renders complete event information, and hides timezone labels", async () => {
     renderPage();
     const calendar = await screen.findByTestId("full-calendar");

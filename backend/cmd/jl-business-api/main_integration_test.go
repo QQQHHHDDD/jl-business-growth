@@ -622,6 +622,13 @@ func TestPhase4APIIntegration(t *testing.T) {
 	if !tables {
 		t.Fatal("Phase 4 migration is not applied; run make migrate-test-up first")
 	}
+	var nodeColorColumn bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='team_members' AND column_name='node_color')`).Scan(&nodeColorColumn); err != nil {
+		t.Fatalf("check team node color migration: %v", err)
+	}
+	if !nodeColorColumn {
+		t.Fatal("team node color migration is not applied; run make migrate-test-up first")
+	}
 	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
 		t.Fatalf("reset isolated test database: %v", err)
 	}
@@ -644,14 +651,26 @@ func TestPhase4APIIntegration(t *testing.T) {
 	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase4-user", "password": "phase4-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
 	var userAuth api.AuthResponse
 	decodeTestJSON(t, registered, &userAuth)
-	parentBody := map[string]interface{}{"name": "Phase 4 root", "rank": "主任", "city": "上海"}
+	parentBody := map[string]interface{}{"name": "Phase 4 root", "rank": "主任", "city": "上海", "node_color": "#2563EB"}
 	parentResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", parentBody, userAuth.Data.CsrfToken, http.StatusCreated)
 	var parent api.TeamMemberResponse
 	decodeTestJSON(t, parentResponse, &parent)
+	if parent.Data.NodeColor != "#2563eb" {
+		t.Fatalf("team node color = %q, want normalized color", parent.Data.NodeColor)
+	}
 	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "1"}, userAuth.Data.CsrfToken, http.StatusBadRequest)
+	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "Invalid color", "node_color": "blue"}, userAuth.Data.CsrfToken, http.StatusBadRequest)
 	childResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "Phase 4 child", "parent_id": parent.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var child api.TeamMemberResponse
 	decodeTestJSON(t, childResponse, &child)
+	if child.Data.NodeColor != "#0f766e" {
+		t.Fatalf("default team node color = %q", child.Data.NodeColor)
+	}
+	updatedParentBody := putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members/"+parent.Data.Id.String(), map[string]interface{}{"name": "Phase 4 root", "rank": "主任", "city": "上海", "node_color": "#7C3AED"}, userAuth.Data.CsrfToken, http.StatusOK)
+	decodeTestJSON(t, updatedParentBody, &parent)
+	if parent.Data.NodeColor != "#7c3aed" {
+		t.Fatalf("updated team node color = %q", parent.Data.NodeColor)
+	}
 	putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members/"+parent.Data.Id.String(), map[string]interface{}{"name": "Phase 4 root", "parent_id": child.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusBadRequest)
 	teamWithoutSnapshotsBody := getTestJSON(t, userClient, server.URL, "/api/analytics/team?from=2026-09-01&to=2026-10-01&granularity=month", http.StatusOK)
 	var teamWithoutSnapshots api.AnalyticsResponse
@@ -746,7 +765,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 	}
 	exportRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
 	exportData := doTestRequest(t, userClient, exportRequest, http.StatusOK)
-	if !strings.Contains(string(exportData), "member_code,name,parent_member_code") || !strings.Contains(string(exportData), "Phase 4 root") {
+	if !strings.Contains(string(exportData), "member_code,name,parent_member_code") || !strings.Contains(string(exportData), "node_color") || !strings.Contains(string(exportData), "#7c3aed") {
 		t.Fatalf("team export does not contain stable hierarchy columns: %q", exportData)
 	}
 	searchResponse := getTestJSON(t, userClient, server.URL, "/api/search?q=Phase%204%20book", http.StatusOK)
@@ -798,6 +817,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 	if len(isolatedSearch.Data.Items) != 0 {
 		t.Fatalf("single-character search leaked records across accounts: %+v", isolatedSearch.Data.Items)
 	}
+	putTestJSON(t, isolatedClient, server.URL, cfg.PublicBaseURL, "/api/team/members/"+parent.Data.Id.String(), map[string]interface{}{"name": "Not owner", "node_color": "#be123c"}, isolatedAuth.Data.CsrfToken, http.StatusNotFound)
 	getTestJSON(t, userClient, server.URL, "/api/files/"+fileResponse.Data.Id.String()+"/content?disposition=inline", http.StatusOK)
 	getTestJSON(t, adminClient, server.URL, "/api/team/members", http.StatusForbidden)
 	getTestJSON(t, adminClient, server.URL, "/api/knowledge", http.StatusForbidden)
@@ -1037,7 +1057,7 @@ func TestPhase6APIIntegration(t *testing.T) {
 	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+reimport.Id.String()+"/commit", nil, userAuth.Data.CsrfToken, http.StatusConflict)
 	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+reimport.Id.String()+"/commit", nil, userAuth.Data.CsrfToken, http.StatusConflict)
 
-	rootBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"member_code": "roundtrip-root", "name": "Roundtrip root"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	rootBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"member_code": "roundtrip-root", "name": "Roundtrip root", "node_color": "#be123c"}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var root api.TeamMemberResponse
 	decodeTestJSON(t, rootBody, &root)
 	childBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"member_code": "roundtrip-child", "name": "Roundtrip child", "parent_id": root.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
@@ -1067,7 +1087,7 @@ func TestPhase6APIIntegration(t *testing.T) {
 	importedRoot, rootFound := byCode["roundtrip-root"]
 	importedChild, childFound := byCode["roundtrip-child"]
 	importedLeaf, leafFound := byCode["roundtrip-leaf"]
-	if !rootFound || !childFound || !leafFound || importedChild.ParentId == nil || importedLeaf.ParentId == nil || *importedChild.ParentId != importedRoot.Id || *importedLeaf.ParentId != importedChild.Id {
+	if !rootFound || !childFound || !leafFound || importedChild.ParentId == nil || importedLeaf.ParentId == nil || *importedChild.ParentId != importedRoot.Id || *importedLeaf.ParentId != importedChild.Id || importedRoot.NodeColor != "#be123c" {
 		t.Fatalf("team round trip did not restore three-level hierarchy: %+v", teamMembers.Data.Items)
 	}
 

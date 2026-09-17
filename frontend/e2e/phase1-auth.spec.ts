@@ -65,6 +65,24 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     page.getByRole("heading", { name: new RegExp(firstUsername) }),
   ).toBeVisible();
 
+  let releaseTeamRequest: (() => void) | undefined;
+  const teamRequestGate = new Promise<void>((resolve) => {
+    releaseTeamRequest = resolve;
+  });
+  await page.route(
+    "**/api/team/members",
+    async (route) => {
+      await teamRequestGate;
+      await route.continue();
+    },
+    { times: 1 },
+  );
+  await page.goto("/app/team");
+  await expect(page.getByRole("heading", { name: "团队", exact: true })).toBeVisible();
+  await expect(page.getByText("还没有团队成员")).toHaveCount(0);
+  releaseTeamRequest?.();
+  await expect(page.getByText("还没有团队成员")).toBeVisible();
+
   await page.goto("/app/worklog");
   await expect(
     page.getByRole("heading", { name: "今日工作量", exact: true }),
@@ -141,6 +159,25 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(page.getByRole("status")).toContainText("日程已保存");
   await expect(page.getByText("E2E 日历会面").first()).toBeVisible();
 
+  const contactsResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname === "/api/calendar/contacts",
+  );
+  await page.reload();
+  expect((await contactsResponse).status()).toBe(200);
+  await page.getByRole("tab", { name: "常用联系人" }).click();
+  await expect(page.getByText("还没有常用联系人")).toBeVisible();
+  await page.getByRole("button", { name: "新增联系人" }).click();
+  await page.getByLabel("姓名（可选）").fill("E2E 联系人");
+  await page.getByLabel("邮箱", { exact: true }).fill("e2e-contact@example.test");
+  await page.getByRole("button", { name: "保存联系人" }).click();
+  await expect(page.getByRole("status")).toContainText("常用联系人已保存");
+  await expect(page.getByText("e2e-contact@example.test")).toBeVisible();
+  await page.reload();
+  await page.getByRole("tab", { name: "常用联系人" }).click();
+  await expect(page.getByText("e2e-contact@example.test")).toBeVisible();
+
   await page.goto("/app/reviews");
   await expect(
     page.getByRole("heading", { name: "复盘", exact: true }),
@@ -177,8 +214,14 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "新增成员" }).click();
   await page.getByLabel("团队成员姓名").fill("E2E 团队成员");
+  await page.getByLabel("自定义节点颜色").fill("#2563eb");
   await page.getByRole("button", { name: "保存成员" }).click();
   await expect(page.getByRole("status")).toContainText("团队成员已保存");
+  const teamNode = page.locator(".react-flow__node").filter({ hasText: "E2E 团队成员" });
+  await expect(teamNode).toHaveCSS("background-color", "rgb(37, 99, 235)");
+  await expect(page.locator(".team-graph .react-flow__handle").first()).toHaveCSS("opacity", "0");
+  await page.reload();
+  await expect(page.locator(".react-flow__node").filter({ hasText: "E2E 团队成员" })).toHaveCSS("background-color", "rgb(37, 99, 235)");
 
   await page.goto("/app/knowledge");
   await expect(
@@ -204,7 +247,9 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     page.getByRole("heading", { name: "财务", exact: true }),
   ).toBeVisible();
   const e2eCategory = `E2E支出${Date.now().toString().slice(-6)}`;
-  await page.getByText("管理收支分类", { exact: true }).click();
+  const categoryDisclosure = page.locator("summary").filter({ hasText: "管理收支分类" });
+  await categoryDisclosure.focus();
+  await categoryDisclosure.press("Enter");
   await page.getByLabel("分类名称").fill(e2eCategory);
   await page.getByRole("button", { name: "新增分类" }).click();
   await expect(page.getByRole("status")).toContainText("财务分类已创建");

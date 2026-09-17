@@ -1,15 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import type { Account, AuthResponse, TeamMember, TeamSnapshot } from "@/api/client";
-import { listTeamMembers, listTeamSnapshots } from "@/api/client";
+import { listTeamMembers, listTeamSnapshots, saveTeamMember } from "@/api/client";
 import { businessDate } from "@/lib/date";
 import { TeamPage } from "./team-page";
 
 vi.mock("@xyflow/react", () => ({
-  ReactFlow: ({ nodes, onNodeClick, children, fitView, panOnDrag }: { nodes: Array<{ id: string; data: { label: string }; style?: { width?: number; background?: string } }>; onNodeClick?: (event: unknown, node: { id: string }) => void; children: ReactNode; fitView?: boolean; panOnDrag?: boolean }) => <div data-testid="react-flow" data-fit-view={String(fitView)} data-pan-on-drag={String(panOnDrag)}>{nodes.map((node) => <button key={node.id} type="button" data-node-width={node.style?.width} data-node-color={node.style?.background} onClick={() => onNodeClick?.({}, node)}>{node.data.label}</button>)}{children}</div>,
+  ReactFlow: ({ nodes, edges, onNodeClick, children, fitView, panOnDrag }: { nodes: Array<{ id: string; data: { label: string }; style?: { width?: number; background?: string } }>; edges: Array<unknown>; onNodeClick?: (event: unknown, node: { id: string }) => void; children: ReactNode; fitView?: boolean; panOnDrag?: boolean }) => <div data-testid="react-flow" data-edge-count={edges.length} data-fit-view={String(fitView)} data-pan-on-drag={String(panOnDrag)}>{nodes.map((node) => <button key={node.id} type="button" data-node-width={node.style?.width} data-node-color={node.style?.background} onClick={() => onNodeClick?.({}, node)}>{node.data.label}</button>)}{children}</div>,
   Controls: () => <div><button type="button" aria-label="放大关系图">+</button><button type="button" aria-label="缩小关系图">-</button><button type="button" aria-label="适配关系图">fit</button></div>,
   Background: () => null,
 }));
@@ -63,6 +63,7 @@ const child = {
   rank: "顾问",
   city: "杭州",
   note: null,
+  node_color: "#be123c",
 } as TeamMember;
 const snapshot = {
   id: "00000000-0000-0000-0000-000000000020",
@@ -95,6 +96,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(listTeamMembers).mockResolvedValue({ data: { items: [parent, child] }, request_id: "request-2" });
   vi.mocked(listTeamSnapshots).mockResolvedValue({ data: { items: [snapshot] }, request_id: "request-3" });
+  vi.mocked(saveTeamMember).mockResolvedValue({ data: parent, request_id: "request-save" });
 });
 
 describe("TeamPage", () => {
@@ -105,6 +107,7 @@ describe("TeamPage", () => {
     expect(screen.getByRole("img", { name: "团队关系图" })).toBeVisible();
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-fit-view", "true");
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-pan-on-drag", "true");
+    expect(screen.getByTestId("react-flow")).toHaveAttribute("data-edge-count", "1");
     expect(within(screen.getByTestId("team-graph")).queryByText("经理", { exact: true })).not.toBeInTheDocument();
     expect(within(screen.getByTestId("team-graph")).queryByText("上海", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByLabelText("搜索成员").closest("header")).not.toBeNull();
@@ -113,7 +116,7 @@ describe("TeamPage", () => {
     const partnerNode = graphButtons.find((button) => button.textContent === "业务伙伴");
     expect(Number(leaderNode?.dataset.nodeWidth)).toBeGreaterThan(Number(partnerNode?.dataset.nodeWidth));
     expect(leaderNode).toHaveAttribute("data-node-color", "#2563eb");
-    expect(partnerNode).toHaveAttribute("data-node-color", "#2563eb");
+    expect(partnerNode).toHaveAttribute("data-node-color", "#be123c");
 
     fireEvent.click(within(screen.getByTestId("team-graph")).getByRole("button", { name: "团队负责人" }));
     expect(screen.getByRole("dialog")).toBeVisible();
@@ -124,6 +127,10 @@ describe("TeamPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "编辑成员" }));
     expect(screen.getByRole("heading", { name: "编辑成员" })).toBeVisible();
     expect(screen.getByLabelText("团队成员姓名")).toHaveValue("团队负责人");
+    expect(screen.getByLabelText("自定义节点颜色")).toHaveValue("#2563eb");
+    fireEvent.change(screen.getByLabelText("自定义节点颜色"), { target: { value: "#7c3aed" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存成员" }));
+    await waitFor(() => expect(saveTeamMember).toHaveBeenCalledWith("csrf-token", expect.objectContaining({ node_color: "#7c3aed" }), parent.id));
   });
 
   it("provides searchable list and an independent snapshot view", async () => {
@@ -148,6 +155,11 @@ describe("TeamPage", () => {
     await screen.findByRole("button", { name: "新增成员" });
     fireEvent.click(screen.getByRole("button", { name: "新增成员" }));
     expect(screen.getByLabelText("加入日期")).toHaveValue(businessDate(account.timezone));
+    expect(screen.getByLabelText("自定义节点颜色")).toHaveValue("#0f766e");
+    fireEvent.click(screen.getByRole("button", { name: "选择节点颜色 #be123c" }));
+    expect(screen.getByLabelText("自定义节点颜色")).toHaveValue("#be123c");
+    fireEvent.click(screen.getByRole("button", { name: "恢复默认颜色" }));
+    expect(screen.getByLabelText("自定义节点颜色")).toHaveValue("#0f766e");
   });
 
   it("restores a member deep link and exposes graph controls", async () => {
