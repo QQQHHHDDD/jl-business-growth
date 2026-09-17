@@ -163,6 +163,17 @@ describe("CalendarPage", () => {
     await waitFor(() => expect(deleteCalendarContact).toHaveBeenCalledWith("csrf-token", contact.id));
   });
 
+  it("keeps contact request failures distinct from an empty list and retries on demand", async () => {
+    vi.mocked(listCalendarContacts).mockRejectedValueOnce(new Error("backend unavailable"));
+    renderPage();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "常用联系人" }), { button: 0 });
+    expect(await screen.findByRole("alert")).toHaveTextContent("常用联系人暂时无法加载");
+    expect(screen.queryByText("还没有常用联系人")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(await screen.findByText("guest@example.test")).toBeVisible();
+    expect(listCalendarContacts).toHaveBeenCalledTimes(2);
+  });
+
   it("restores an event deep link into the detail dialog", async () => {
     renderPage(`/app/calendar?event=${recurringEvent.id}`);
     expect(await screen.findByRole("heading", { name: recurringEvent.title })).toBeVisible();
