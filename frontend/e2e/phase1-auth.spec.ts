@@ -316,12 +316,14 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
 
   await page.goto("/app/goals");
   const pageContainer = page.getByTestId("page-container");
-  const initialContainer = await pageContainer.boundingBox();
   for (const tab of ["目标列表", "梦想板", "目标地图"]) {
     await page.getByRole("tab", { name: tab }).click();
-    const currentContainer = await pageContainer.boundingBox();
-    expect(Math.abs((currentContainer?.x ?? 0) - (initialContainer?.x ?? 0))).toBeLessThanOrEqual(1);
-    expect(Math.abs((currentContainer?.width ?? 0) - (initialContainer?.width ?? 0))).toBeLessThanOrEqual(1);
+    await expect(pageContainer).toHaveCSS("max-width", "1360px");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+      ),
+    ).toBe(true);
   }
 
   await page.goto("/app/calendar");

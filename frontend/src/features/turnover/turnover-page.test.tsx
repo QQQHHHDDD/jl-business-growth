@@ -40,7 +40,9 @@ describe("TurnoverPage", () => {
     fireEvent.change(netInput, { target: { value: "2500.00" } });
     expect(pvInput).toHaveValue(200);
 
-    fireEvent.click(screen.getByRole("button", { name: "保存营业额" }));
+    const saveButton = screen.getByRole("button", { name: "保存营业额" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
     await waitFor(() => expect(saveTurnover).toHaveBeenCalledWith("csrf-token", { turnover_date: date, pv: 200, net_amount: "2500.00", note: null }, true));
   });
 
