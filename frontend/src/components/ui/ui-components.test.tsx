@@ -14,13 +14,14 @@ describe("shared UI primitives", () => {
     render(
       <>
         <Button loading>保存</Button>
-        <Input label="账号" description="用于登录" error="账号不能为空" required />
+        <Input label="账号" description="用于登录" error="账号不能为空" icon={<span>搜索</span>} required />
       </>,
     );
 
     expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "保存" })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByLabelText("账号")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("账号")).toHaveClass("pl-10");
     expect(screen.getByLabelText("账号")).toHaveAttribute("aria-describedby");
     expect(screen.getByText("账号不能为空")).toBeInTheDocument();
   });
