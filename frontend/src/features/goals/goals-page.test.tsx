@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, Dream, Goal } from "@/api/client";
 import { listDreams, listFiles, listGoals, saveGoal, uploadFile } from "@/api/client";
+import { businessDate } from "@/lib/date";
 import { GoalsPage } from "./goals-page";
 
 vi.mock("@xyflow/react", () => ({
@@ -116,6 +117,8 @@ describe("GoalsPage", () => {
     fireEvent.click(createButton);
     expect(screen.getByRole("dialog")).toBeVisible();
     expect(screen.getByRole("heading", { name: "新建目标" })).toBeVisible();
+    expect(screen.getByLabelText("开始日期")).toHaveValue(businessDate(account.timezone));
+    expect(screen.getByLabelText("截止日期")).toHaveValue(businessDate(account.timezone));
     fireEvent.click(screen.getByRole("button", { name: "关闭" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await waitFor(() => expect(createButton).toHaveFocus());

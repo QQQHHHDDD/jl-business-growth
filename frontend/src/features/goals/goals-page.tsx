@@ -19,6 +19,7 @@ import { Panel } from "@/components/ui/panel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
 
 const goalTypes = ["LONG_TERM", "YEAR", "STAGE", "MONTH", "WEEK", "DAY"] as const;
@@ -49,7 +50,7 @@ const typeLabels: Record<string, string> = { LONG_TERM: "长期", YEAR: "年度"
 const statusLabels: Record<string, string> = { NOT_STARTED: "未开始", IN_PROGRESS: "进行中", COMPLETED: "已完成", PAUSED: "已暂停", CANCELLED: "已取消" };
 const statusTones: Record<string, "success" | "warning" | "danger" | "neutral" | "info"> = { NOT_STARTED: "neutral", IN_PROGRESS: "info", COMPLETED: "success", PAUSED: "warning", CANCELLED: "danger" };
 
-const defaultGoal = (): GoalForm => ({ title: "", type: "YEAR", parent_id: "", start_date: "", due_date: "", status: "NOT_STARTED", metric_code: "", target_value: undefined, unit: "" });
+const defaultGoal = (date: string): GoalForm => ({ title: "", type: "YEAR", parent_id: "", start_date: date, due_date: date, status: "NOT_STARTED", metric_code: "", target_value: undefined, unit: "" });
 function goalForm(value: Goal): GoalForm {
   const metric = value.metrics[0];
   return { title: value.title, type: value.type, parent_id: value.parent_id ?? "", start_date: value.start_date ?? "", due_date: value.due_date ?? "", status: value.status, metric_code: metric?.metric_code ?? "", target_value: metric?.target_value, unit: metric?.unit ?? "" };
@@ -57,6 +58,7 @@ function goalForm(value: Goal): GoalForm {
 
 export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   const accountID = authResponse.data.account.id;
+  const today = businessDate(authResponse.data.account.timezone);
   const queryClient = useQueryClient();
   const goalsQuery = useQuery({ queryKey: ["user", accountID, "goals"], queryFn: listGoals });
   const dreamsQuery = useQuery({ queryKey: ["user", accountID, "dreams"], queryFn: listDreams });
@@ -77,7 +79,7 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   const handledDeepLink = useRef<string | null>(null);
   const goalReturnFocus = useRef<HTMLElement | null>(null);
   const dreamReturnFocus = useRef<HTMLElement | null>(null);
-  const goalFormState = useForm<GoalForm>({ resolver: zodResolver(goalSchema), defaultValues: defaultGoal() });
+  const goalFormState = useForm<GoalForm>({ resolver: zodResolver(goalSchema), defaultValues: defaultGoal(today) });
   const dreamFormState = useForm<DreamForm>({ resolver: zodResolver(dreamSchema), defaultValues: { title: "", description: "" } });
   const editingGoal = goalSheet?.mode === "edit" ? goalSheet.goal : null;
   const editingDream = dreamSheet?.mode === "edit" ? dreamSheet.dream : null;
@@ -104,8 +106,8 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   };
 
   useEffect(() => {
-    goalFormState.reset(editingGoal ? goalForm(editingGoal) : defaultGoal());
-  }, [editingGoal, goalFormState]);
+    goalFormState.reset(editingGoal ? goalForm(editingGoal) : defaultGoal(today));
+  }, [editingGoal, goalFormState, today]);
 
   const goals = useMemo(() => goalsQuery.data?.data.items ?? [], [goalsQuery.data]);
   const files = filesQuery.data?.data.items.filter((file) => file.category === "DREAM_IMAGE") ?? [];
