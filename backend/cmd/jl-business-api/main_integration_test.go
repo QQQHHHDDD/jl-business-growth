@@ -519,11 +519,46 @@ func TestPhase3APIIntegration(t *testing.T) {
 		}
 	}
 	recurring := map[string]interface{}{"title": "Phase 3 daily series", "timezone": "Asia/Shanghai", "start_at": start, "end_at": end, "recurrence_freq": "DAILY", "recurrence_interval": 1, "recurrence_end_type": "COUNT", "recurrence_count": 3}
-	postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events", recurring, userAuth.Data.CsrfToken, http.StatusCreated)
+	recurringBody := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events", recurring, userAuth.Data.CsrfToken, http.StatusCreated)
+	var recurringCreated api.CalendarEventResponse
+	decodeTestJSON(t, recurringBody, &recurringCreated)
 	seriesListed := getTestJSON(t, userClient, server.URL, "/api/calendar/events?from="+url.QueryEscape(start.Add(-time.Hour).Format(time.RFC3339))+"&to="+url.QueryEscape(start.Add(4*24*time.Hour).Format(time.RFC3339)), http.StatusOK)
 	decodeTestJSON(t, seriesListed, &eventList)
 	if len(eventList.Data.Items) != 4 {
 		t.Fatalf("recurring calendar list length = %d, want one event plus three daily occurrences", len(eventList.Data.Items))
+	}
+	seriesOccurrences := make([]api.CalendarEvent, 0, 3)
+	for _, item := range eventList.Data.Items {
+		if item.Id == recurringCreated.Data.Id {
+			seriesOccurrences = append(seriesOccurrences, item)
+		}
+	}
+	if len(seriesOccurrences) != 3 {
+		t.Fatalf("recurring occurrences = %+v, want three editable instances", seriesOccurrences)
+	}
+	secondOccurrence := seriesOccurrences[1]
+	modifiedStart, modifiedEnd := secondOccurrence.StartAt.Add(2*time.Hour), secondOccurrence.EndAt.Add(2*time.Hour)
+	modifiedBody := putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events/"+recurringCreated.Data.Id.String(), map[string]interface{}{
+		"title": recurringCreated.Data.Title, "timezone": "America/New_York", "start_at": modifiedStart, "end_at": modifiedEnd,
+		"recurrence_freq": "DAILY", "recurrence_interval": 1, "recurrence_end_type": "COUNT", "recurrence_count": 3,
+		"edit_scope": "THIS_ONLY", "occurrence_start": secondOccurrence.StartAt,
+	}, userAuth.Data.CsrfToken, http.StatusOK)
+	var modifiedOccurrence api.CalendarEventResponse
+	decodeTestJSON(t, modifiedBody, &modifiedOccurrence)
+	if modifiedOccurrence.Data.IsException == nil || !*modifiedOccurrence.Data.IsException || !modifiedOccurrence.Data.StartAt.Equal(modifiedStart) || modifiedOccurrence.Data.OriginalOccurrenceStart == nil {
+		t.Fatalf("modified recurring occurrence = %+v", modifiedOccurrence.Data)
+	}
+	thirdOccurrence := seriesOccurrences[2]
+	futureStart, futureEnd := thirdOccurrence.StartAt.Add(3*time.Hour), thirdOccurrence.EndAt.Add(3*time.Hour)
+	futureBody := putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events/"+recurringCreated.Data.Id.String(), map[string]interface{}{
+		"title": "Phase 3 moved future series", "timezone": "America/New_York", "start_at": futureStart, "end_at": futureEnd,
+		"recurrence_freq": "DAILY", "recurrence_interval": 1, "recurrence_end_type": "COUNT", "recurrence_count": 2,
+		"edit_scope": "THIS_AND_FOLLOWING", "occurrence_start": thirdOccurrence.StartAt,
+	}, userAuth.Data.CsrfToken, http.StatusOK)
+	var futureSeries api.CalendarEventResponse
+	decodeTestJSON(t, futureBody, &futureSeries)
+	if futureSeries.Data.Id == recurringCreated.Data.Id || futureSeries.Data.Title != "Phase 3 moved future series" || !futureSeries.Data.StartAt.Equal(futureStart) {
+		t.Fatalf("future recurring series = %+v", futureSeries.Data)
 	}
 	period := start.Format("2006-01-02")
 	review := putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/reviews/DAILY/"+period, map[string]string{"good": "完成首次日历闭环", "next_focus": "保持节奏"}, userAuth.Data.CsrfToken, http.StatusOK)
