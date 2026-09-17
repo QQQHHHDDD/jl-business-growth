@@ -22,8 +22,15 @@ describe("AnalyticsPage", () => {
     expect(screen.getByText("当前只有 1 个统计周期，数据不足以形成趋势。")).toBeVisible();
     expect(screen.getAllByText("开启对话").length).toBeGreaterThan(0);
     expect(screen.getByRole("table")).toBeVisible();
+    const toolbar = screen.getByTestId("analytics-range-toolbar");
+    const condition = screen.getByTestId("analytics-range-condition");
+    expect(toolbar).toHaveClass("min-h-[76px]");
+    expect(condition).toHaveClass("min-h-10");
+    expect(condition).toBeEmptyDOMElement();
     fireEvent.click(screen.getByRole("button", { name: "自定义" }));
     expect(screen.getByLabelText("开始日期")).toBeVisible();
+    expect(screen.getByTestId("analytics-range-toolbar")).toBe(toolbar);
+    expect(screen.getByTestId("analytics-range-condition")).toBe(condition);
     fireEvent.mouseDown(screen.getByRole("tab", { name: "财务" }), { button: 0 });
     expect(screen.getByRole("tab", { name: "财务" })).toHaveAttribute("data-state", "active");
     expect(await screen.findByRole("heading", { name: "财务趋势" })).toBeVisible();

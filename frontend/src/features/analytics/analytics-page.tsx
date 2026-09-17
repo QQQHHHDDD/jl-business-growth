@@ -46,10 +46,10 @@ export function AnalyticsPage({ authResponse }: { authResponse: AuthResponse }) 
   return <div className="space-y-6">
     <PageHeader eyebrow="经营分析" title="数据统计" description="按业务领域和时间范围查看当前账号已记录的数据。" />
     <Tabs value={metric} onValueChange={(value) => setMetric(value as Metric)}><TabsList aria-label="统计领域"><TabsTrigger value="worklogs">工作量</TabsTrigger><TabsTrigger value="turnover">营业额</TabsTrigger><TabsTrigger value="goals">目标</TabsTrigger><TabsTrigger value="team">团队</TabsTrigger><TabsTrigger value="finance">财务</TabsTrigger></TabsList></Tabs>
-    <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+    <div data-testid="analytics-range-toolbar" className="grid min-h-[76px] items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 lg:grid-cols-[auto_minmax(320px,1fr)_auto]">
       <div className="inline-flex flex-wrap gap-1" role="group" aria-label="统计时间范围">{([['week', '本周'], ['month', '本月'], ['calendarYear', '自然年'], ['fiscalYear', '财年'], ['custom', '自定义']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={range === value} onClick={() => setRange(value)} className={`min-h-9 rounded-md px-3 text-sm font-semibold ${range === value ? "bg-teal-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>{label}</button>)}</div>
-      {range === "custom" && <div className="flex flex-col gap-2 sm:flex-row"><DateField label="开始日期" value={customFrom} onChange={setCustomFrom} /><DateField label="结束日期" value={customTo} onChange={setCustomTo} /></div>}
-      <p className="text-xs text-slate-500">{selected.from} 至 {selected.to}</p>
+      <div data-testid="analytics-range-condition" className="flex min-h-10 items-center justify-start">{range === "custom" && <div className="flex flex-col gap-2 sm:flex-row"><DateField label="开始日期" value={customFrom} onChange={setCustomFrom} /><DateField label="结束日期" value={customTo} onChange={setCustomTo} /></div>}</div>
+      <p className="whitespace-nowrap text-xs text-slate-500 lg:text-right">{selected.from} 至 {selected.to}</p>
     </div>
     {query.isPending ? <LoadingState label="正在计算统计" /> : query.isError ? <ErrorState message="统计暂时无法加载" onRetry={() => void query.refetch()} /> : query.data.data.buckets.length || metric === "team" ? <AnalyticsWorkspace metric={metric} data={query.data} /> : <div className="min-h-[240px] rounded-lg border border-slate-200 bg-white"><EmptyState title={`${metricLabels[metric]}暂无统计记录`} description="在当前时间范围保存记录后，这里会显示统计结果。" /></div>}
   </div>;
