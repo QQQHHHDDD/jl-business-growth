@@ -209,9 +209,8 @@ function DashboardContent({
 }) {
   const { date, week, month } = data.data;
   const todayEvents = data.data.upcoming_events
-    .filter((event) => dateInTimezone(event.start_at, timezone) === date)
-    .slice(0, 4);
-  const activeGoals = data.data.active_goals.slice(0, 3);
+    .filter((event) => dateInTimezone(event.start_at, timezone) === date);
+  const activeGoals = data.data.active_goals;
   const learningMinutes =
     data.data.learning_summary.reading_minutes +
     data.data.learning_summary.audio_minutes;
@@ -225,17 +224,10 @@ function DashboardContent({
               ? `${todayEvents.length} 项安排`
               : "今天还没有安排"
           }
-          action={
-            <Button asChild variant="secondary" size="sm">
-              <Link to="/app/calendar">
-                <Plus size={15} />
-                添加日程
-              </Link>
-            </Button>
-          }
+          action={<><Button asChild variant="ghost" size="sm"><Link to="/app/calendar">查看全部<ArrowRight size={15} /></Link></Button><Button asChild variant="secondary" size="sm"><Link to="/app/calendar"><Plus size={15} />添加日程</Link></Button></>}
         >
           {todayEvents.length ? (
-            <div>
+            <div data-testid="dashboard-today-scroll" className="h-[216px] overflow-y-auto pr-2">
               {todayEvents.map((event) => (
                 <div
                   key={event.id}
@@ -256,7 +248,7 @@ function DashboardContent({
               ))}
             </div>
           ) : (
-            <div className="flex items-center gap-3 py-5 text-sm text-slate-500">
+            <div data-testid="dashboard-today-scroll" className="flex h-[216px] items-center gap-3 text-sm text-slate-500">
               <CalendarDays size={18} className="text-teal-700" />
               今天暂无日程，可以留出时间推进最重要的目标。
             </div>
@@ -277,13 +269,13 @@ function DashboardContent({
           }
         >
           {activeGoals.length ? (
-            <div>
+            <div data-testid="dashboard-goals-scroll" className="h-[216px] overflow-y-auto pr-2">
               {activeGoals.map((goal) => (
                 <GoalProgress key={goal.id} goal={goal} />
               ))}
             </div>
           ) : (
-            <div className="flex items-center gap-3 py-5 text-sm text-slate-500">
+            <div data-testid="dashboard-goals-scroll" className="flex h-[216px] items-center gap-3 text-sm text-slate-500">
               <GoalIcon size={18} className="text-teal-700" />
               建立目标后，这里会显示真实完成进度。
             </div>
