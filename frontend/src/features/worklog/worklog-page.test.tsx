@@ -99,6 +99,17 @@ describe("WorklogPage", () => {
     expect(screen.getByRole("button", { name: "今天" })).toBeEnabled();
   });
 
+  it("uses matching row structure for growth and turnover sections", async () => {
+    vi.mocked(listWorklogs).mockResolvedValue({ data: { items: [] }, request_id: "request-2" });
+    renderPage();
+    const learning = await screen.findByTestId("worklog-learning-section");
+    const turnover = screen.getByTestId("worklog-turnover-section");
+    expect(learning).toHaveClass("grid-rows-[auto_minmax(40px,auto)_auto_auto]");
+    expect(turnover).toHaveClass("grid-rows-[auto_minmax(40px,auto)_auto_auto]");
+    expect(learning.querySelectorAll(":scope > *")).toHaveLength(4);
+    expect(turnover.querySelectorAll(":scope > *")).toHaveLength(4);
+  });
+
   it("keeps save semantics and limits recent records to seven", async () => {
     const today = businessDate(account.timezone);
     const items = Array.from({ length: 8 }, (_, index) => {

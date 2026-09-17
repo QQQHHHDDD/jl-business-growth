@@ -385,14 +385,14 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
           </section>
 
           <div className="grid border-t border-slate-200 lg:grid-cols-2 lg:divide-x lg:divide-slate-200">
-            <section aria-labelledby="worklog-learning" className="py-7 lg:pr-7">
+            <section data-testid="worklog-learning-section" aria-labelledby="worklog-learning" className="grid grid-rows-[auto_minmax(40px,auto)_auto_auto] gap-y-3 py-7 lg:pr-7">
               <h2
                 id="worklog-learning"
-                className="mb-4 text-base font-bold text-slate-950"
+                className="text-base font-bold text-slate-950"
               >
                 成长投入
               </h2>
-              <p className="-mt-2 mb-4 text-sm text-slate-500">读书和音频分钟会汇总到学习中心，使用同一份事实源。</p>
+              <p className="text-sm leading-5 text-slate-500">记录当天实际投入的读书和音频学习时间。</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input
                   label="读书分钟"
@@ -411,14 +411,16 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
                   {...form.register("audio_minutes", { valueAsNumber: true })}
                 />
               </div>
+              <p className="text-xs leading-5 text-slate-500">学习分钟会汇总到学习中心，使用同一份事实源。</p>
             </section>
-            <section aria-labelledby="worklog-turnover" className="border-t border-slate-200 py-7 lg:border-t-0 lg:pl-7">
+            <section data-testid="worklog-turnover-section" aria-labelledby="worklog-turnover" className="grid grid-rows-[auto_minmax(40px,auto)_auto_auto] gap-y-3 border-t border-slate-200 py-7 lg:border-t-0 lg:pl-7">
               <h2
                 id="worklog-turnover"
-                className="mb-4 text-base font-bold text-slate-950"
+                className="text-base font-bold text-slate-950"
               >
                 营业额
               </h2>
+              <p className="text-sm leading-5 text-slate-500">填写 PV 或净营业额时，另一项会按固定比例自动换算。</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input
                   label="营业额 PV（可选）"
@@ -439,7 +441,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
                   onChange={(event) => updateNetAmount(event.target.value)}
                 />
               </div>
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="text-xs leading-5 text-slate-500">
                 1 PV = ¥12.5；两项同时填写时允许标准货币舍入误差。
               </p>
             </section>
