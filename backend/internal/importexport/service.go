@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -45,9 +46,11 @@ const (
 var importColumns = map[string][]string{
 	ImportWorklog:  {"date", "open_conversation_count", "deep_conversation_count", "buffer_count", "story_share_count", "screening_count", "opportunity_count", "meeting_count", "customer_followup_count", "reading_minutes", "audio_minutes", "turnover_pv", "turnover_net_amount", "note"},
 	ImportFinance:  {"date", "type", "category", "amount", "description", "note"},
-	ImportTeam:     {"member_code", "name", "parent_member_code", "joined_on", "rank", "city", "status", "note"},
+	ImportTeam:     {"member_code", "name", "parent_member_code", "joined_on", "rank", "city", "status", "note", "node_color"},
 	ImportTurnover: {"date", "pv", "net_amount", "note"},
 }
+
+var teamNodeColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
 type Service struct {
 	pool    *pgxpool.Pool
@@ -780,6 +783,13 @@ func validateParsed(kind string, item *parsedRow) {
 				item.Preview.Errors = append(item.Preview.Errors, "joined_on must use YYYY-MM-DD")
 			}
 		}
+		if value("node_color") == "" {
+			item.Values["node_color"] = "#0f766e"
+		} else if !teamNodeColorPattern.MatchString(value("node_color")) {
+			item.Preview.Errors = append(item.Preview.Errors, "node_color must use #RRGGBB")
+		} else {
+			item.Values["node_color"] = strings.ToLower(value("node_color"))
+		}
 	case ImportTurnover:
 		positiveMoney("pv", true)
 		positiveMoney("net_amount", true)
@@ -871,7 +881,7 @@ func commitRows(ctx context.Context, tx pgx.Tx, userID uuid.UUID, kind string, r
 			if v["joined_on"] != "" {
 				joined = itemDate(v["joined_on"])
 			}
-			if err := tx.QueryRow(ctx, `INSERT INTO team_members (id,user_id,member_code,name,joined_on,rank,city,status,note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (user_id,member_code) DO UPDATE SET name=EXCLUDED.name,joined_on=EXCLUDED.joined_on,rank=EXCLUDED.rank,city=EXCLUDED.city,status=EXCLUDED.status,note=EXCLUDED.note,updated_at=now() RETURNING id`, uuid.New(), userID, v["member_code"], v["name"], joined, nullableText(v["rank"]), nullableText(v["city"]), v["status"], nullableText(v["note"])).Scan(&id); err != nil {
+			if err := tx.QueryRow(ctx, `INSERT INTO team_members (id,user_id,member_code,name,joined_on,rank,city,status,note,node_color) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (user_id,member_code) DO UPDATE SET name=EXCLUDED.name,joined_on=EXCLUDED.joined_on,rank=EXCLUDED.rank,city=EXCLUDED.city,status=EXCLUDED.status,note=EXCLUDED.note,node_color=EXCLUDED.node_color,updated_at=now() RETURNING id`, uuid.New(), userID, v["member_code"], v["name"], joined, nullableText(v["rank"]), nullableText(v["city"]), v["status"], nullableText(v["note"]), v["node_color"]).Scan(&id); err != nil {
 				return err
 			}
 			ids[v["member_code"]] = id
@@ -990,7 +1000,7 @@ func (s *Service) structuredRows(ctx context.Context, userID uuid.UUID, kind str
 		"WORKLOG":  {importColumns[ImportWorklog], `SELECT w.work_date,w.open_conversation_count,w.deep_conversation_count,w.buffer_count,w.story_share_count,w.screening_count,w.opportunity_count,w.meeting_count,w.customer_followup_count,COALESCE((SELECT minutes FROM learning_sessions WHERE user_id=w.user_id AND activity_date=w.work_date AND activity_type='READING' AND source='DAILY_UNALLOCATED'),0),COALESCE((SELECT minutes FROM learning_sessions WHERE user_id=w.user_id AND activity_date=w.work_date AND activity_type='AUDIO' AND source='DAILY_UNALLOCATED'),0),t.pv,t.net_amount,w.note FROM daily_worklogs w LEFT JOIN daily_turnovers t ON t.user_id=w.user_id AND t.turnover_date=w.work_date WHERE w.user_id=$1 ORDER BY w.work_date`},
 		"TURNOVER": {importColumns[ImportTurnover], `SELECT turnover_date,pv,net_amount,note FROM daily_turnovers WHERE user_id=$1 ORDER BY turnover_date`},
 		"FINANCE":  {importColumns[ImportFinance], `SELECT t.occurred_on,t.type,c.name,t.amount,t.description,t.note FROM financial_transactions t JOIN finance_categories c ON c.id=t.category_id WHERE t.user_id=$1 ORDER BY t.occurred_on,t.created_at`},
-		"TEAM":     {importColumns[ImportTeam], `SELECT m.member_code,m.name,COALESCE(parent.member_code,''),m.joined_on,m.rank,m.city,m.status,m.note FROM team_members m LEFT JOIN team_members parent ON parent.id=m.parent_member_id AND parent.user_id=m.user_id WHERE m.user_id=$1 ORDER BY m.sort_order,m.created_at`},
+		"TEAM":     {importColumns[ImportTeam], `SELECT m.member_code,m.name,COALESCE(parent.member_code,''),m.joined_on,m.rank,m.city,m.status,m.note,m.node_color FROM team_members m LEFT JOIN team_members parent ON parent.id=m.parent_member_id AND parent.user_id=m.user_id WHERE m.user_id=$1 ORDER BY m.sort_order,m.created_at`},
 	}
 	definition := queries[kind]
 	rows, err := queryRows(ctx, s.pool, definition.sql, userID, len(definition.headers))

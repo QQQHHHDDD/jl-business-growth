@@ -1909,6 +1909,8 @@ export interface components {
             /** @enum {string} */
             status: "ACTIVE" | "INACTIVE";
             note?: string | null;
+            /** @default #0f766e */
+            node_color: string;
             sort_order: number;
             /** Format: date-time */
             created_at: string;
@@ -1930,6 +1932,8 @@ export interface components {
              */
             status: "ACTIVE" | "INACTIVE";
             note?: string | null;
+            /** @default #0f766e */
+            node_color: string;
             /** @default 0 */
             sort_order: number;
         };

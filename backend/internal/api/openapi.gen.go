@@ -1517,6 +1517,7 @@ type TeamMember struct {
 	JoinedOn   *openapi_types.Date `json:"joined_on"`
 	MemberCode string              `json:"member_code"`
 	Name       string              `json:"name"`
+	NodeColor  string              `json:"node_color"`
 	Note       *string             `json:"note"`
 	ParentId   *openapi_types.UUID `json:"parent_id"`
 	Rank       *string             `json:"rank"`
@@ -1542,6 +1543,7 @@ type TeamMemberRequest struct {
 	JoinedOn   *openapi_types.Date      `json:"joined_on"`
 	MemberCode *string                  `json:"member_code,omitempty"`
 	Name       string                   `json:"name"`
+	NodeColor  *string                  `json:"node_color,omitempty"`
 	Note       *string                  `json:"note"`
 	ParentId   *openapi_types.UUID      `json:"parent_id"`
 	Rank       *string                  `json:"rank"`

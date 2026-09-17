@@ -1368,6 +1368,7 @@ type TeamMember struct {
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
 	MemberCode     string
+	NodeColor      string
 }
 
 type TeamSnapshot struct {

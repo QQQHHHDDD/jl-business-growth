@@ -9,7 +9,7 @@ import { businessDate } from "@/lib/date";
 import { TeamPage } from "./team-page";
 
 vi.mock("@xyflow/react", () => ({
-  ReactFlow: ({ nodes, onNodeClick, children, fitView, panOnDrag }: { nodes: Array<{ id: string; data: { label: string }; style?: { width?: number } }>; onNodeClick?: (event: unknown, node: { id: string }) => void; children: ReactNode; fitView?: boolean; panOnDrag?: boolean }) => <div data-testid="react-flow" data-fit-view={String(fitView)} data-pan-on-drag={String(panOnDrag)}>{nodes.map((node) => <button key={node.id} type="button" data-node-width={node.style?.width} onClick={() => onNodeClick?.({}, node)}>{node.data.label}</button>)}{children}</div>,
+  ReactFlow: ({ nodes, onNodeClick, children, fitView, panOnDrag }: { nodes: Array<{ id: string; data: { label: string }; style?: { width?: number; background?: string } }>; onNodeClick?: (event: unknown, node: { id: string }) => void; children: ReactNode; fitView?: boolean; panOnDrag?: boolean }) => <div data-testid="react-flow" data-fit-view={String(fitView)} data-pan-on-drag={String(panOnDrag)}>{nodes.map((node) => <button key={node.id} type="button" data-node-width={node.style?.width} data-node-color={node.style?.background} onClick={() => onNodeClick?.({}, node)}>{node.data.label}</button>)}{children}</div>,
   Controls: () => <div><button type="button" aria-label="放大关系图">+</button><button type="button" aria-label="缩小关系图">-</button><button type="button" aria-label="适配关系图">fit</button></div>,
   Background: () => null,
 }));
@@ -49,6 +49,7 @@ const parent = {
   city: "上海",
   status: "ACTIVE",
   note: "根节点",
+  node_color: "#2563eb",
   sort_order: 0,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
@@ -111,6 +112,8 @@ describe("TeamPage", () => {
     const leaderNode = graphButtons.find((button) => button.textContent === "团队负责人");
     const partnerNode = graphButtons.find((button) => button.textContent === "业务伙伴");
     expect(Number(leaderNode?.dataset.nodeWidth)).toBeGreaterThan(Number(partnerNode?.dataset.nodeWidth));
+    expect(leaderNode).toHaveAttribute("data-node-color", "#2563eb");
+    expect(partnerNode).toHaveAttribute("data-node-color", "#2563eb");
 
     fireEvent.click(within(screen.getByTestId("team-graph")).getByRole("button", { name: "团队负责人" }));
     expect(screen.getByRole("dialog")).toBeVisible();

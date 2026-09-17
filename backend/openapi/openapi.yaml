@@ -3442,7 +3442,7 @@ components:
           type: string
     TeamMember:
       type: object
-      required: [id, member_code, name, status, sort_order, created_at, updated_at]
+      required: [id, member_code, name, status, node_color, sort_order, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         member_code: { type: string, minLength: 1, maxLength: 100 }
@@ -3453,6 +3453,7 @@ components:
         city: { type: string, nullable: true }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
         note: { type: string, nullable: true }
+        node_color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', default: '#0f766e' }
         sort_order: { type: integer }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -3468,6 +3469,7 @@ components:
         city: { type: string, nullable: true }
         status: { type: string, enum: [ACTIVE, INACTIVE], default: ACTIVE }
         note: { type: string, nullable: true }
+        node_color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', default: '#0f766e' }
         sort_order: { type: integer, default: 0 }
     TeamMemberResponse:
       type: object

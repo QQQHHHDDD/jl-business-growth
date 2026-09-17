@@ -17,10 +17,12 @@ import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
 import "@xyflow/react/dist/style.css";
 
-type Form = { name: string; parent_id: string; rank: string; city: string; joined_on: string; status: "ACTIVE" | "INACTIVE"; note: string };
+type Form = { name: string; parent_id: string; rank: string; city: string; joined_on: string; status: "ACTIVE" | "INACTIVE"; note: string; node_color: string };
 type TeamView = "graph" | "list" | "snapshots";
 type MemberDialog = { mode: "create" } | { mode: "detail" | "edit"; member: TeamMember } | null;
-const emptyForm: Form = { name: "", parent_id: "", rank: "", city: "", joined_on: "", status: "ACTIVE", note: "" };
+const defaultNodeColor = "#0f766e";
+const nodeColorPresets = ["#0f766e", "#2563eb", "#7c3aed", "#be123c", "#c2410c", "#a16207", "#047857", "#475569"];
+const emptyForm: Form = { name: "", parent_id: "", rank: "", city: "", joined_on: "", status: "ACTIVE", note: "", node_color: defaultNodeColor };
 
 function teamNameError(name: string): string | null {
   const value = name.trim();
@@ -29,7 +31,16 @@ function teamNameError(name: string): string | null {
   return null;
 }
 
-type GraphMember = { id: string; parent_id?: string | null; name: string; rank?: string | null; city?: string | null; status: "ACTIVE" | "INACTIVE" };
+type GraphMember = { id: string; parent_id?: string | null; name: string; rank?: string | null; city?: string | null; status: "ACTIVE" | "INACTIVE"; node_color?: string };
+
+function textColor(background: string) {
+  const value = background.replace("#", "");
+  const red = Number.parseInt(value.slice(0, 2), 16);
+  const green = Number.parseInt(value.slice(2, 4), 16);
+  const blue = Number.parseInt(value.slice(4, 6), 16);
+  return red * 0.299 + green * 0.587 + blue * 0.114 > 160 ? "#0f172a" : "#ffffff";
+}
+
 function graphNodes(members: GraphMember[], selectedID?: string | null): Node[] {
   const membersByID = new Map(members.map((member) => [member.id, member]));
   const depthFor = (member: GraphMember, seen = new Set<string>()): number => {
@@ -42,7 +53,7 @@ function graphNodes(members: GraphMember[], selectedID?: string | null): Node[] 
   return [...layers.entries()].flatMap(([depth, layer]) => {
     let nextX = 0;
     return layer.sort((left, right) => left.name.localeCompare(right.name, "zh-CN")).map((member) => {
-      const isRoot = !member.parent_id || !membersByID.has(member.parent_id);
+      const nodeColor = member.node_color ?? defaultNodeColor;
       const width = Math.min(220, Math.max(96, Array.from(member.name).length * 16 + 36));
       const x = nextX;
       nextX += width + 60;
@@ -55,9 +66,9 @@ function graphNodes(members: GraphMember[], selectedID?: string | null): Node[] 
         width,
         height: 48,
         borderRadius: 8,
-        border: selectedID === member.id ? "2px solid #d97706" : `1px solid ${isRoot ? "#0f766e" : member.status === "ACTIVE" ? "#99f6e4" : "#cbd5e1"}`,
-        background: isRoot ? "#0f766e" : "#ffffff",
-        color: isRoot ? "#ffffff" : "#0f172a",
+        border: selectedID === member.id ? "2px solid #d97706" : `1px solid ${nodeColor}`,
+        background: nodeColor,
+        color: textColor(nodeColor),
         boxShadow: selectedID === member.id ? "0 0 0 3px #fde68a" : "0 1px 3px rgb(15 23 42 / 0.12)",
         fontWeight: 700,
         overflow: "hidden",
@@ -75,7 +86,7 @@ function TeamGraph({ members, selectedID, onSelect }: { members: GraphMember[]; 
   const edges = useMemo<Edge[]>(() => members.filter((member) => member.parent_id).map((member) => ({ id: `${member.parent_id}-${member.id}`, source: member.parent_id!, target: member.id, style: { stroke: "#0f766e", strokeWidth: 2 } })), [members]);
   const [instance, setInstance] = useState<ReactFlowInstance | null>(null);
   if (!nodes.length) return <div className="grid h-full place-items-center"><EmptyState title="还没有团队成员" description="添加第一位成员后会显示关系图。" /></div>;
-  return <div className="relative h-full overflow-hidden bg-slate-50" role="img" aria-label="团队关系图" data-testid="team-graph"><Button className="absolute right-3 top-3 z-10" variant="icon" size="sm" aria-label="关系图回到中心" onClick={() => void instance?.fitView({ padding: 0.2, duration: 250 })}><Focus size={15} /></Button><ReactFlow nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.2 }} minZoom={0.35} maxZoom={1.8} nodesDraggable={false} panOnDrag zoomOnScroll zoomOnPinch preventScrolling onInit={setInstance} onNodeClick={(_, node) => onSelect?.(node.id)}><Controls showInteractive={false} /><Background gap={20} size={1} color="#cbd5e1" /></ReactFlow></div>;
+  return <div className="team-graph relative h-full overflow-hidden bg-slate-50" role="img" aria-label="团队关系图" data-testid="team-graph"><Button className="absolute right-3 top-3 z-10" variant="icon" size="sm" aria-label="关系图回到中心" onClick={() => void instance?.fitView({ padding: 0.2, duration: 250 })}><Focus size={15} /></Button><ReactFlow nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.2 }} minZoom={0.35} maxZoom={1.8} nodesDraggable={false} panOnDrag zoomOnScroll zoomOnPinch preventScrolling onInit={setInstance} onNodeClick={(_, node) => onSelect?.(node.id)}><Controls showInteractive={false} /><Background gap={20} size={1} color="#cbd5e1" /></ReactFlow></div>;
 }
 
 export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
@@ -103,7 +114,7 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
   const closeSheet = () => { setMemberSheet(null); window.setTimeout(() => returnFocus.current?.focus({ preventScroll: true }), 0); };
   const openCreate = () => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setForm({ ...emptyForm, joined_on: businessDate(authResponse.data.account.timezone) }); setNameTouched(false); setMemberSheet({ mode: "create" }); };
   const openDetail = (member: TeamMember) => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setMemberSheet({ mode: "detail", member }); };
-  const openEdit = (member: TeamMember, retainFocus = false) => { if (!retainFocus) returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setForm({ name: member.name, parent_id: member.parent_id ?? "", rank: member.rank ?? "", city: member.city ?? "", joined_on: member.joined_on ?? "", status: member.status, note: member.note ?? "" }); setNameTouched(true); setMemberSheet({ mode: "edit", member }); };
+  const openEdit = (member: TeamMember, retainFocus = false) => { if (!retainFocus) returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setForm({ name: member.name, parent_id: member.parent_id ?? "", rank: member.rank ?? "", city: member.city ?? "", joined_on: member.joined_on ?? "", status: member.status, note: member.note ?? "", node_color: member.node_color ?? defaultNodeColor }); setNameTouched(true); setMemberSheet({ mode: "edit", member }); };
 
   useEffect(() => {
     const memberID = searchParams.get("member");
@@ -153,13 +164,13 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
 function Summary({ label, value }: { label: string; value: number }) { return <div className="px-2 sm:px-4"><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-1 text-xl font-bold tabular-nums text-slate-950">{value}</p></div>; }
 
 function MemberEditor({ form, members, editingID, nameTouched, onChange, onNameTouched }: { form: Form; members: TeamMember[]; editingID?: string; nameTouched: boolean; onChange: (value: Form) => void; onNameTouched: (value: boolean) => void }) {
-  return <div className="space-y-5"><Input label="团队成员姓名" required error={nameTouched ? teamNameError(form.name) ?? undefined : undefined} value={form.name} onChange={(event) => { onNameTouched(true); onChange({ ...form, name: event.target.value }); }} /><label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">上级成员</span><select className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={form.parent_id} onChange={(event) => onChange({ ...form, parent_id: event.target.value })}><option value="">直属根节点</option>{members.filter((member) => member.id !== editingID).map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label><div className="grid gap-4 sm:grid-cols-2"><Input label="级别" value={form.rank} onChange={(event) => onChange({ ...form, rank: event.target.value })} /><Input label="城市" value={form.city} onChange={(event) => onChange({ ...form, city: event.target.value })} /><Input label="加入日期" type="date" value={form.joined_on} onChange={(event) => onChange({ ...form, joined_on: event.target.value })} /><label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">状态</span><select className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={form.status} onChange={(event) => onChange({ ...form, status: event.target.value as Form["status"] })}><option value="ACTIVE">启用</option><option value="INACTIVE">停用</option></select></label></div><label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">备注</span><textarea className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" value={form.note} onChange={(event) => onChange({ ...form, note: event.target.value })} /></label></div>;
+  return <div className="space-y-5"><Input label="团队成员姓名" required error={nameTouched ? teamNameError(form.name) ?? undefined : undefined} value={form.name} onChange={(event) => { onNameTouched(true); onChange({ ...form, name: event.target.value }); }} /><label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">上级成员</span><select className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={form.parent_id} onChange={(event) => onChange({ ...form, parent_id: event.target.value })}><option value="">直属根节点</option>{members.filter((member) => member.id !== editingID).map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label><div className="grid gap-4 sm:grid-cols-2"><Input label="级别" value={form.rank} onChange={(event) => onChange({ ...form, rank: event.target.value })} /><Input label="城市" value={form.city} onChange={(event) => onChange({ ...form, city: event.target.value })} /><Input label="加入日期" type="date" value={form.joined_on} onChange={(event) => onChange({ ...form, joined_on: event.target.value })} /><label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">状态</span><select className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={form.status} onChange={(event) => onChange({ ...form, status: event.target.value as Form["status"] })}><option value="ACTIVE">启用</option><option value="INACTIVE">停用</option></select></label></div><fieldset className="space-y-3"><legend className="text-sm font-semibold text-slate-700">节点颜色</legend><div className="flex flex-wrap gap-2">{nodeColorPresets.map((color) => <button key={color} type="button" aria-label={`选择节点颜色 ${color}`} aria-pressed={form.node_color === color} className="h-9 w-9 rounded-md border-2 border-white shadow-[0_0_0_1px_#cbd5e1] focus:outline-none focus:ring-2 focus:ring-teal-500" style={{ backgroundColor: color, boxShadow: form.node_color === color ? "0 0 0 2px #0f766e" : undefined }} onClick={() => onChange({ ...form, node_color: color })} />)}</div><div className="flex flex-wrap items-end gap-3"><label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">自定义节点颜色</span><input type="color" className="block h-10 w-16 cursor-pointer rounded-md border border-slate-300 bg-white p-1" value={form.node_color} onChange={(event) => onChange({ ...form, node_color: event.target.value })} /></label><div className="flex min-h-10 items-center gap-2 rounded-md border border-slate-200 px-3 text-sm text-slate-600"><span className="h-5 w-5 rounded border border-black/10" style={{ backgroundColor: form.node_color }} aria-hidden="true" /><span>预览 {form.node_color}</span></div><Button variant="secondary" size="sm" onClick={() => onChange({ ...form, node_color: defaultNodeColor })}>恢复默认颜色</Button></div></fieldset><label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">备注</span><textarea className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" value={form.note} onChange={(event) => onChange({ ...form, note: event.target.value })} /></label></div>;
 }
 
 function MemberDetail({ member, members }: { member: TeamMember; members: TeamMember[] }) {
   const parent = members.find((item) => item.id === member.parent_id);
   const children = members.filter((item) => item.parent_id === member.id);
-  return <div className="space-y-6"><div className="flex justify-between"><StatusBadge tone={member.status === "ACTIVE" ? "success" : "neutral"}>{member.status === "ACTIVE" ? "启用" : "停用"}</StatusBadge><span className="text-sm font-semibold text-slate-500">{member.rank ? `级别：${member.rank}` : "未设置级别"}</span></div><dl className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm"><dt className="text-slate-500">上级成员</dt><dd className="font-semibold text-slate-900">{parent?.name ?? "直属根节点"}</dd><dt className="text-slate-500">城市</dt><dd className="font-semibold text-slate-900">{member.city || "未设置"}</dd><dt className="text-slate-500">加入日期</dt><dd className="font-semibold text-slate-900">{member.joined_on || "未设置"}</dd></dl>{member.note && <section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">备注</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{member.note}</p></section>}<section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">直属成员</h3>{children.length ? <ul className="mt-3 space-y-2">{children.map((child) => <li key={child.id} className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700">{child.name}</li>)}</ul> : <p className="mt-2 text-sm text-slate-500">暂无直属成员。</p>}</section><details className="border-t border-slate-200 pt-5"><summary className="cursor-pointer text-sm font-semibold text-slate-600">高级信息</summary><dl className="mt-3 grid grid-cols-[96px_minmax(0,1fr)] gap-x-4 text-sm"><dt className="text-slate-500">成员编码</dt><dd className="break-all font-mono text-xs text-slate-700">{member.member_code}</dd></dl></details></div>;
+  return <div className="space-y-6"><div className="flex justify-between"><StatusBadge tone={member.status === "ACTIVE" ? "success" : "neutral"}>{member.status === "ACTIVE" ? "启用" : "停用"}</StatusBadge><span className="text-sm font-semibold text-slate-500">{member.rank ? `级别：${member.rank}` : "未设置级别"}</span></div><dl className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm"><dt className="text-slate-500">上级成员</dt><dd className="font-semibold text-slate-900">{parent?.name ?? "直属根节点"}</dd><dt className="text-slate-500">城市</dt><dd className="font-semibold text-slate-900">{member.city || "未设置"}</dd><dt className="text-slate-500">加入日期</dt><dd className="font-semibold text-slate-900">{member.joined_on || "未设置"}</dd><dt className="text-slate-500">节点颜色</dt><dd className="flex items-center gap-2 font-semibold text-slate-900"><span className="h-5 w-5 rounded border border-black/10" style={{ backgroundColor: member.node_color }} aria-hidden="true" />{member.node_color}</dd></dl>{member.note && <section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">备注</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{member.note}</p></section>}<section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">直属成员</h3>{children.length ? <ul className="mt-3 space-y-2">{children.map((child) => <li key={child.id} className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700">{child.name}</li>)}</ul> : <p className="mt-2 text-sm text-slate-500">暂无直属成员。</p>}</section><details className="border-t border-slate-200 pt-5"><summary className="cursor-pointer text-sm font-semibold text-slate-600">高级信息</summary><dl className="mt-3 grid grid-cols-[96px_minmax(0,1fr)] gap-x-4 text-sm"><dt className="text-slate-500">成员编码</dt><dd className="break-all font-mono text-xs text-slate-700">{member.member_code}</dd></dl></details></div>;
 }
 
 function TeamSearch({ value, onChange }: { value: string; onChange: (value: string) => void }) {
@@ -176,4 +187,4 @@ function SnapshotsView({ snapshots, selected, onSelect }: { snapshots: TeamSnaps
   return <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]"><Panel title="快照日期" description="选择一个时间点查看当时结构。"><div className="space-y-2">{snapshots.map((snapshot) => <button key={snapshot.id} type="button" onClick={() => onSelect(snapshot)} className={`w-full rounded-lg border px-3 py-3 text-left ${current.id === snapshot.id ? "border-teal-500 bg-teal-50" : "border-slate-200 hover:bg-slate-50"}`}><span className="flex items-center gap-2 font-bold text-slate-900"><GitBranch size={15} className="text-teal-700" />{snapshot.snapshot_month}</span><span className="mt-1 block text-xs text-slate-500">{snapshot.members.length} 位成员 · {snapshot.snapshot_type === "AUTO" ? "自动" : "手动"}{snapshot.captured_late ? " · 延迟捕获" : ""}</span></button>)}</div></Panel><Panel title={`${current.snapshot_month} 团队结构`} description={`${current.snapshot_type === "AUTO" ? "自动" : "手动"}快照 · 捕获于 ${new Date(current.captured_at).toLocaleString("zh-CN")}`}><div className="h-[min(62vh,640px)] min-h-[460px] overflow-auto rounded-xl border border-slate-200"><TeamGraph members={current.members} /></div></Panel></div>;
 }
 
-function formRequest(form: Form): TeamMemberRequest { return { name: form.name.trim(), parent_id: form.parent_id || null, rank: form.rank.trim() || null, city: form.city.trim() || null, joined_on: form.joined_on || null, status: form.status, note: form.note.trim() || null, sort_order: 0 }; }
+function formRequest(form: Form): TeamMemberRequest { return { name: form.name.trim(), parent_id: form.parent_id || null, rank: form.rank.trim() || null, city: form.city.trim() || null, joined_on: form.joined_on || null, status: form.status, note: form.note.trim() || null, node_color: form.node_color, sort_order: 0 }; }

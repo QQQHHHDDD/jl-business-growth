@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -15,6 +16,10 @@ import (
 )
 
 type Service struct{ pool *pgxpool.Pool }
+
+const DefaultNodeColor = "#0f766e"
+
+var nodeColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
 func NewService(pool *pgxpool.Pool) *Service { return &Service{pool: pool} }
 
@@ -29,6 +34,7 @@ type Member struct {
 	City       *string
 	Status     string
 	Note       *string
+	NodeColor  string
 	SortOrder  int
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -43,6 +49,7 @@ type MemberInput struct {
 	City       *string
 	Status     string
 	Note       *string
+	NodeColor  string
 	SortOrder  int
 }
 
@@ -70,7 +77,7 @@ type SnapshotMember struct {
 }
 
 func (s *Service) ListMembers(ctx context.Context, userID uuid.UUID) ([]Member, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id, user_id, member_code, parent_member_id, name, joined_on, rank, city, status, note, sort_order, created_at, updated_at
+	rows, err := s.pool.Query(ctx, `SELECT id, user_id, member_code, parent_member_id, name, joined_on, rank, city, status, note, node_color, sort_order, created_at, updated_at
 		FROM team_members WHERE user_id=$1 ORDER BY sort_order, created_at, name`, userID)
 	if err != nil {
 		return nil, err
@@ -88,7 +95,7 @@ func (s *Service) ListMembers(ctx context.Context, userID uuid.UUID) ([]Member, 
 }
 
 func (s *Service) GetMember(ctx context.Context, userID, id uuid.UUID) (Member, error) {
-	row := s.pool.QueryRow(ctx, `SELECT id, user_id, member_code, parent_member_id, name, joined_on, rank, city, status, note, sort_order, created_at, updated_at
+	row := s.pool.QueryRow(ctx, `SELECT id, user_id, member_code, parent_member_id, name, joined_on, rank, city, status, note, node_color, sort_order, created_at, updated_at
 		FROM team_members WHERE user_id=$1 AND id=$2`, userID, id)
 	item, err := scanMember(row)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -118,6 +125,13 @@ func (s *Service) SaveMember(ctx context.Context, userID, id uuid.UUID, input Me
 	}
 	if input.Status != "ACTIVE" && input.Status != "INACTIVE" {
 		return Member{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "member status is invalid")
+	}
+	input.NodeColor = strings.ToLower(strings.TrimSpace(input.NodeColor))
+	if input.NodeColor == "" {
+		input.NodeColor = DefaultNodeColor
+	}
+	if !nodeColorPattern.MatchString(input.NodeColor) {
+		return Member{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "member node color must use #RRGGBB")
 	}
 	if strings.TrimSpace(input.MemberCode) != "" && (len([]rune(strings.TrimSpace(input.MemberCode))) > 100 || strings.ContainsAny(input.MemberCode, "\r\n")) {
 		return Member{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "member code is invalid")
@@ -159,12 +173,12 @@ func (s *Service) SaveMember(ctx context.Context, userID, id uuid.UUID, input Me
 		return Member{}, problem.New("CONFLICT", http.StatusConflict, "member code already exists")
 	}
 	var item Member
-	row := s.pool.QueryRow(ctx, `INSERT INTO team_members (id,user_id,member_code,parent_member_id,name,joined_on,rank,city,status,note,sort_order)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+	row := s.pool.QueryRow(ctx, `INSERT INTO team_members (id,user_id,member_code,parent_member_id,name,joined_on,rank,city,status,note,node_color,sort_order)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 		ON CONFLICT (id) DO UPDATE SET parent_member_id=EXCLUDED.parent_member_id,name=EXCLUDED.name,joined_on=EXCLUDED.joined_on,
-		 member_code=EXCLUDED.member_code,rank=EXCLUDED.rank,city=EXCLUDED.city,status=EXCLUDED.status,note=EXCLUDED.note,sort_order=EXCLUDED.sort_order,updated_at=now()
+		 member_code=EXCLUDED.member_code,rank=EXCLUDED.rank,city=EXCLUDED.city,status=EXCLUDED.status,note=EXCLUDED.note,node_color=EXCLUDED.node_color,sort_order=EXCLUDED.sort_order,updated_at=now()
 		WHERE team_members.user_id=$2
-		RETURNING id,user_id,member_code,parent_member_id,name,joined_on,rank,city,status,note,sort_order,created_at,updated_at`, id, userID, code, input.ParentID, name, input.JoinedOn, input.Rank, input.City, input.Status, input.Note, input.SortOrder)
+		RETURNING id,user_id,member_code,parent_member_id,name,joined_on,rank,city,status,note,node_color,sort_order,created_at,updated_at`, id, userID, code, input.ParentID, name, input.JoinedOn, input.Rank, input.City, input.Status, input.Note, input.NodeColor, input.SortOrder)
 	var err error
 	item, err = scanMember(row)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -359,6 +373,6 @@ type rowScanner interface{ Scan(...any) error }
 
 func scanMember(row rowScanner) (Member, error) {
 	var item Member
-	err := row.Scan(&item.ID, &item.UserID, &item.MemberCode, &item.ParentID, &item.Name, &item.JoinedOn, &item.Rank, &item.City, &item.Status, &item.Note, &item.SortOrder, &item.CreatedAt, &item.UpdatedAt)
+	err := row.Scan(&item.ID, &item.UserID, &item.MemberCode, &item.ParentID, &item.Name, &item.JoinedOn, &item.Rank, &item.City, &item.Status, &item.Note, &item.NodeColor, &item.SortOrder, &item.CreatedAt, &item.UpdatedAt)
 	return item, err
 }
