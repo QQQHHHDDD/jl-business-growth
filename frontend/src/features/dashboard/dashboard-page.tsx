@@ -248,7 +248,7 @@ function DashboardContent({
               ))}
             </div>
           ) : (
-            <div data-testid="dashboard-today-scroll" className="flex h-[216px] items-center gap-3 text-sm text-slate-500">
+            <div data-testid="dashboard-today-scroll" className="flex h-[216px] items-center gap-3 overflow-y-auto text-sm text-slate-500">
               <CalendarDays size={18} className="text-teal-700" />
               今天暂无日程，可以留出时间推进最重要的目标。
             </div>
@@ -275,7 +275,7 @@ function DashboardContent({
               ))}
             </div>
           ) : (
-            <div data-testid="dashboard-goals-scroll" className="flex h-[216px] items-center gap-3 text-sm text-slate-500">
+            <div data-testid="dashboard-goals-scroll" className="flex h-[216px] items-center gap-3 overflow-y-auto text-sm text-slate-500">
               <GoalIcon size={18} className="text-teal-700" />
               建立目标后，这里会显示真实完成进度。
             </div>

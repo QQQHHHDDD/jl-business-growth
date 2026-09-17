@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 
 const superadminUsername = process.env.E2E_SUPERADMIN_USERNAME;
@@ -91,6 +92,26 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(page.getByText("本周会面目标", { exact: true }).first()).toBeVisible();
   await page.getByRole("tab", { name: "梦想板" }).click();
   await page.getByRole("button", { name: "新增梦想" }).first().click();
+  const dreamDialog = page.getByRole("dialog");
+  await expect(dreamDialog).toBeVisible();
+  const dreamDialogBox = await dreamDialog.boundingBox();
+  const dreamViewport = page.viewportSize();
+  expect(dreamDialogBox).not.toBeNull();
+  expect(dreamViewport).not.toBeNull();
+  expect(
+    Math.abs(
+      dreamDialogBox!.x + dreamDialogBox!.width / 2 - dreamViewport!.width / 2,
+    ),
+  ).toBeLessThanOrEqual(16);
+  const onePixelPng = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nAAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  await page.getByLabel("选择梦想图片").setInputFiles([
+    { name: "dream-cover.png", mimeType: "image/png", buffer: onePixelPng },
+    { name: "dream-detail.png", mimeType: "image/png", buffer: onePixelPng },
+  ]);
+  await expect(dreamDialog.getByText("2 / 10", { exact: true })).toBeVisible();
   await page.getByLabel("梦想标题").fill("更有节奏的经营");
   await page.getByRole("button", { name: "保存梦想" }).click();
   await expect(page.getByRole("status")).toContainText("梦想已保存");
@@ -136,6 +157,19 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(
     page.getByRole("heading", { name: "工作量趋势", exact: true }),
   ).toBeVisible();
+  const analyticsToolbar = page.getByTestId("analytics-range-toolbar");
+  const analyticsResults = page.getByRole("heading", {
+    name: "工作量趋势",
+    exact: true,
+  });
+  await page.getByRole("button", { name: "财年", exact: true }).click();
+  const fiscalToolbarBox = await analyticsToolbar.boundingBox();
+  const fiscalResultsBox = await analyticsResults.boundingBox();
+  await page.getByRole("button", { name: "自定义", exact: true }).click();
+  const customToolbarBox = await analyticsToolbar.boundingBox();
+  const customResultsBox = await analyticsResults.boundingBox();
+  expect(customToolbarBox?.height).toBe(fiscalToolbarBox?.height);
+  expect(customResultsBox?.y).toBe(fiscalResultsBox?.y);
 
   await page.goto("/app/team");
   await expect(
@@ -169,11 +203,16 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(
     page.getByRole("heading", { name: "财务", exact: true }),
   ).toBeVisible();
+  const e2eCategory = `E2E支出${Date.now().toString().slice(-6)}`;
+  await page.getByText("管理收支分类", { exact: true }).click();
+  await page.getByLabel("分类名称").fill(e2eCategory);
+  await page.getByRole("button", { name: "新增分类" }).click();
+  await expect(page.getByRole("status")).toContainText("财务分类已创建");
   await page.getByRole("button", { name: "新增流水" }).first().click();
   const transactionSheet = page.getByRole("dialog");
   await transactionSheet
     .getByRole("combobox", { name: "分类" })
-    .selectOption({ index: 1 });
+    .selectOption({ label: e2eCategory });
   await transactionSheet
     .getByRole("spinbutton", { name: "金额" })
     .fill("123.45");
@@ -222,6 +261,14 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   }
 
   await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/app");
+  for (const testID of ["dashboard-today-scroll", "dashboard-goals-scroll"]) {
+    const region = page.getByTestId(testID);
+    await expect(region).toBeVisible();
+    expect(await region.evaluate((element) => getComputedStyle(element).height)).toBe("216px");
+    expect(await region.evaluate((element) => getComputedStyle(element).overflowY)).toBe("auto");
+  }
+
   await page.goto("/app/goals");
   const pageContainer = page.getByTestId("page-container");
   const initialContainer = await pageContainer.boundingBox();
