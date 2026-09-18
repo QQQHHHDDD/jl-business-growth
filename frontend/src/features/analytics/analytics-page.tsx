@@ -66,8 +66,14 @@ function AnalyticsHero() {
         <svg viewBox="0 0 620 180" className="h-full w-full" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
           <path d="M0 146C74 122 98 132 158 102C211 75 248 91 302 112C354 132 379 87 433 78C485 69 504 105 620 34V180H0V146Z" fill="url(#analytics-hero-fill)" />
           <path d="M66 144C122 122 168 122 211 102C259 80 291 102 330 116C376 132 410 88 453 82C504 75 548 99 608 54" stroke="#14B8A6" strokeWidth="3" strokeLinecap="round" />
-          <path d="M486 31C486 22 493 15 502 15C511 15 518 22 518 31C518 40 511 47 502 47C493 47 486 40 486 31Z" fill="#FACC15" fillOpacity=".72" />
-          <path d="M502 6V56M477 31H527M484 13L520 49M520 13L484 49" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="502" cy="31" r="11" fill="url(#analytics-sun-fill)" stroke="#F59E0B" strokeWidth="1.5" />
+          <g stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" opacity=".86">
+            <path d="M502 10V4" /><path d="M502 52V58" />
+            <path d="M481 31H475" /><path d="M523 31H529" />
+            <path d="M488 17L483 12" /><path d="M516 45L521 50" />
+            <path d="M516 17L521 12" /><path d="M488 45L483 50" />
+            <path d="M494 11L492 7" /><path d="M510 51L512 55" />
+          </g>
           <path d="M390 146C399 130 408 117 418 106C425 119 430 130 434 146" fill="#0F766E" fillOpacity=".6" />
           <path d="M418 106C412 95 402 91 392 93C400 105 409 110 418 110M419 100C427 88 438 85 448 89C440 101 430 106 419 106" fill="#34D399" fillOpacity=".72" />
           <defs>
@@ -75,6 +81,10 @@ function AnalyticsHero() {
               <stop stopColor="#CCFBF1" stopOpacity=".78" />
               <stop offset="1" stopColor="#DBEAFE" stopOpacity=".28" />
             </linearGradient>
+            <radialGradient id="analytics-sun-fill" cx="0" cy="0" r="1" gradientTransform="translate(502 31) rotate(90) scale(11)">
+              <stop stopColor="#FDE68A" />
+              <stop offset="1" stopColor="#FACC15" stopOpacity=".82" />
+            </radialGradient>
           </defs>
         </svg>
       </div>
@@ -139,7 +149,7 @@ export function AnalyticsPage({ authResponse }: { authResponse: AuthResponse }) 
       </div>
       <p className="whitespace-nowrap text-xs font-medium text-ink-faint lg:text-right"><CalendarDays size={13} className="mr-1 inline-block" aria-hidden="true" />{selected.from} 至 {selected.to}</p>
     </div>
-    {query.isPending ? <LoadingState label="正在计算统计" /> : query.isError ? <ErrorState message="统计暂时无法加载" onRetry={() => void query.refetch()} /> : query.data.data.buckets.length || metric === "team" ? <AnalyticsWorkspace metric={metric} data={query.data} /> : <div className="min-h-[240px] rounded-lg border border-slate-200 bg-white"><EmptyState title={`${metricLabels[metric]}暂无统计记录`} description="在当前时间范围保存记录后，这里会显示统计结果。" /></div>}
+    {query.isPending ? <LoadingState label="正在计算统计" /> : query.isError ? <ErrorState message="统计暂时无法加载" onRetry={() => void query.refetch()} /> : query.data.data.buckets.length || metric === "team" ? <AnalyticsWorkspace metric={metric} data={query.data} /> : <div className="rounded-[1.25rem] border border-brand-100/70 bg-brand-50/25 p-2 shadow-hairline"><EmptyState className="border-brand-100/70 bg-surface/70 shadow-none" title={`${metricLabels[metric]}暂无统计记录`} description="在当前时间范围保存记录后，这里会显示统计结果。" /></div>}
   </div>;
 }
 
@@ -201,14 +211,14 @@ function AnalyticsWorkspace({ metric, data }: { metric: Metric; data: AnalyticsR
     <div className={`grid gap-3 ${metric === "worklogs" ? "sm:grid-cols-2 xl:grid-cols-5" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
       {kpis.map((kpi) => <MetricCard key={kpi.label} {...kpi} className="relative overflow-hidden rounded-[1.25rem] border-outline/45 bg-gradient-to-br from-white/35 to-transparent shadow-[0_18px_38px_-28px_rgba(15,23,42,0.4)] before:pointer-events-none before:absolute before:-right-6 before:-top-7 before:h-24 before:w-24 before:rounded-full before:bg-white/35" iconClassName="h-11 w-11 rounded-[0.95rem] shadow-hairline ring-1 ring-white/60" valueClassName="text-[2.15rem] font-black" />)}
     </div>
-    {metric === "team" && buckets.length === 0 ? <div className="min-h-[240px] rounded-lg border border-slate-200 bg-white"><EmptyState title="所选周期暂无团队快照" description="创建团队快照后，这里会按快照展示成员规模变化。" /></div> : <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+    {metric === "team" && buckets.length === 0 ? <div className="rounded-[1.25rem] border border-brand-100/70 bg-brand-50/25 p-2 shadow-hairline"><EmptyState className="border-brand-100/70 bg-surface/70 shadow-none" title="所选周期暂无团队快照" description="创建团队快照后，这里会按快照展示成员规模变化。" /></div> : <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
       <Panel className="rounded-[1.25rem] border-outline/55 bg-surface/95 shadow-[0_20px_42px_-32px_rgba(15,23,42,0.42)] [&>header]:border-b-0 [&>header]:pb-1 [&>div]:pt-3" title={`${metricLabels[metric]}趋势`} description={buckets.length > 1 ? "按所选时间范围连续展示变化。" : "保留当前周期数值，积累更多周期后可查看趋势。"}>
         {metric === "worklogs" && <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="趋势指标">{Object.entries(actionLabels).map(([value, label]) => <button key={value} type="button" aria-pressed={actionField === value} onClick={() => setActionField(value as ActionField)} className={cn("min-h-10 rounded-control border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500", actionField === value ? "border-brand-300 bg-brand-50 text-brand-800" : "border-outline bg-surface text-ink-muted hover:bg-surface-muted")}>{label}</button>)}</div>}
         <Chart buckets={buckets} metric={metric} actionField={actionField} />
       </Panel>
       <Panel className="rounded-[1.25rem] border-outline/55 bg-surface/95 shadow-[0_20px_42px_-32px_rgba(15,23,42,0.42)] [&>header]:border-b-0 [&>header]:pb-1 [&>div]:pt-3" title="结构摘要" description="汇总所选范围内的关键结果。"><Structure metric={metric} totals={totals} data={data.data} /></Panel>
     </div>}
-    {buckets.length > 0 && <Panel title="统计明细" description="查看各周期的具体数值。"><Details metric={metric} buckets={buckets} /></Panel>}
+    {buckets.length > 0 && <Panel className="rounded-[1.125rem] border-outline/50 bg-surface/90 shadow-hairline [&>header]:border-b-0 [&>header]:pb-1 [&>div]:pt-3" title="统计明细" description="查看各周期的具体数值。"><Details metric={metric} buckets={buckets} /></Panel>}
   </div>;
 }
 
@@ -280,12 +290,12 @@ function Structure({ metric, totals, data }: { metric: Metric; totals: Totals; d
               { label: "收入", value: formatMoney(totals.income.toFixed(2)), icon: <WalletCards size={16} />, tone: "bg-brand-50/75 text-brand-700" },
               { label: "支出", value: formatMoney(totals.expense.toFixed(2)), icon: <CircleDollarSign size={16} />, tone: "bg-rose-50/75 text-rose-600" },
             ];
-  return <div className="space-y-2">{rows.map((row) => <div key={row.label} className="flex items-center justify-between gap-3 rounded-control bg-surface-soft/55 px-3 py-2.5"><span className="flex min-w-0 items-center gap-3 text-sm font-medium text-ink-muted"><span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[0.875rem]", row.tone)} aria-hidden="true">{row.icon}</span><span className="truncate">{row.label}</span></span><strong className="shrink-0 text-lg font-black tracking-[-0.02em] text-ink">{row.value}</strong></div>)}</div>;
+  return <div className="space-y-2">{rows.map((row) => <div key={row.label} className="flex items-center justify-between gap-3 rounded-control bg-surface-soft/55 px-3 py-2.5"><span className="flex min-w-0 items-center gap-3 text-sm font-medium text-ink-muted"><span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[0.875rem]", row.tone)} aria-hidden="true">{row.icon}</span><span className="truncate">{row.label}</span></span><strong className="shrink-0 tabular-nums text-lg font-black tracking-[-0.02em] text-ink">{row.value}</strong></div>)}</div>;
 }
 
 function Details({ metric, buckets }: { metric: Metric; buckets: Bucket[] }) {
-  if (metric === "worklogs") return <DataTable><TableHead><TableRow><TableCell asHeader>周期</TableCell><TableCell asHeader>开启 / 深入</TableCell><TableCell asHeader>Buffer / 分享</TableCell><TableCell asHeader>筛选 / 机会</TableCell><TableCell asHeader>会面 / 跟进</TableCell><TableCell asHeader>阅读 / 音频</TableCell></TableRow></TableHead><TableBody>{buckets.map((bucket) => <TableRow key={bucket.period}><TableCell className="font-semibold">{bucket.period}</TableCell><TableCell>{bucket.open_conversation_count} / {bucket.deep_conversation_count}</TableCell><TableCell>{bucket.buffer_count} / {bucket.story_share_count}</TableCell><TableCell>{bucket.screening_count} / {bucket.opportunity_count}</TableCell><TableCell>{bucket.meeting_count} / {bucket.customer_followup_count}</TableCell><TableCell>{bucket.reading_minutes} / {bucket.audio_minutes}</TableCell></TableRow>)}</TableBody></DataTable>;
-  return <DataTable><TableHead><TableRow><TableCell asHeader>周期</TableCell><TableCell asHeader>{metric === "finance" ? "收入" : metric === "team" ? "快照成员" : metric === "goals" ? "目标数" : "PV"}</TableCell><TableCell asHeader>{metric === "finance" ? "支出" : metric === "team" ? "快照启用成员" : metric === "goals" ? "已完成" : "净营业额"}</TableCell>{metric === "finance" && <TableCell asHeader>净现金流</TableCell>}</TableRow></TableHead><TableBody>{buckets.map((bucket) => <TableRow key={bucket.period}><TableCell className="font-semibold">{bucket.period}</TableCell><TableCell>{metric === "finance" ? formatMoney(bucket.income_amount) : metric === "team" ? bucket.member_count ?? 0 : metric === "goals" ? bucket.goal_count : bucket.pv}</TableCell><TableCell>{metric === "finance" ? formatMoney(bucket.expense_amount) : metric === "team" ? bucket.active_member_count ?? 0 : metric === "goals" ? bucket.completed_count : formatMoney(bucket.net_amount)}</TableCell>{metric === "finance" && <TableCell>{formatMoney(bucket.net_cash_flow)}</TableCell>}</TableRow>)}</TableBody></DataTable>;
+  if (metric === "worklogs") return <DataTable><TableHead><TableRow><TableCell asHeader>周期</TableCell><TableCell asHeader>开启 / 深入</TableCell><TableCell asHeader>Buffer / 分享</TableCell><TableCell asHeader>筛选 / 机会</TableCell><TableCell asHeader>会面 / 跟进</TableCell><TableCell asHeader>阅读 / 音频</TableCell></TableRow></TableHead><TableBody>{buckets.map((bucket) => <TableRow key={bucket.period}><TableCell className="font-semibold">{bucket.period}</TableCell><TableCell className="tabular-nums">{bucket.open_conversation_count} / {bucket.deep_conversation_count}</TableCell><TableCell className="tabular-nums">{bucket.buffer_count} / {bucket.story_share_count}</TableCell><TableCell className="tabular-nums">{bucket.screening_count} / {bucket.opportunity_count}</TableCell><TableCell className="tabular-nums">{bucket.meeting_count} / {bucket.customer_followup_count}</TableCell><TableCell className="tabular-nums">{bucket.reading_minutes} / {bucket.audio_minutes}</TableCell></TableRow>)}</TableBody></DataTable>;
+  return <DataTable><TableHead><TableRow><TableCell asHeader>周期</TableCell><TableCell asHeader>{metric === "finance" ? "收入" : metric === "team" ? "快照成员" : metric === "goals" ? "目标数" : "PV"}</TableCell><TableCell asHeader>{metric === "finance" ? "支出" : metric === "team" ? "快照启用成员" : metric === "goals" ? "已完成" : "净营业额"}</TableCell>{metric === "finance" && <TableCell asHeader>净现金流</TableCell>}</TableRow></TableHead><TableBody>{buckets.map((bucket) => <TableRow key={bucket.period}><TableCell className="font-semibold">{bucket.period}</TableCell><TableCell className="tabular-nums">{metric === "finance" ? formatMoney(bucket.income_amount) : metric === "team" ? bucket.member_count ?? 0 : metric === "goals" ? bucket.goal_count : bucket.pv}</TableCell><TableCell className="tabular-nums">{metric === "finance" ? formatMoney(bucket.expense_amount) : metric === "team" ? bucket.active_member_count ?? 0 : metric === "goals" ? bucket.completed_count : formatMoney(bucket.net_amount)}</TableCell>{metric === "finance" && <TableCell className="tabular-nums">{formatMoney(bucket.net_cash_flow)}</TableCell>}</TableRow>)}</TableBody></DataTable>;
 }
 
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
