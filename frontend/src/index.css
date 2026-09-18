@@ -58,6 +58,25 @@ body {
   box-sizing: border-box;
 }
 
+/* Keep the semantic radius tokens available even when the dev server is
+   serving a stale Tailwind utility manifest. These classes are the shared
+   contract for panels, cards, controls, and page heroes across the app. */
+.rounded-control {
+  border-radius: var(--radius-control);
+}
+
+.rounded-card {
+  border-radius: var(--radius-card);
+}
+
+.rounded-panel {
+  border-radius: var(--radius-panel);
+}
+
+.rounded-hero {
+  border-radius: var(--radius-hero);
+}
+
 button,
 input,
 textarea,
