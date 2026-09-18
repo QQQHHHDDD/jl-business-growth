@@ -5,7 +5,7 @@ import type { ReactNode, SelectHTMLAttributes } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Background, Controls, MiniMap, ReactFlow, type Edge, type Node } from "@xyflow/react";
+import { Background, Controls, ReactFlow, type Edge, type Node, type Position } from "@xyflow/react";
 import { useSearchParams } from "react-router-dom";
 import "@xyflow/react/dist/style.css";
 import type { AuthResponse, Dream, FileAsset, Goal, GoalRequest } from "@/api/client";
@@ -307,8 +307,7 @@ function GoalMap({ goals, selectedID, onSelect, onCreate }: { goals: Goal[]; sel
     <Panel title="目标地图" description="父子目标以连线表达；画布支持缩放和适配，点击节点可查看并高亮关联路径。" className="border-brand-100/70 bg-gradient-to-br from-white via-brand-50/15 to-sky-50/30 shadow-card [&>header]:border-brand-100/55">
       <div className={`${goals.length ? "h-[min(68vh,720px)] min-h-[480px]" : "min-h-[300px]"} overflow-hidden rounded-[1.25rem] border border-brand-100/70 bg-gradient-to-br from-brand-50/70 via-sky-50/55 to-violet-50/35`}>
         {goals.length ? (
-          <ReactFlow nodes={goalNodes(goals, selectedID)} edges={goalEdges(goals, selectedID)} fitView minZoom={0.35} maxZoom={1.8} nodesDraggable={false} onNodeClick={(_, node) => { const goal = goals.find((item) => item.id === node.id); if (goal) onSelect(goal); }}>
-            <MiniMap pannable zoomable className="!overflow-hidden !rounded-card !border-brand-100/80 !bg-white/85" />
+          <ReactFlow className="goal-map" nodes={goalNodes(goals, selectedID)} edges={goalEdges(goals, selectedID)} fitView minZoom={0.35} maxZoom={1.8} nodesDraggable={false} onNodeClick={(_, node) => { const goal = goals.find((item) => item.id === node.id); if (goal) onSelect(goal); }}>
             <Controls className="!overflow-hidden !rounded-card !border-brand-100/80 !bg-white/90" />
             <Background gap={24} size={1} color="#94a3b8" />
           </ReactFlow>
@@ -383,5 +382,87 @@ function Select({ label, children, ...props }: { label: string; children: ReactN
 }
 function metricLabel(code: string): string { const labels: Record<string, string> = { conversation_open_count: "开启对话", deep_conversation_count: "深入对话", buffer_count: "Buffer", story_share_count: "分享故事", screening_count: "筛选", opportunity_count: "提供机会", meeting_count: "会面", customer_followup_count: "顾客跟进", reading_minutes: "读书分钟", audio_minutes: "听音频分钟", turnover_pv: "营业额 PV", turnover_net_amount: "净营业额" }; return labels[code] ?? code; }
 function highlightedGoals(goals: Goal[], selectedID: string | null): Set<string> { const result = new Set<string>(); if (!selectedID) return result; const byID = new Map(goals.map((goal) => [goal.id, goal])); let current: string | null | undefined = selectedID; while (current && !result.has(current)) { result.add(current); current = byID.get(current)?.parent_id; } const addChildren = (id: string) => goals.filter((goal) => goal.parent_id === id).forEach((goal) => { if (!result.has(goal.id)) { result.add(goal.id); addChildren(goal.id); } }); addChildren(selectedID); return result; }
-function goalNodes(goals: Goal[], selectedID: string | null): Node[] { const byID = new Map(goals.map((goal) => [goal.id, goal])); const highlighted = highlightedGoals(goals, selectedID); const rowsByDepth = new Map<number, number>(); return goals.map((goal) => { let depth = 0; let parent = goal.parent_id; const visited = new Set<string>(); while (parent && byID.has(parent) && !visited.has(parent)) { visited.add(parent); depth += 1; parent = byID.get(parent)?.parent_id; } const row = rowsByDepth.get(depth) ?? 0; rowsByDepth.set(depth, row + 1); const selected = goal.id === selectedID; const accent = depth % 3 === 0 ? "#0F8F83" : depth % 3 === 1 ? "#3B82F6" : "#8B5CF6"; return { id: goal.id, position: { x: depth * 300, y: row * 130 }, data: { label: `${goal.title}  ${Math.round(goal.progress * 100)}%` }, draggable: false, style: { width: 230, border: selected ? "3px solid #F59E0B" : highlighted.has(goal.id) ? `2px solid ${accent}` : "1px solid #CBD5E1", borderRadius: 18, background: selected ? "#FFFBEB" : "#FFFFFF", color: "#0F172A", fontWeight: 700, padding: 16, boxShadow: selected ? "0 0 0 4px rgb(251 191 36 / 0.22), 0 12px 24px -16px rgb(15 23 42 / .35)" : "0 12px 24px -18px rgb(15 23 42 / .3)" } }; }); }
+function goalNodes(goals: Goal[], selectedID: string | null): Node[] {
+  const highlighted = highlightedGoals(goals, selectedID);
+  const positions = goalTreePositions(goals);
+  return goals.map((goal) => {
+    const position = positions.get(goal.id) ?? { x: 0, y: 0, depth: 0 };
+    const selected = goal.id === selectedID;
+    const progress = Math.round(goal.progress * 100);
+    const accents = [
+      { color: "#0F8F83", soft: "#ECFDF5", bar: "linear-gradient(90deg,#14B8A6,#34D399)" },
+      { color: "#2563EB", soft: "#EFF6FF", bar: "linear-gradient(90deg,#3B82F6,#60A5FA)" },
+      { color: "#7C3AED", soft: "#F5F3FF", bar: "linear-gradient(90deg,#8B5CF6,#A78BFA)" },
+    ];
+    const accent = accents[position.depth % accents.length];
+    return {
+      id: goal.id,
+      position: { x: position.x, y: position.y },
+      sourcePosition: "bottom" as Position,
+      targetPosition: "top" as Position,
+      ariaLabel: `${goal.title}，${typeLabels[goal.type]}目标，进度 ${progress}%`,
+      data: {
+        label: (
+          <div className="text-left">
+            <div className="flex items-center justify-between gap-3 px-4 pt-4">
+              <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: accent.soft, color: accent.color }}>{typeLabels[goal.type]}</span>
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-faint"><span className="h-1.5 w-1.5 rounded-full" style={{ background: accent.color }} />{statusLabels[goal.status]}</span>
+            </div>
+            <div className="px-4 pb-4 pt-3">
+              <strong className="block truncate text-[15px] font-extrabold text-ink">{typeLabels[goal.type]}目标：{goal.title}</strong>
+              <div className="mt-3 flex items-center gap-3">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${Math.min(100, progress)}%`, background: accent.bar }} /></div>
+                <span className="w-10 text-right text-sm font-black tabular-nums" style={{ color: accent.color }}>{progress}%</span>
+              </div>
+              <p className="mt-2 truncate text-[11px] font-medium text-ink-faint">{goal.due_date ? `截止 ${goal.due_date}` : goal.metrics.length ? `${goal.metrics.length} 个量化指标` : "未设置截止日期"}</p>
+            </div>
+          </div>
+        ),
+      },
+      draggable: false,
+      style: {
+        width: 260,
+        padding: 0,
+        overflow: "hidden",
+        border: selected ? "3px solid #F59E0B" : highlighted.has(goal.id) ? `2px solid ${accent.color}` : "1px solid #DCE8ED",
+        borderRadius: 20,
+        background: "#FFFFFF",
+        color: "#0F172A",
+        boxShadow: selected ? "0 0 0 4px rgb(251 191 36 / 0.2), 0 18px 38px -22px rgb(15 23 42 / .42)" : "0 16px 34px -24px rgb(15 23 42 / .38)",
+      },
+    };
+  });
+}
+
+function goalTreePositions(goals: Goal[]): Map<string, { x: number; y: number; depth: number }> {
+  const byID = new Map(goals.map((goal) => [goal.id, goal]));
+  const children = new Map<string, Goal[]>();
+  goals.forEach((goal) => {
+    if (!goal.parent_id || !byID.has(goal.parent_id)) return;
+    const siblings = children.get(goal.parent_id) ?? [];
+    siblings.push(goal);
+    children.set(goal.parent_id, siblings);
+  });
+  children.forEach((items) => items.sort((left, right) => left.sort_order - right.sort_order || left.title.localeCompare(right.title, "zh-CN")));
+  const roots = goals.filter((goal) => !goal.parent_id || !byID.has(goal.parent_id)).sort((left, right) => left.sort_order - right.sort_order || left.title.localeCompare(right.title, "zh-CN"));
+  const positions = new Map<string, { x: number; y: number; depth: number }>();
+  const placed = new Set<string>();
+  const active = new Set<string>();
+  let leaf = 0;
+  const place = (goal: Goal, depth: number): number => {
+    if (placed.has(goal.id)) return positions.get(goal.id)?.x ?? leaf * 320;
+    if (active.has(goal.id)) return leaf++ * 320;
+    active.add(goal.id);
+    const descendants = (children.get(goal.id) ?? []).filter((item) => !active.has(item.id));
+    const descendantXs = descendants.map((item) => place(item, depth + 1));
+    const x = descendantXs.length ? (descendantXs[0] + descendantXs[descendantXs.length - 1]) / 2 : leaf++ * 320;
+    positions.set(goal.id, { x, y: depth * 190, depth });
+    placed.add(goal.id);
+    active.delete(goal.id);
+    return x;
+  };
+  roots.forEach((goal, index) => { if (index > 0) leaf += 0.25; place(goal, 0); });
+  goals.forEach((goal) => { if (!placed.has(goal.id)) { leaf += 0.25; place(goal, 0); } });
+  return positions;
+}
 function goalEdges(goals: Goal[], selectedID: string | null): Edge[] { const highlighted = highlightedGoals(goals, selectedID); return goals.filter((goal) => goal.parent_id).map((goal) => ({ id: `${goal.parent_id}-${goal.id}`, source: goal.parent_id!, target: goal.id, type: "smoothstep", style: { stroke: highlighted.has(goal.id) && highlighted.has(goal.parent_id!) ? "#d97706" : "#0f766e", strokeWidth: highlighted.has(goal.id) && highlighted.has(goal.parent_id!) ? 3 : 1.5 } })); }
