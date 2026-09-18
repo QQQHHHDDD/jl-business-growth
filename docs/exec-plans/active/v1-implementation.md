@@ -201,14 +201,14 @@ The PostgreSQL commands are required for Goose migration, sqlc schema validation
 - Final local `make check` after security-header, strict-Origin, proxy-IP, and frontend auth-query race fixes: passed; `git diff --check` passed.
 - `go test -race ./...`: passed with the local Go 1.27.0 toolchain.
 - Final local `make check` after restricting trusted proxy IP extraction to loopback Nginx hops and forcing the test Playwright backend to use its local Origin: passed; direct-header spoofing coverage added.
-- Database-backed acceptance completed on the host: test database migration version 2, `TestPhase1APIIntegration`, and both Playwright tests passed.
+- Database-backed acceptance completed on the host: test database migration version 2, `TestAuthenticationAdminAPIIntegration`, and both Playwright tests passed.
 - Final Phase 1 regression: frontend Vitest 8 tests, backend `go test -race ./...`, `make check`, `make test-integration`, `make test-e2e`, and `git diff --check` passed.
 - Added `make reset-superadmin-password` as a development/test-only recovery command for an existing fixed super administrator; it updates the configured password hash, invalidates that account's sessions, refuses production, and was verified against the development API with HTTP 200 login.
 - Frontend shell refresh: `make generate`, `make lint`, `make test`, `make build`, and `make check` passed; Vitest now covers 21 tests across five files.
 - Frontend shell refresh: desktop baseline E2E passed; mobile shell and Phase 1 database-backed E2E are skipped when the host shell does not provide `APP_ENV=test`, `TEST_DATABASE_URL`, and explicit E2E credentials.
 - Frontend shell refresh: `make test-integration` was attempted and correctly refused the current shell because `TEST_DATABASE_URL` was unset; rerun with the isolated `jl_business_test` URL before final host acceptance.
 - Frontend shell refresh: `git diff --check` passed; only frontend source, dependency, Playwright, and this execution-plan documentation are changed.
-- Phase 2 daily-core acceptance: development and isolated test databases migrated to version 3; `TestPhase1APIIntegration` and `TestPhase2APIIntegration` passed.
+- Phase 2 daily-core acceptance: development and isolated test databases migrated to version 3; `TestAuthenticationAdminAPIIntegration` and `TestDailyBusinessAPIIntegration` passed.
 - Phase 2 frontend acceptance: Playwright baseline, Phase 1 administrator plus Phase 2 daily-core flow, and mobile shell passed (3 tests); the flow covers daily worklog entry, PV conversion, goal progress, dream creation, Dashboard totals, and account flow.
 - Phase 2 local gate: `make generate`, `make lint`, `make test`, `make build`, `make check`, backend race tests, and `git diff --check` passed; generated API/sqlc files are stable.
 - Phase 2 UI regression: shared `Input` fields now generate unique IDs when field names repeat; Vitest covers this label-association case.

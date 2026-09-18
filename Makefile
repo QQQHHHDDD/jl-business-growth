@@ -42,11 +42,11 @@ test-backend:
 
 test-integration:
 	$(MAKE) check-test-database
-	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^TestPhase[123456]APIIntegration$$'
+	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^(TestAuthenticationAdminAPIIntegration|TestDailyBusinessAPIIntegration|TestCalendarReviewsAnalyticsAPIIntegration|TestTeamKnowledgeFilesSearchAPIIntegration|TestFinanceIncomeAPIIntegration|TestImportExportAccountLifecycleAPIIntegration)$$'
 
 test-performance:
 	$(MAKE) check-test-database
-	cd $(BACKEND_DIR) && PHASE7_PERFORMANCE=1 /usr/bin/time -v $(GO) test -v ./cmd/jl-business-api -run '^TestPhase7Performance$$' -count=1
+	cd $(BACKEND_DIR) && RUN_PERFORMANCE_TESTS=1 /usr/bin/time -v $(GO) test -v ./cmd/jl-business-api -run '^TestPerformanceIntegration$$' -count=1
 
 test-frontend:
 	$(NPM) --prefix $(FRONTEND_DIR) run test
