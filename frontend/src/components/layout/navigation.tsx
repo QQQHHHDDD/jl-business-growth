@@ -25,7 +25,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import type { AuthResponse, HealthResponse } from "@/api/client";
 import { AccountMenu } from "@/components/layout/account-menu";
@@ -103,6 +103,18 @@ const settingsItem: NavigationItem = {
   icon: Settings,
 };
 const collapseStorageKey = "jl-business-growth:sidebar-collapsed";
+const expandedGroupsStorageKey = "jl-business-growth:sidebar-expanded-groups";
+
+function readExpandedGroups(): string[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(expandedGroupsStorageKey) ?? "null") as unknown;
+    if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string" && userGroups.some((group) => group.id === item));
+    if (typeof value === "string" && userGroups.some((group) => group.id === value)) return [value];
+  } catch {
+    // Invalid legacy state is ignored and replaced on the next state write.
+  }
+  return [];
+}
 
 function isActive(pathname: string, href: string) {
   return href === "/app" || href === "/admin"
@@ -238,13 +250,13 @@ function SidebarGroup({
 
 function UserNavigation({
   pathname,
-  expandedGroup,
-  onExpandedGroupChange,
+  expandedGroups,
+  onExpandedGroupsChange,
   onNavigate,
 }: {
   pathname: string;
-  expandedGroup: string | null;
-  onExpandedGroupChange: (id: string | null) => void;
+  expandedGroups: string[];
+  onExpandedGroupsChange: (update: (groups: string[]) => string[]) => void;
   onNavigate?: () => void;
 }) {
   return (
@@ -254,11 +266,9 @@ function UserNavigation({
         <SidebarGroup
           key={group.id}
           group={group}
-          expanded={expandedGroup === group.id}
+          expanded={expandedGroups.includes(group.id)}
           current={currentUserGroup(pathname)?.id === group.id}
-          onToggle={() =>
-            onExpandedGroupChange(expandedGroup === group.id ? null : group.id)
-          }
+          onToggle={() => onExpandedGroupsChange((groups) => groups.includes(group.id) ? groups.filter((id) => id !== group.id) : [...groups, group.id])}
           onNavigate={onNavigate}
         />
       ))}
@@ -347,7 +357,7 @@ export function HealthIndicator({
 
 export function PageContainer({ children }: { children: ReactNode }) {
   return (
-    <div data-testid="page-container" className="mx-auto w-full min-w-0 max-w-[1360px] overflow-x-clip px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
+    <div data-testid="page-container" className="mx-auto min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-[1360px] overflow-x-clip px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
       {children}
     </div>
   );
@@ -416,9 +426,8 @@ export function AppShell({
     settingsItem,
   ];
   const activeGroup = currentUserGroup(location.pathname)?.id ?? null;
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(
-    activeGroup,
-  );
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(readExpandedGroups);
+  const visitedGroups = useRef(new Set<string>());
   const mobileItems = admin
     ? [
         ...adminItems.slice(0, 3),
@@ -444,8 +453,13 @@ export function AppShell({
         ];
 
   useEffect(() => {
-    if (activeGroup) setExpandedGroup(activeGroup);
-  }, [activeGroup, location.pathname]);
+    if (!activeGroup || visitedGroups.current.has(activeGroup)) return;
+    visitedGroups.current.add(activeGroup);
+    setExpandedGroups((groups) => groups.includes(activeGroup) ? groups : [...groups, activeGroup]);
+  }, [activeGroup]);
+  useEffect(() => {
+    localStorage.setItem(expandedGroupsStorageKey, JSON.stringify(expandedGroups));
+  }, [expandedGroups]);
   useEffect(() => {
     localStorage.setItem(collapseStorageKey, String(collapsed));
   }, [collapsed]);
@@ -494,15 +508,15 @@ export function AppShell({
             <CollapsedUserNavigation
               pathname={location.pathname}
               onOpenGroup={(groupId) => {
-                setExpandedGroup(groupId);
+                setExpandedGroups((groups) => groups.includes(groupId) ? groups : [...groups, groupId]);
                 setCollapsed(false);
               }}
             />
           ) : (
             <UserNavigation
               pathname={location.pathname}
-              expandedGroup={expandedGroup}
-              onExpandedGroupChange={setExpandedGroup}
+              expandedGroups={expandedGroups}
+              onExpandedGroupsChange={setExpandedGroups}
             />
           )}
         </div>
@@ -564,8 +578,8 @@ export function AppShell({
             ) : (
               <UserNavigation
                 pathname={location.pathname}
-                expandedGroup={expandedGroup}
-                onExpandedGroupChange={setExpandedGroup}
+                expandedGroups={expandedGroups}
+                onExpandedGroupsChange={setExpandedGroups}
                 onNavigate={closeDrawer}
               />
             )}
