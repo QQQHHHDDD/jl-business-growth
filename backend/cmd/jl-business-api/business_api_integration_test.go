@@ -28,7 +28,7 @@ import (
 	"jl-business-growth/backend/internal/config"
 )
 
-func TestPhase1APIIntegration(t *testing.T) {
+func TestAuthenticationAdminAPIIntegration(t *testing.T) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
@@ -68,8 +68,8 @@ func TestPhase1APIIntegration(t *testing.T) {
 		DatabaseURL:        databaseURL,
 		PublicBaseURL:      "http://127.0.0.1:5173",
 		CookieSecure:       false,
-		SuperadminUsername: "phase1-superadmin",
-		SuperadminPassword: "phase1-superadmin-password",
+		SuperadminUsername: "test-superadmin",
+		SuperadminPassword: "test-superadmin-password",
 		MailMode:           "file",
 		FileRoot:           fileRoot,
 		MailOutboxRoot:     fileRoot,
@@ -100,16 +100,16 @@ func TestPhase1APIIntegration(t *testing.T) {
 	}
 
 	adminResponse := postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/admins", map[string]string{
-		"username": "phase1-admin",
-		"password": "phase1-admin-password",
+		"username": "test-admin",
+		"password": "test-admin-password",
 	}, superAdminAuth.Data.CsrfToken, http.StatusCreated)
 	var ordinaryAdmin api.AccountResponse
 	decodeTestJSON(t, adminResponse, &ordinaryAdmin)
 
 	userOneClient := newTestClient(t)
 	userOneResponse := postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{
-		"username":        "phase1-user-one",
-		"password":        "phase1-user-password",
+		"username":        "primary-user",
+		"password":        "primary-user-password",
 		"invitation_code": invitation.Data.Code,
 	}, "", http.StatusCreated)
 	var userOneAuth api.AuthResponse
@@ -117,8 +117,8 @@ func TestPhase1APIIntegration(t *testing.T) {
 
 	userTwoClient := newTestClient(t)
 	userTwoResponse := postTestJSON(t, userTwoClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{
-		"username":        "phase1-user-two",
-		"password":        "phase1-second-password",
+		"username":        "linked-user",
+		"password":        "linked-user-password",
 		"invitation_code": invitation.Data.Code,
 	}, "", http.StatusCreated)
 	var userTwoAuth api.AuthResponse
@@ -126,28 +126,28 @@ func TestPhase1APIIntegration(t *testing.T) {
 
 	userThreeClient := newTestClient(t)
 	userThreeResponse := postTestJSON(t, userThreeClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{
-		"username":        "phase1-user-three",
-		"password":        "phase1-third-password",
+		"username":        "reset-target-user",
+		"password":        "reset-target-password",
 		"invitation_code": invitation.Data.Code,
 	}, "", http.StatusCreated)
 	var userThreeAuth api.AuthResponse
 	decodeTestJSON(t, userThreeResponse, &userThreeAuth)
 	postTestJSON(t, newTestClient(t), server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{
-		"username":        "phase1-user-four",
-		"password":        "phase1-fourth-password",
+		"username":        "conflict-user",
+		"password":        "conflict-password",
 		"invitation_code": invitation.Data.Code,
 	}, "", http.StatusConflict)
 
 	getTestJSON(t, userOneClient, server.URL, "/api/admin/users", http.StatusForbidden)
 	postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/accounts/add", map[string]string{
-		"username": "phase1-user-two",
-		"password": "phase1-second-password",
+		"username": "linked-user",
+		"password": "linked-user-password",
 	}, userOneAuth.Data.CsrfToken, http.StatusOK)
 
 	accountsResponse := getTestJSON(t, userOneClient, server.URL, "/api/auth/accounts", http.StatusOK)
 	var linkedAccounts api.AccountsResponse
 	decodeTestJSON(t, accountsResponse, &linkedAccounts)
-	if linkedAccounts.Data.Account.Username != "phase1-user-two" || len(linkedAccounts.Data.Accounts) != 2 {
+	if linkedAccounts.Data.Account.Username != "linked-user" || len(linkedAccounts.Data.Accounts) != 2 {
 		t.Fatalf("linked account response = %+v, want user two active with two accounts", linkedAccounts.Data)
 	}
 	postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/accounts/"+userOneAuth.Data.Account.Id.String()+"/switch", nil, linkedAccounts.Data.CsrfToken, http.StatusOK)
@@ -156,8 +156,8 @@ func TestPhase1APIIntegration(t *testing.T) {
 	getTestJSON(t, superAdminClient, server.URL, "/api/admin/admins", http.StatusOK)
 	ordinaryAdminClient := newTestClient(t)
 	ordinaryAdminLogin := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{
-		"username": "phase1-admin",
-		"password": "phase1-admin-password",
+		"username": "test-admin",
+		"password": "test-admin-password",
 	}, "", http.StatusOK)
 	var ordinaryAdminAuth api.AuthResponse
 	decodeTestJSON(t, ordinaryAdminLogin, &ordinaryAdminAuth)
@@ -166,31 +166,31 @@ func TestPhase1APIIntegration(t *testing.T) {
 	deleteTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/admins/"+ordinaryAdmin.Data.Id.String(), ordinaryAdminAuth.Data.CsrfToken, http.StatusForbidden)
 	postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", map[string]string{}, ordinaryAdminAuth.Data.CsrfToken, http.StatusCreated)
 	expiredInvitationResponse := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", map[string]interface{}{
-		"code":       "PHASE1EXPIRED",
+		"code":       "EXPIRED-INVITE",
 		"expires_at": time.Now().Add(-time.Minute).UTC(),
 	}, ordinaryAdminAuth.Data.CsrfToken, http.StatusCreated)
 	var expiredInvitation api.InvitationResponse
 	decodeTestJSON(t, expiredInvitationResponse, &expiredInvitation)
 	postTestJSON(t, newTestClient(t), server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{
-		"username":        "phase1-expired-invite",
-		"password":        "phase1-expired-password",
+		"username":        "expired-invite-user",
+		"password":        "expired-invite-password",
 		"invitation_code": expiredInvitation.Data.Code,
 	}, "", http.StatusBadRequest)
-	disabledInvitationResponse := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", map[string]string{"code": "PHASE1DISABLED"}, ordinaryAdminAuth.Data.CsrfToken, http.StatusCreated)
+	disabledInvitationResponse := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", map[string]string{"code": "DISABLED-INVITE"}, ordinaryAdminAuth.Data.CsrfToken, http.StatusCreated)
 	var disabledInvitation api.InvitationResponse
 	decodeTestJSON(t, disabledInvitationResponse, &disabledInvitation)
 	deleteTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/invitation-codes/"+disabledInvitation.Data.Id.String(), ordinaryAdminAuth.Data.CsrfToken, http.StatusNoContent)
 	postTestJSON(t, newTestClient(t), server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{
-		"username":        "phase1-disabled-invite",
-		"password":        "phase1-disabled-password",
+		"username":        "disabled-invite-user",
+		"password":        "disabled-invite-password",
 		"invitation_code": disabledInvitation.Data.Code,
 	}, "", http.StatusBadRequest)
-	postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/admins/"+ordinaryAdmin.Data.Id.String()+"/reset-password", map[string]string{"temporary_password": "phase1-admin-reset-password"}, "", http.StatusForbidden)
-	postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/admins/"+ordinaryAdmin.Data.Id.String()+"/reset-password", map[string]string{"temporary_password": "phase1-admin-reset-password"}, superAdminAuth.Data.CsrfToken, http.StatusOK)
+	postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/admins/"+ordinaryAdmin.Data.Id.String()+"/reset-password", map[string]string{"temporary_password": "admin-reset-password"}, "", http.StatusForbidden)
+	postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/admins/"+ordinaryAdmin.Data.Id.String()+"/reset-password", map[string]string{"temporary_password": "admin-reset-password"}, superAdminAuth.Data.CsrfToken, http.StatusOK)
 	getTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/users", http.StatusUnauthorized)
 	adminResetLogin := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{
-		"username": "phase1-admin",
-		"password": "phase1-admin-reset-password",
+		"username": "test-admin",
+		"password": "admin-reset-password",
 	}, "", http.StatusOK)
 	var adminResetAuth api.AuthResponse
 	decodeTestJSON(t, adminResetLogin, &adminResetAuth)
@@ -198,22 +198,22 @@ func TestPhase1APIIntegration(t *testing.T) {
 	getTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/users", http.StatusUnauthorized)
 	patchTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/admins/"+ordinaryAdmin.Data.Id.String(), map[string]string{"status": "ACTIVE"}, superAdminAuth.Data.CsrfToken, http.StatusOK)
 	ordinaryAdminRestoredLogin := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{
-		"username": "phase1-admin",
-		"password": "phase1-admin-reset-password",
+		"username": "test-admin",
+		"password": "admin-reset-password",
 	}, "", http.StatusOK)
 	var ordinaryAdminRestoredAuth api.AuthResponse
 	decodeTestJSON(t, ordinaryAdminRestoredLogin, &ordinaryAdminRestoredAuth)
 
-	adminUserResetResponse := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/users/"+userThreeAuth.Data.Account.Id.String()+"/reset-password", map[string]string{"temporary_password": "phase1-admin-user-reset-password"}, ordinaryAdminRestoredAuth.Data.CsrfToken, http.StatusOK)
+	adminUserResetResponse := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/users/"+userThreeAuth.Data.Account.Id.String()+"/reset-password", map[string]string{"temporary_password": "user-reset-password"}, ordinaryAdminRestoredAuth.Data.CsrfToken, http.StatusOK)
 	var adminUserReset api.ResetPasswordResponse
 	decodeTestJSON(t, adminUserResetResponse, &adminUserReset)
-	if adminUserReset.Data.TemporaryPassword != "phase1-admin-user-reset-password" {
+	if adminUserReset.Data.TemporaryPassword != "user-reset-password" {
 		t.Fatalf("ordinary admin reset password response = %q", adminUserReset.Data.TemporaryPassword)
 	}
 	getTestJSON(t, userThreeClient, server.URL, "/api/auth/me", http.StatusUnauthorized)
 	postTestJSON(t, userThreeClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{
-		"username": "phase1-user-three",
-		"password": "phase1-admin-user-reset-password",
+		"username": "reset-target-user",
+		"password": "user-reset-password",
 	}, "", http.StatusOK)
 	patchTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/users/"+userThreeAuth.Data.Account.Id.String()+"/status", map[string]string{"status": "DISABLED"}, ordinaryAdminRestoredAuth.Data.CsrfToken, http.StatusOK)
 	getTestJSON(t, userThreeClient, server.URL, "/api/auth/me", http.StatusUnauthorized)
@@ -227,29 +227,29 @@ func TestPhase1APIIntegration(t *testing.T) {
 	patchTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/users/"+userOneAuth.Data.Account.Id.String()+"/status", map[string]string{"status": "DISABLED"}, superAdminAuth.Data.CsrfToken, http.StatusOK)
 	getTestJSON(t, userOneClient, server.URL, "/api/auth/me", http.StatusUnauthorized)
 	postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{
-		"username": "phase1-user-one",
-		"password": "phase1-user-password",
+		"username": "primary-user",
+		"password": "primary-user-password",
 	}, "", http.StatusForbidden)
 	patchTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/users/"+userOneAuth.Data.Account.Id.String()+"/status", map[string]string{"status": "ACTIVE"}, superAdminAuth.Data.CsrfToken, http.StatusOK)
 
-	resetResponse := postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/users/"+userOneAuth.Data.Account.Id.String()+"/reset-password", map[string]string{"temporary_password": "phase1-reset-password"}, superAdminAuth.Data.CsrfToken, http.StatusOK)
+	resetResponse := postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/users/"+userOneAuth.Data.Account.Id.String()+"/reset-password", map[string]string{"temporary_password": "primary-reset-password"}, superAdminAuth.Data.CsrfToken, http.StatusOK)
 	var reset api.ResetPasswordResponse
 	decodeTestJSON(t, resetResponse, &reset)
-	if reset.Data.TemporaryPassword != "phase1-reset-password" {
+	if reset.Data.TemporaryPassword != "primary-reset-password" {
 		t.Fatalf("reset password response = %q", reset.Data.TemporaryPassword)
 	}
 	updatedUserLogin := postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{
-		"username": "phase1-user-one",
-		"password": "phase1-reset-password",
+		"username": "primary-user",
+		"password": "primary-reset-password",
 	}, "", http.StatusOK)
 	var updatedUserAuth api.AuthResponse
 	decodeTestJSON(t, updatedUserLogin, &updatedUserAuth)
 	patchTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/me/timezone", map[string]string{"timezone": "Asia/Tokyo"}, updatedUserAuth.Data.CsrfToken, http.StatusOK)
-	postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/change-password", map[string]string{"current_password": "phase1-reset-password", "new_password": "phase1-user-final-password"}, updatedUserAuth.Data.CsrfToken, http.StatusNoContent)
+	postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/change-password", map[string]string{"current_password": "primary-reset-password", "new_password": "primary-final-password"}, updatedUserAuth.Data.CsrfToken, http.StatusNoContent)
 	getTestJSON(t, userOneClient, server.URL, "/api/auth/me", http.StatusUnauthorized)
 	finalUserLogin := postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{
-		"username": "phase1-user-one",
-		"password": "phase1-user-final-password",
+		"username": "primary-user",
+		"password": "primary-final-password",
 	}, "", http.StatusOK)
 	var finalUserAuth api.AuthResponse
 	decodeTestJSON(t, finalUserLogin, &finalUserAuth)
@@ -258,8 +258,8 @@ func TestPhase1APIIntegration(t *testing.T) {
 
 	deleteTestJSON(t, superAdminClient, server.URL, "/api/admin/users/"+userTwoAuth.Data.Account.Id.String(), superAdminAuth.Data.CsrfToken, http.StatusNoContent)
 	postTestJSON(t, userTwoClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/login", map[string]string{
-		"username": "phase1-user-two",
-		"password": "phase1-second-password",
+		"username": "linked-user",
+		"password": "linked-user-password",
 	}, "", http.StatusUnauthorized)
 	deleteTestJSON(t, superAdminClient, server.URL, "/api/admin/users/"+userThreeAuth.Data.Account.Id.String(), superAdminAuth.Data.CsrfToken, http.StatusNoContent)
 
@@ -267,7 +267,7 @@ func TestPhase1APIIntegration(t *testing.T) {
 	getTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/users", http.StatusUnauthorized)
 }
 
-func TestPhase2APIIntegration(t *testing.T) {
+func TestDailyBusinessAPIIntegration(t *testing.T) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
@@ -292,17 +292,17 @@ func TestPhase2APIIntegration(t *testing.T) {
 	}
 	var dailyTables bool
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.daily_worklogs') IS NOT NULL AND to_regclass('public.daily_turnovers') IS NOT NULL AND to_regclass('public.goals') IS NOT NULL`).Scan(&dailyTables); err != nil {
-		t.Fatalf("check Phase 2 migration: %v", err)
+		t.Fatalf("check daily/goals migration: %v", err)
 	}
 	if !dailyTables {
-		t.Fatal("Phase 2 migration is not applied; run make migrate-test-up first")
+		t.Fatal("daily/goals migration is not applied; run make migrate-test-up first")
 	}
 	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
 		t.Fatalf("reset isolated test database: %v", err)
 	}
 
 	fileRoot := t.TempDir()
-	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
 	authService := auth.NewService(pool, applicationConfig)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
@@ -320,14 +320,14 @@ func TestPhase2APIIntegration(t *testing.T) {
 	decodeTestJSON(t, invitationResponse, &invitation)
 
 	userClient := newTestClient(t)
-	userResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase2-user", "password": "phase2-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
+	userResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{"username": "daily-goals-user", "password": "daily-goals-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
 	var userAuth api.AuthResponse
 	decodeTestJSON(t, userResponse, &userAuth)
 	dailyDate := time.Now().UTC().Format("2006-01-02")
 	worklogResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/worklogs", map[string]interface{}{
 		"work_date": dailyDate, "open_conversation_count": 1, "deep_conversation_count": 1, "buffer_count": 0, "story_share_count": 0,
 		"screening_count": 0, "opportunity_count": 0, "meeting_count": 2, "customer_followup_count": 0, "reading_minutes": 30, "audio_minutes": 15,
-		"turnover_pv": 2, "turnover_net_amount": nil, "note": "phase 2 integration",
+		"turnover_pv": 2, "turnover_net_amount": nil, "note": "daily and goals integration",
 	}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var worklog api.WorklogResponse
 	decodeTestJSON(t, worklogResponse, &worklog)
@@ -357,7 +357,7 @@ func TestPhase2APIIntegration(t *testing.T) {
 	}
 
 	goalResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/goals", map[string]interface{}{
-		"type": "YEAR", "title": "Phase 2 meeting goal", "start_date": dailyDate, "due_date": dailyDate, "status": "IN_PROGRESS",
+		"type": "YEAR", "title": "Annual meeting goal", "start_date": dailyDate, "due_date": dailyDate, "status": "IN_PROGRESS",
 		"metrics": []map[string]interface{}{{"metric_code": "meeting_count", "target_value": 2, "unit": "次"}},
 	}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var goal api.GoalResponse
@@ -365,7 +365,7 @@ func TestPhase2APIIntegration(t *testing.T) {
 	if goal.Data.Progress != 1 || len(goal.Data.Metrics) != 1 || goal.Data.Metrics[0].ActualValue != 2 {
 		t.Fatalf("goal response = %+v, want meeting progress 1 with actual 2", goal.Data)
 	}
-	dreamResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/dreams", map[string]interface{}{"title": "Phase 2 dream", "description": "A verified direction", "goal_ids": []string{goal.Data.Id.String()}}, userAuth.Data.CsrfToken, http.StatusCreated)
+	dreamResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/dreams", map[string]interface{}{"title": "Annual dream", "description": "A verified direction", "goal_ids": []string{goal.Data.Id.String()}}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var dream api.DreamResponse
 	decodeTestJSON(t, dreamResponse, &dream)
 	if len(dream.Data.GoalIds) != 1 || dream.Data.GoalIds[0] != goal.Data.Id {
@@ -410,7 +410,7 @@ func TestPhase2APIIntegration(t *testing.T) {
 	getTestJSON(t, superAdminClient, server.URL, "/api/dreams", http.StatusForbidden)
 }
 
-func TestPhase3APIIntegration(t *testing.T) {
+func TestCalendarReviewsAnalyticsAPIIntegration(t *testing.T) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
@@ -432,18 +432,18 @@ func TestPhase3APIIntegration(t *testing.T) {
 	if err := pool.Ping(ctx); err != nil {
 		t.Fatalf("ping test database: %v", err)
 	}
-	var phase3Tables bool
-	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.calendar_events') IS NOT NULL AND to_regclass('public.calendar_event_exceptions') IS NOT NULL AND to_regclass('public.reviews') IS NOT NULL AND to_regclass('public.calendar_contacts') IS NOT NULL`).Scan(&phase3Tables); err != nil {
-		t.Fatalf("check Phase 3 migration: %v", err)
+	var calendarReviewsTablesReady bool
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.calendar_events') IS NOT NULL AND to_regclass('public.calendar_event_exceptions') IS NOT NULL AND to_regclass('public.reviews') IS NOT NULL AND to_regclass('public.calendar_contacts') IS NOT NULL`).Scan(&calendarReviewsTablesReady); err != nil {
+		t.Fatalf("check calendar/reviews migration: %v", err)
 	}
-	if !phase3Tables {
-		t.Fatal("Phase 3 migration is not applied; run make migrate-test-up first")
+	if !calendarReviewsTablesReady {
+		t.Fatal("calendar/reviews migration is not applied; run make migrate-test-up first")
 	}
 	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
 		t.Fatalf("reset isolated test database: %v", err)
 	}
 	fileRoot := t.TempDir()
-	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
 	authService := auth.NewService(pool, applicationConfig)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
@@ -459,23 +459,23 @@ func TestPhase3APIIntegration(t *testing.T) {
 	var invitation api.InvitationResponse
 	decodeTestJSON(t, invite, &invitation)
 	userClient := newTestClient(t)
-	registered := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase3-user", "password": "phase3-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
+	registered := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{"username": "calendar-user", "password": "calendar-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
 	var userAuth api.AuthResponse
 	decodeTestJSON(t, registered, &userAuth)
 	patchTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/me/timezone", map[string]string{"timezone": "America/New_York"}, userAuth.Data.CsrfToken, http.StatusOK)
 	start := time.Now().UTC().Truncate(time.Hour).Add(24 * time.Hour)
 	end := start.Add(time.Hour)
-	eventBody := map[string]interface{}{"title": "Phase 3 meeting", "timezone": "Asia/Shanghai", "start_at": start, "end_at": end, "recurrence_freq": "NONE", "attendees": []map[string]string{{"email": "phase3@example.com"}}}
+	eventBody := map[string]interface{}{"title": "Calendar meeting", "timezone": "Asia/Shanghai", "start_at": start, "end_at": end, "recurrence_freq": "NONE", "attendees": []map[string]string{{"email": "calendar@example.com"}}}
 	eventResponse := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events", eventBody, userAuth.Data.CsrfToken, http.StatusCreated)
 	var created api.CalendarEventResponse
 	decodeTestJSON(t, eventResponse, &created)
-	if created.Data.Title != "Phase 3 meeting" || created.Data.Uid == "" || created.Data.Timezone != "America/New_York" {
+	if created.Data.Title != "Calendar meeting" || created.Data.Uid == "" || created.Data.Timezone != "America/New_York" {
 		t.Fatalf("calendar event = %+v", created.Data)
 	}
-	contactBody := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/contacts", map[string]string{"name": "  Phase 3 Guest  ", "email": "  Guest@Example.COM  "}, userAuth.Data.CsrfToken, http.StatusCreated)
+	contactBody := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/contacts", map[string]string{"name": "  Calendar Guest  ", "email": "  Guest@Example.COM  "}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var contact api.CalendarContactResponse
 	decodeTestJSON(t, contactBody, &contact)
-	if contact.Data.Name == nil || *contact.Data.Name != "Phase 3 Guest" || string(contact.Data.Email) != "guest@example.com" {
+	if contact.Data.Name == nil || *contact.Data.Name != "Calendar Guest" || string(contact.Data.Email) != "guest@example.com" {
 		t.Fatalf("calendar contact = %+v", contact.Data)
 	}
 	postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/contacts", map[string]string{"email": "GUEST@example.com"}, userAuth.Data.CsrfToken, http.StatusConflict)
@@ -487,7 +487,7 @@ func TestPhase3APIIntegration(t *testing.T) {
 		t.Fatalf("calendar contacts = %+v", contacts.Data.Items)
 	}
 	secondClient := newTestClient(t)
-	secondRegistered := postTestJSON(t, secondClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase3-other-user", "password": "phase3-other-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
+	secondRegistered := postTestJSON(t, secondClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{"username": "second-calendar-user", "password": "second-calendar-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
 	var secondAuth api.AuthResponse
 	decodeTestJSON(t, secondRegistered, &secondAuth)
 	putTestJSON(t, secondClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/contacts/"+contact.Data.Id.String(), map[string]string{"name": "Not owner", "email": "owner@example.com"}, secondAuth.Data.CsrfToken, http.StatusNotFound)
@@ -518,7 +518,7 @@ func TestPhase3APIIntegration(t *testing.T) {
 			t.Fatalf("mail outbox content missing ICS request: error = %v, content = %q", readErr, content)
 		}
 	}
-	recurring := map[string]interface{}{"title": "Phase 3 daily series", "timezone": "Asia/Shanghai", "start_at": start, "end_at": end, "recurrence_freq": "DAILY", "recurrence_interval": 1, "recurrence_end_type": "COUNT", "recurrence_count": 3}
+	recurring := map[string]interface{}{"title": "Daily series", "timezone": "Asia/Shanghai", "start_at": start, "end_at": end, "recurrence_freq": "DAILY", "recurrence_interval": 1, "recurrence_end_type": "COUNT", "recurrence_count": 3}
 	recurringBody := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events", recurring, userAuth.Data.CsrfToken, http.StatusCreated)
 	var recurringCreated api.CalendarEventResponse
 	decodeTestJSON(t, recurringBody, &recurringCreated)
@@ -551,13 +551,13 @@ func TestPhase3APIIntegration(t *testing.T) {
 	thirdOccurrence := seriesOccurrences[2]
 	futureStart, futureEnd := thirdOccurrence.StartAt.Add(3*time.Hour), thirdOccurrence.EndAt.Add(3*time.Hour)
 	futureBody := putTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events/"+recurringCreated.Data.Id.String(), map[string]interface{}{
-		"title": "Phase 3 moved future series", "timezone": "America/New_York", "start_at": futureStart, "end_at": futureEnd,
+		"title": "Moved future series", "timezone": "America/New_York", "start_at": futureStart, "end_at": futureEnd,
 		"recurrence_freq": "DAILY", "recurrence_interval": 1, "recurrence_end_type": "COUNT", "recurrence_count": 2,
 		"edit_scope": "THIS_AND_FOLLOWING", "occurrence_start": thirdOccurrence.StartAt,
 	}, userAuth.Data.CsrfToken, http.StatusOK)
 	var futureSeries api.CalendarEventResponse
 	decodeTestJSON(t, futureBody, &futureSeries)
-	if futureSeries.Data.Id == recurringCreated.Data.Id || futureSeries.Data.Title != "Phase 3 moved future series" || !futureSeries.Data.StartAt.Equal(futureStart) {
+	if futureSeries.Data.Id == recurringCreated.Data.Id || futureSeries.Data.Title != "Moved future series" || !futureSeries.Data.StartAt.Equal(futureStart) {
 		t.Fatalf("future recurring series = %+v", futureSeries.Data)
 	}
 	period := start.Format("2006-01-02")
@@ -593,7 +593,7 @@ func TestPhase3APIIntegration(t *testing.T) {
 	getTestJSON(t, superClient, server.URL, "/api/analytics/worklogs?granularity=day", http.StatusForbidden)
 }
 
-func TestPhase4APIIntegration(t *testing.T) {
+func TestTeamKnowledgeFilesSearchAPIIntegration(t *testing.T) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
@@ -617,10 +617,10 @@ func TestPhase4APIIntegration(t *testing.T) {
 	}
 	var tables bool
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.team_members') IS NOT NULL AND to_regclass('public.knowledge_items') IS NOT NULL AND to_regclass('public.file_assets') IS NOT NULL`).Scan(&tables); err != nil {
-		t.Fatalf("check Phase 4 migration: %v", err)
+		t.Fatalf("check team/knowledge migration: %v", err)
 	}
 	if !tables {
-		t.Fatal("Phase 4 migration is not applied; run make migrate-test-up first")
+		t.Fatal("team/knowledge migration is not applied; run make migrate-test-up first")
 	}
 	var nodeColorColumn bool
 	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='team_members' AND column_name='node_color')`).Scan(&nodeColorColumn); err != nil {
@@ -633,7 +633,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 		t.Fatalf("reset isolated test database: %v", err)
 	}
 	fileRoot := t.TempDir()
-	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
 	authService := auth.NewService(pool, cfg)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
@@ -648,10 +648,10 @@ func TestPhase4APIIntegration(t *testing.T) {
 	var invitation api.InvitationResponse
 	decodeTestJSON(t, invite, &invitation)
 	userClient := newTestClient(t)
-	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase4-user", "password": "phase4-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
+	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "team-knowledge-user", "password": "team-knowledge-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
 	var userAuth api.AuthResponse
 	decodeTestJSON(t, registered, &userAuth)
-	parentBody := map[string]interface{}{"name": "Phase 4 root", "rank": "主任", "city": "上海", "node_color": "#2563EB"}
+	parentBody := map[string]interface{}{"name": "Team root", "rank": "主任", "city": "上海", "node_color": "#2563EB"}
 	parentResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", parentBody, userAuth.Data.CsrfToken, http.StatusCreated)
 	var parent api.TeamMemberResponse
 	decodeTestJSON(t, parentResponse, &parent)
@@ -660,18 +660,18 @@ func TestPhase4APIIntegration(t *testing.T) {
 	}
 	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "1"}, userAuth.Data.CsrfToken, http.StatusBadRequest)
 	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "Invalid color", "node_color": "blue"}, userAuth.Data.CsrfToken, http.StatusBadRequest)
-	childResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "Phase 4 child", "parent_id": parent.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
+	childResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"name": "Team child", "parent_id": parent.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var child api.TeamMemberResponse
 	decodeTestJSON(t, childResponse, &child)
 	if child.Data.NodeColor != "#0f766e" {
 		t.Fatalf("default team node color = %q", child.Data.NodeColor)
 	}
-	updatedParentBody := putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members/"+parent.Data.Id.String(), map[string]interface{}{"name": "Phase 4 root", "rank": "主任", "city": "上海", "node_color": "#7C3AED"}, userAuth.Data.CsrfToken, http.StatusOK)
+	updatedParentBody := putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members/"+parent.Data.Id.String(), map[string]interface{}{"name": "Team root", "rank": "主任", "city": "上海", "node_color": "#7C3AED"}, userAuth.Data.CsrfToken, http.StatusOK)
 	decodeTestJSON(t, updatedParentBody, &parent)
 	if parent.Data.NodeColor != "#7c3aed" {
 		t.Fatalf("updated team node color = %q", parent.Data.NodeColor)
 	}
-	putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members/"+parent.Data.Id.String(), map[string]interface{}{"name": "Phase 4 root", "parent_id": child.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusBadRequest)
+	putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members/"+parent.Data.Id.String(), map[string]interface{}{"name": "Team root", "parent_id": child.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusBadRequest)
 	teamWithoutSnapshotsBody := getTestJSON(t, userClient, server.URL, "/api/analytics/team?from=2026-09-01&to=2026-10-01&granularity=month", http.StatusOK)
 	var teamWithoutSnapshots api.AnalyticsResponse
 	decodeTestJSON(t, teamWithoutSnapshotsBody, &teamWithoutSnapshots)
@@ -690,7 +690,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 	if teamAnalytics.Data.Metric != "team" || teamAnalytics.Data.CurrentMemberCount != 2 || teamAnalytics.Data.CurrentActiveMemberCount != 2 || teamAnalytics.Data.SnapshotCount != 1 || len(teamAnalytics.Data.Buckets) != 1 || teamAnalytics.Data.Buckets[0].MemberCount == nil || *teamAnalytics.Data.Buckets[0].MemberCount != 2 {
 		t.Fatalf("team analytics = %+v", teamAnalytics.Data)
 	}
-	knowledgeResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/knowledge", map[string]interface{}{"title": "Phase 4 book", "type": "BOOK", "tags": []string{"经营", "经营"}, "status": "IN_PROGRESS"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	knowledgeResponse := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/knowledge", map[string]interface{}{"title": "Knowledge book", "type": "BOOK", "tags": []string{"经营", "经营"}, "status": "IN_PROGRESS"}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var item api.KnowledgeItemResponse
 	decodeTestJSON(t, knowledgeResponse, &item)
 	if len(item.Data.Tags) != 1 {
@@ -706,13 +706,13 @@ func TestPhase4APIIntegration(t *testing.T) {
 	writer := multipart.NewWriter(&body)
 	_ = writer.WriteField("category", "KNOWLEDGE_DOCUMENT")
 	part, err := writer.CreatePart(textproto.MIMEHeader{
-		"Content-Disposition": {`form-data; name="file"; filename="phase4.txt"`},
+		"Content-Disposition": {`form-data; name="file"; filename="knowledge.txt"`},
 		"Content-Type":        {"text/plain"},
 	})
 	if err != nil {
 		t.Fatalf("create multipart file: %v", err)
 	}
-	_, _ = part.Write([]byte("phase 4 attachment"))
+	_, _ = part.Write([]byte("knowledge attachment"))
 	if err := writer.Close(); err != nil {
 		t.Fatalf("close multipart writer: %v", err)
 	}
@@ -727,7 +727,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 	uploadResponse := doTestRequest(t, userClient, uploadRequest, http.StatusCreated)
 	var fileResponse api.FileResponse
 	decodeTestJSON(t, uploadResponse, &fileResponse)
-	knowledgeUpdate := putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/knowledge/"+item.Data.Id.String(), map[string]interface{}{"title": "Phase 4 book", "type": "BOOK", "status": "IN_PROGRESS", "file_ids": []string{fileResponse.Data.Id.String()}}, userAuth.Data.CsrfToken, http.StatusOK)
+	knowledgeUpdate := putTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/knowledge/"+item.Data.Id.String(), map[string]interface{}{"title": "Knowledge book", "type": "BOOK", "status": "IN_PROGRESS", "file_ids": []string{fileResponse.Data.Id.String()}}, userAuth.Data.CsrfToken, http.StatusOK)
 	decodeTestJSON(t, knowledgeUpdate, &item)
 	if len(item.Data.FileIds) != 1 || item.Data.FileIds[0] != fileResponse.Data.Id {
 		t.Fatalf("knowledge attachments = %v, want uploaded file", item.Data.FileIds)
@@ -753,7 +753,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 	imageUpload := doTestRequest(t, userClient, imageRequest, http.StatusCreated)
 	var imageResponse api.FileResponse
 	decodeTestJSON(t, imageUpload, &imageResponse)
-	dreamBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/dreams", map[string]interface{}{"title": "Phase 4 dream", "file_ids": []string{imageResponse.Data.Id.String()}}, userAuth.Data.CsrfToken, http.StatusCreated)
+	dreamBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/dreams", map[string]interface{}{"title": "Team dream", "file_ids": []string{imageResponse.Data.Id.String()}}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var dreamResponse api.DreamResponse
 	decodeTestJSON(t, dreamBody, &dreamResponse)
 	if len(dreamResponse.Data.FileIds) != 1 || dreamResponse.Data.FileIds[0] != imageResponse.Data.Id {
@@ -768,13 +768,13 @@ func TestPhase4APIIntegration(t *testing.T) {
 	if !strings.Contains(string(exportData), "member_code,name,parent_member_code") || !strings.Contains(string(exportData), "node_color") || !strings.Contains(string(exportData), "#7c3aed") {
 		t.Fatalf("team export does not contain stable hierarchy columns: %q", exportData)
 	}
-	searchResponse := getTestJSON(t, userClient, server.URL, "/api/search?q=Phase%204%20book", http.StatusOK)
+	searchResponse := getTestJSON(t, userClient, server.URL, "/api/search?q=Knowledge%20book", http.StatusOK)
 	var searchResult api.SearchResponse
 	decodeTestJSON(t, searchResponse, &searchResult)
 	if len(searchResult.Data.Items) == 0 {
 		t.Fatal("search did not find the user's knowledge item")
 	}
-	filteredSearchResponse := getTestJSON(t, userClient, server.URL, "/api/search?q=Phase%204%20book&modules=knowledge", http.StatusOK)
+	filteredSearchResponse := getTestJSON(t, userClient, server.URL, "/api/search?q=Knowledge%20book&modules=knowledge", http.StatusOK)
 	var filteredSearchResult api.SearchResponse
 	decodeTestJSON(t, filteredSearchResponse, &filteredSearchResult)
 	if len(filteredSearchResult.Data.Items) == 0 {
@@ -785,7 +785,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 			t.Fatalf("filtered search returned module %q, want knowledge", item.Module)
 		}
 	}
-	teamSearchBody := getTestJSON(t, userClient, server.URL, "/api/search?q=Phase%204%20root&modules=team", http.StatusOK)
+	teamSearchBody := getTestJSON(t, userClient, server.URL, "/api/search?q=Team%20root&modules=team", http.StatusOK)
 	var teamSearch api.SearchResponse
 	decodeTestJSON(t, teamSearchBody, &teamSearch)
 	var parentSearchResult *api.SearchResult
@@ -808,7 +808,7 @@ func TestPhase4APIIntegration(t *testing.T) {
 	}
 	getTestJSON(t, userClient, server.URL, "/api/search?q=%20", http.StatusBadRequest)
 	isolatedClient := newTestClient(t)
-	isolatedRegistration := postTestJSON(t, isolatedClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase4-isolated", "password": "phase4-isolated-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
+	isolatedRegistration := postTestJSON(t, isolatedClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "isolated-user", "password": "isolated-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
 	var isolatedAuth api.AuthResponse
 	decodeTestJSON(t, isolatedRegistration, &isolatedAuth)
 	isolatedSearchBody := getTestJSON(t, isolatedClient, server.URL, "/api/search?q=P", http.StatusOK)
@@ -821,10 +821,10 @@ func TestPhase4APIIntegration(t *testing.T) {
 	getTestJSON(t, userClient, server.URL, "/api/files/"+fileResponse.Data.Id.String()+"/content?disposition=inline", http.StatusOK)
 	getTestJSON(t, adminClient, server.URL, "/api/team/members", http.StatusForbidden)
 	getTestJSON(t, adminClient, server.URL, "/api/knowledge", http.StatusForbidden)
-	getTestJSON(t, adminClient, server.URL, "/api/search?q=Phase", http.StatusForbidden)
+	getTestJSON(t, adminClient, server.URL, "/api/search?q=business", http.StatusForbidden)
 }
 
-func TestPhase5APIIntegration(t *testing.T) {
+func TestFinanceIncomeAPIIntegration(t *testing.T) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
@@ -848,18 +848,18 @@ func TestPhase5APIIntegration(t *testing.T) {
 	}
 	var tables bool
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.finance_categories') IS NOT NULL AND to_regclass('public.income_simulations') IS NOT NULL`).Scan(&tables); err != nil {
-		t.Fatalf("check Phase 5 migration: %v", err)
+		t.Fatalf("check finance/income migration: %v", err)
 	}
 	if !tables {
-		t.Fatal("Phase 5 migration is not applied; run make migrate-test-up first")
+		t.Fatal("finance/income migration is not applied; run make migrate-test-up first")
 	}
 	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
 		t.Fatalf("reset isolated test database: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO finance_categories (user_id, type, name) VALUES (NULL, 'INCOME', '其他收入'), (NULL, 'EXPENSE', '其他支出'), (NULL, 'EXPENSE', '生活'), (NULL, 'EXPENSE', '交通'), (NULL, 'EXPENSE', '学习')`); err != nil {
-		t.Fatalf("restore Phase 5 system categories after reset: %v", err)
+		t.Fatalf("restore finance/income system categories after reset: %v", err)
 	}
-	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: t.TempDir(), MailOutboxRoot: t.TempDir()}
+	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: t.TempDir(), MailOutboxRoot: t.TempDir()}
 	authService := auth.NewService(pool, cfg)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
@@ -874,7 +874,7 @@ func TestPhase5APIIntegration(t *testing.T) {
 	var invite api.InvitationResponse
 	decodeTestJSON(t, inviteBody, &invite)
 	userClient := newTestClient(t)
-	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase5-user", "password": "phase5-user-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
+	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "finance-user", "password": "finance-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
 	var userAuth api.AuthResponse
 	decodeTestJSON(t, registered, &userAuth)
 
@@ -884,11 +884,11 @@ func TestPhase5APIIntegration(t *testing.T) {
 	if len(categories.Data.Items) != 5 {
 		t.Fatalf("finance categories = %d, want 5 system defaults", len(categories.Data.Items))
 	}
-	categoryBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/categories", map[string]string{"type": "EXPENSE", "name": "Phase 5 testing"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	categoryBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/categories", map[string]string{"type": "EXPENSE", "name": "Finance testing"}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var category api.FinanceCategoryResponse
 	decodeTestJSON(t, categoryBody, &category)
 	today := time.Now().UTC().Format("2006-01-02")
-	transactionBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/transactions", map[string]interface{}{"occurred_on": today, "type": "EXPENSE", "category_id": category.Data.Id.String(), "amount": "123.45", "description": "Phase 5 transaction"}, userAuth.Data.CsrfToken, http.StatusCreated)
+	transactionBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/transactions", map[string]interface{}{"occurred_on": today, "type": "EXPENSE", "category_id": category.Data.Id.String(), "amount": "123.45", "description": "Finance transaction"}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var transaction api.FinanceTransactionResponse
 	decodeTestJSON(t, transactionBody, &transaction)
 	transactionsBody := getTestJSON(t, userClient, server.URL, "/api/finance/transactions?from="+today+"&to="+today, http.StatusOK)
@@ -907,7 +907,7 @@ func TestPhase5APIIntegration(t *testing.T) {
 	if len(budgets.Data.Items) != 1 || budgets.Data.Items[0].Amount != "1500.00" {
 		t.Fatalf("finance budgets = %+v", budgets.Data.Items)
 	}
-	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/snapshots", map[string]interface{}{"snapshot_date": today, "kind": "SAVINGS", "amount": "8000.00", "note": "Phase 5"}, userAuth.Data.CsrfToken, http.StatusOK)
+	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/finance/snapshots", map[string]interface{}{"snapshot_date": today, "kind": "SAVINGS", "amount": "8000.00", "note": "finance/income"}, userAuth.Data.CsrfToken, http.StatusOK)
 	incomeInput := map[string]interface{}{"personal_use_pv": 1000, "customer_pv": 0, "markets": []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, "annual_growth_status": "NOT_QUALIFIED", "annual_growth_qualified_months": 0, "bfi_period_eligible": false, "bbi_period_eligible": false, "double_year_mode": "NONE"}
 	calculationBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulator/calculate", incomeInput, "", http.StatusOK)
 	var calculation api.IncomeCalculationResponse
@@ -921,7 +921,7 @@ func TestPhase5APIIntegration(t *testing.T) {
 	if financeAnalytics.Data.Metric != "finance" || len(financeAnalytics.Data.Buckets) != 1 || financeAnalytics.Data.Buckets[0].ExpenseAmount == nil || *financeAnalytics.Data.Buckets[0].ExpenseAmount != "123.45" {
 		t.Fatalf("finance analytics = %+v", financeAnalytics.Data)
 	}
-	simulationBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulations", map[string]interface{}{"name": "Phase 5 plan", "input": incomeInput}, userAuth.Data.CsrfToken, http.StatusCreated)
+	simulationBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulations", map[string]interface{}{"name": "Finance plan", "input": incomeInput}, userAuth.Data.CsrfToken, http.StatusCreated)
 	var simulation api.IncomeSimulationResponse
 	decodeTestJSON(t, simulationBody, &simulation)
 	duplicateBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/income-simulations/"+simulation.Data.Id.String()+"/duplicate", nil, userAuth.Data.CsrfToken, http.StatusCreated)
@@ -940,7 +940,7 @@ func TestPhase5APIIntegration(t *testing.T) {
 	deleteTestJSON(t, userClient, server.URL, "/api/income-simulations/"+duplicate.Data.Id.String(), userAuth.Data.CsrfToken, http.StatusNoContent)
 }
 
-func TestPhase6APIIntegration(t *testing.T) {
+func TestImportExportAccountLifecycleAPIIntegration(t *testing.T) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
@@ -964,10 +964,10 @@ func TestPhase6APIIntegration(t *testing.T) {
 	}
 	var tableExists bool
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.import_jobs') IS NOT NULL`).Scan(&tableExists); err != nil {
-		t.Fatalf("check Phase 6 migration: %v", err)
+		t.Fatalf("check import/export migration: %v", err)
 	}
 	if !tableExists {
-		t.Fatal("Phase 6 migration is not applied; run make migrate-test-up first")
+		t.Fatal("import/export migration is not applied; run make migrate-test-up first")
 	}
 	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
 		t.Fatalf("reset isolated test database: %v", err)
@@ -976,7 +976,7 @@ func TestPhase6APIIntegration(t *testing.T) {
 		t.Fatalf("restore finance system categories after reset: %v", err)
 	}
 	fileRoot := t.TempDir()
-	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "phase1-superadmin", SuperadminPassword: "phase1-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
 	authService := auth.NewService(pool, cfg)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
@@ -991,15 +991,15 @@ func TestPhase6APIIntegration(t *testing.T) {
 	var invite api.InvitationResponse
 	decodeTestJSON(t, inviteBody, &invite)
 	userClient := newTestClient(t)
-	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase6-user", "password": "phase6-user-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
+	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "import-user", "password": "import-user-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
 	var userAuth api.AuthResponse
 	decodeTestJSON(t, registered, &userAuth)
 	deleteClient := newTestClient(t)
-	deleteRegistered := postTestJSON(t, deleteClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase6-admin-delete-user", "password": "phase6-admin-delete-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
+	deleteRegistered := postTestJSON(t, deleteClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "delete-admin-user", "password": "delete-admin-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
 	var deleteAuth api.AuthResponse
 	decodeTestJSON(t, deleteRegistered, &deleteAuth)
 	teamTargetClient := newTestClient(t)
-	teamTargetRegistered := postTestJSON(t, teamTargetClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "phase6-team-target", "password": "phase6-team-target-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
+	teamTargetRegistered := postTestJSON(t, teamTargetClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "team-target-user", "password": "team-target-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
 	var teamTargetAuth api.AuthResponse
 	decodeTestJSON(t, teamTargetRegistered, &teamTargetAuth)
 
@@ -1014,7 +1014,7 @@ func TestPhase6APIIntegration(t *testing.T) {
 	if err := writer.WriteField("type", "WORKLOG"); err != nil {
 		t.Fatalf("write import type: %v", err)
 	}
-	part, err := writer.CreateFormFile("file", "phase6-worklog.xlsx")
+	part, err := writer.CreateFormFile("file", "worklog-import.xlsx")
 	if err != nil {
 		t.Fatalf("create import file: %v", err)
 	}
@@ -1039,7 +1039,7 @@ func TestPhase6APIIntegration(t *testing.T) {
 		t.Fatalf("import job = %+v", job.Data)
 	}
 	var worklogCount int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM daily_worklogs WHERE user_id=(SELECT id FROM accounts WHERE username='phase6-user')`).Scan(&worklogCount); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM daily_worklogs WHERE user_id=(SELECT id FROM accounts WHERE username='import-user')`).Scan(&worklogCount); err != nil {
 		t.Fatalf("count pre-commit worklogs: %v", err)
 	}
 	if worklogCount != 0 {
@@ -1050,7 +1050,7 @@ func TestPhase6APIIntegration(t *testing.T) {
 	if job.Data.Status != api.ImportJobStatus("COMMITTED") {
 		t.Fatalf("committed import job = %+v", job.Data)
 	}
-	reimport := uploadTestImport(t, userClient, server.URL, cfg.PublicBaseURL, userAuth.Data.CsrfToken, "WORKLOG", "phase6-worklog-again.xlsx", templateData)
+	reimport := uploadTestImport(t, userClient, server.URL, cfg.PublicBaseURL, userAuth.Data.CsrfToken, "WORKLOG", "worklog-import-again.xlsx", templateData)
 	if reimport.Warnings == nil || !containsTestString(*reimport.Warnings, "same file was successfully imported before") {
 		t.Fatalf("reimport warnings = %v, want prior-import warning", reimport.Warnings)
 	}
@@ -1091,13 +1091,13 @@ func TestPhase6APIIntegration(t *testing.T) {
 		t.Fatalf("team round trip did not restore three-level hierarchy: %+v", teamMembers.Data.Items)
 	}
 
-	fileID := uploadTestFile(t, userClient, server.URL, cfg.PublicBaseURL, userAuth.Data.CsrfToken, "phase6.txt", "phase 6 account deletion file")
+	fileID := uploadTestFile(t, userClient, server.URL, cfg.PublicBaseURL, userAuth.Data.CsrfToken, "account-deletion.txt", "account deletion file")
 	var storageName string
 	if err := pool.QueryRow(ctx, `SELECT storage_name FROM file_assets WHERE id=$1`, fileID).Scan(&storageName); err != nil {
 		t.Fatalf("find self-deletion file: %v", err)
 	}
 	deleteTestJSON(t, userClient, server.URL, "/api/auth/account", userAuth.Data.CsrfToken, http.StatusNoContent)
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM accounts WHERE username='phase6-user'`).Scan(&worklogCount); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM accounts WHERE username='import-user'`).Scan(&worklogCount); err != nil {
 		t.Fatalf("check deleted account: %v", err)
 	}
 	if worklogCount != 0 {
@@ -1106,13 +1106,13 @@ func TestPhase6APIIntegration(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(fileRoot, storageName)); !os.IsNotExist(err) {
 		t.Fatalf("self-deleted account file still exists or cannot be checked: %v", err)
 	}
-	adminFileID := uploadTestFile(t, deleteClient, server.URL, cfg.PublicBaseURL, deleteAuth.Data.CsrfToken, "phase6-admin-delete.txt", "phase 6 administrator deletion file")
+	adminFileID := uploadTestFile(t, deleteClient, server.URL, cfg.PublicBaseURL, deleteAuth.Data.CsrfToken, "admin-delete.txt", "administrator deletion file")
 	var adminFile string
 	if err := pool.QueryRow(ctx, `SELECT storage_name FROM file_assets WHERE id=$1`, adminFileID).Scan(&adminFile); err != nil {
 		t.Fatalf("find administrator-deletion file: %v", err)
 	}
 	var deleteUserID uuid.UUID
-	if err := pool.QueryRow(ctx, `SELECT id FROM accounts WHERE username='phase6-admin-delete-user'`).Scan(&deleteUserID); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT id FROM accounts WHERE username='delete-admin-user'`).Scan(&deleteUserID); err != nil {
 		t.Fatalf("find administrator deletion target: %v", err)
 	}
 	deleteTestJSON(t, adminClient, server.URL, "/api/admin/users/"+deleteUserID.String(), adminAuth.Data.CsrfToken, http.StatusNoContent)
