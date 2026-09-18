@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
@@ -267,13 +266,15 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
       {view === "list" && <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />}
       {view === "dreams" && <DreamBoard dreams={dreamsQuery.data.data.items} goals={goals} files={files} onSelect={openDreamDetail} onCreate={openDreamCreate} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />}
 
-      <Sheet open={goalSheet?.mode === "detail"} onOpenChange={(open) => !open && closeGoalSheet()}>
-        {goalSheet?.mode === "detail" && (
-          <SheetContent title={goalSheet.goal.title} description={`${typeLabels[goalSheet.goal.type]}目标详情`} footer={<div className="flex justify-end gap-3"><Button variant="danger" onClick={() => setDeleteTarget({ kind: "goal", id: goalSheet.goal.id, title: goalSheet.goal.title })}><Trash2 size={16} />删除</Button><Button onClick={() => setGoalSheet({ mode: "edit", goal: goalSheet.goal })}>编辑目标</Button></div>}>
-            <GoalDetail goal={goalSheet.goal} goals={goals} />
-          </SheetContent>
-        )}
-      </Sheet>
+      <Dialog open={goalSheet?.mode === "detail"} onOpenChange={(open) => !open && closeGoalSheet()}>
+        {goalSheet?.mode === "detail" && <DialogContent className="max-w-2xl overflow-hidden p-0">
+          <div className="border-b border-brand-100/70 bg-gradient-to-r from-brand-50/85 via-sky-50/55 to-violet-50/45 px-6 py-5 pr-14">
+            <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-brand-100 text-brand-700"><Target size={19} /></span><div><DialogTitle>{goalSheet.goal.title}</DialogTitle><DialogDescription>{typeLabels[goalSheet.goal.type]}目标详情</DialogDescription></div></div>
+          </div>
+          <div className="max-h-[min(68vh,620px)] overflow-y-auto px-6 py-5"><GoalDetail goal={goalSheet.goal} goals={goals} /></div>
+          <div className="flex justify-end gap-3 border-t border-outline/55 bg-surface-muted/45 px-6 py-4"><Button variant="danger" onClick={() => setDeleteTarget({ kind: "goal", id: goalSheet.goal.id, title: goalSheet.goal.title })}><Trash2 size={16} />删除</Button><Button onClick={() => setGoalSheet({ mode: "edit", goal: goalSheet.goal })}>编辑目标</Button></div>
+        </DialogContent>}
+      </Dialog>
 
       <Dialog open={Boolean(goalSheet && goalSheet.mode !== "detail")} onOpenChange={(open) => !open && closeGoalSheet()}>
         {goalSheet && goalSheet.mode !== "detail" && <DialogContent className="max-w-2xl overflow-hidden p-0">
