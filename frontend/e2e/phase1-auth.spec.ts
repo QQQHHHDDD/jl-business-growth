@@ -19,6 +19,9 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   const secondUserPassword = "phase1-second-password";
   const firstUsername = `e2e${Date.now().toString().slice(-10)}`;
   const secondUsername = `e2e${(Date.now() + 1).toString().slice(-10)}`;
+  const currentCalendarTitle = `E2E 当前日历会面 ${Date.now()}`;
+  const fixedCalendarTitle = `E2E 15:30 至 22:00 ${Date.now()}`;
+  const nextCalendarTitle = `E2E 日历会面 ${Date.now()}`;
   const browserErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error" && !message.text().includes("Failed to load resource")) {
@@ -71,6 +74,89 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await expect(
     page.getByRole("heading", { name: new RegExp(firstUsername) }),
   ).toBeVisible();
+
+  test.setTimeout(120_000);
+  const coldSidebar = page.getByTestId("app-sidebar");
+  const coldTopbar = page.getByTestId("app-topbar");
+  const coldContainer = page.getByTestId("page-container");
+  const coldSidebarHandle = await coldSidebar.elementHandle();
+  const coldTopbarHandle = await coldTopbar.elementHandle();
+  const coldContainerHandle = await coldContainer.elementHandle();
+  const coldRoutes = [
+    ["/app", "经营进度"], ["/app/worklog", "今日工作量"], ["/app/calendar", "日历"],
+    ["/app/goals", "梦想与目标"], ["/app/team", "团队"], ["/app/finance", "财务"],
+    ["/app/knowledge", "学习中心"], ["/app/reviews", "复盘"], ["/app/analytics", "数据统计"],
+    ["/app/data", "导入 / 导出"], ["/app/settings", "设置"], ["/app", "经营进度"],
+  ] as const;
+  const coldGroups: Record<string, string> = {
+    "/app/worklog": "规划与执行", "/app/calendar": "规划与执行", "/app/goals": "规划与执行",
+    "/app/team": "经营管理", "/app/finance": "经营管理", "/app/knowledge": "成长与复盘",
+    "/app/reviews": "成长与复盘", "/app/analytics": "成长与复盘", "/app/data": "系统工具", "/app/settings": "系统工具",
+  };
+  const lazyChunks: Record<string, string> = {
+    "/app/calendar": "calendar-page", "/app/goals": "goals-page", "/app/team": "team-page",
+  };
+  const routeDiagnostics: Array<Record<string, unknown>> = [];
+  for (let round = 0; round < 5; round += 1) {
+    for (const [path, heading] of coldRoutes) {
+      const routeLink = coldSidebar.locator(`a[href="${path}"]`).first();
+      if (await routeLink.count() === 0) await coldSidebar.getByRole("button", { name: coldGroups[path], exact: true }).click();
+      await routeLink.hover();
+      const chunk = lazyChunks[path];
+      if (chunk) await expect.poll(() => page.evaluate((needle) => performance.getEntriesByType("resource").some((entry) => entry.name.includes(needle)), chunk)).toBe(true);
+      const framesPromise = page.evaluate(() => new Promise<Array<{ childCount: number; header: boolean; height: number; width: number; headerTop: number; scrollWidth: number; clientWidth: number; scrollY: number }>>((resolve) => {
+        const samples: Array<{ childCount: number; header: boolean; height: number; width: number; headerTop: number; scrollWidth: number; clientWidth: number; scrollY: number }> = [];
+        const sample = () => {
+          const container = document.querySelector<HTMLElement>('[data-testid="page-container"]');
+          const header = container?.querySelector<HTMLElement>("h1");
+          const rect = container?.getBoundingClientRect();
+          const headerRect = header?.getBoundingClientRect();
+          samples.push({ childCount: container?.childElementCount ?? 0, header: Boolean(header), height: rect?.height ?? 0, width: rect?.width ?? 0, headerTop: headerRect?.top ?? 0, scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth, scrollY: window.scrollY });
+          if (samples.length >= 12) resolve(samples); else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      }));
+      const resourceCount = await page.evaluate(() => performance.getEntriesByType("resource").length);
+      await routeLink.click();
+      await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}\\/?$`));
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      const frames = await framesPromise;
+      expect(frames.every((frame) => frame.childCount > 0 && frame.header && frame.height >= 400 && frame.width > 0 && frame.scrollWidth <= frame.clientWidth + 1)).toBe(true);
+      expect(Math.min(...frames.map((frame) => frame.height))).toBeGreaterThanOrEqual(400);
+      expect(Math.max(...frames.map((frame) => frame.height)) / Math.max(1, Math.min(...frames.map((frame) => frame.height)))).toBeLessThan(5);
+      expect(await coldSidebar.evaluate((element, previous) => element === previous, coldSidebarHandle)).toBe(true);
+      expect(await coldTopbar.evaluate((element, previous) => element === previous, coldTopbarHandle)).toBe(true);
+      expect(await coldContainer.evaluate((element, previous) => element === previous, coldContainerHandle)).toBe(true);
+      routeDiagnostics.push({ round, path, resourceCount, minHeight: Math.min(...frames.map((frame) => frame.height)), maxHeight: Math.max(...frames.map((frame) => frame.height)), headerFrames: frames.filter((frame) => frame.header).length });
+    }
+  }
+  console.log(`[route-stability] ${JSON.stringify(routeDiagnostics)}`);
+
+  let releaseAnalyticsRequest: (() => void) | undefined;
+  let analyticsRequestStarted = false;
+  const analyticsRequestGate = new Promise<void>((resolve) => { releaseAnalyticsRequest = resolve; });
+  await page.route("**/api/analytics/worklogs*", async (route) => {
+    analyticsRequestStarted = true;
+    await analyticsRequestGate;
+    await route.continue();
+  }, { times: 1 });
+  const analyticsLink = coldSidebar.locator('a[href="/app/analytics"]').first();
+  if (await analyticsLink.count() === 0) await coldSidebar.getByRole("button", { name: "成长与复盘", exact: true }).click();
+  await analyticsLink.click();
+  await expect.poll(() => analyticsRequestStarted).toBe(true);
+  await expect(page.getByRole("heading", { name: "数据统计", exact: true })).toBeVisible();
+  const latencyFrames = await page.evaluate(() => new Promise<Array<{ height: number; header: boolean; children: number }>>((resolve) => {
+    const samples: Array<{ height: number; header: boolean; children: number }> = [];
+    const sample = () => {
+      const container = document.querySelector<HTMLElement>('[data-testid="page-container"]');
+      samples.push({ height: container?.getBoundingClientRect().height ?? 0, header: Boolean(container?.querySelector("h1")), children: container?.childElementCount ?? 0 });
+      if (samples.length >= 8) resolve(samples); else requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }));
+  expect(latencyFrames.every((frame) => frame.height >= 400 && frame.header && frame.children > 0)).toBe(true);
+  releaseAnalyticsRequest?.();
+  await expect(page.getByRole("heading", { name: "数据统计", exact: true })).toBeVisible();
 
   let releaseTeamRequest: (() => void) | undefined;
   const teamRequestGate = new Promise<void>((resolve) => {
@@ -155,7 +241,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     page.getByRole("heading", { name: "日历", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "新建日程" }).click();
-  await page.getByLabel("日程标题").fill("E2E 当前日历会面");
+  await page.getByLabel("日程标题").fill(currentCalendarTitle);
   const currentEventStart = new Date(Date.now() + 60 * 60 * 1000);
   const currentEventEnd = new Date(currentEventStart.getTime() + 60 * 60 * 1000);
   const localInput = (value: Date) => {
@@ -166,26 +252,26 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await page.getByLabel("结束时间").fill(localInput(currentEventEnd));
   await page.getByRole("button", { name: "保存日程" }).click();
   await expect(page.getByRole("status")).toContainText("日程已保存");
-  await expect(page.getByText("E2E 当前日历会面").first()).toBeVisible();
+  await expect(page.getByText(currentCalendarTitle).first()).toBeVisible();
 
   await page.getByRole("button", { name: "新建日程" }).click();
-  await page.getByLabel("日程标题").fill("E2E 15:30 至 22:00");
+  await page.getByLabel("日程标题").fill(fixedCalendarTitle);
   const businessToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(new Date());
   await page.getByLabel("开始时间").fill(`${businessToday}T15:30`);
   await page.getByLabel("结束时间").fill(`${businessToday}T22:00`);
   await page.getByRole("button", { name: "保存日程" }).click();
   await expect(page.getByRole("status")).toContainText("日程已保存");
-  await expect(page.getByText("E2E 15:30 至 22:00").first()).toBeVisible();
+  await expect(page.getByText(fixedCalendarTitle).first()).toBeVisible();
 
   await page.getByRole("button", { name: "新建日程" }).click();
-  await page.getByLabel("日程标题").fill("E2E 日历会面");
+  await page.getByLabel("日程标题").fill(nextCalendarTitle);
   const eventStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000);
   await page.getByLabel("开始时间").fill(localInput(eventStart));
   await page.getByLabel("结束时间").fill(localInput(eventEnd));
   await page.getByRole("button", { name: "保存日程" }).click();
   await expect(page.getByRole("status")).toContainText("日程已保存");
-  await expect(page.getByText("E2E 日历会面").first()).toBeVisible();
+  await expect(page.getByText(nextCalendarTitle).first()).toBeVisible();
 
   const dragCalendarSelection = async (view: "Week" | "Day", title: string) => {
     await page.locator(`.fc-timeGrid${view}-button`).click();
@@ -220,7 +306,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await dragCalendarSelection("Day", "E2E 日视图拖动日程");
   for (const view of ["Week", "Day"] as const) {
     await page.locator(`.fc-timeGrid${view}-button`).click();
-    const event = page.locator(".fc-timegrid-event").filter({ hasText: "E2E 15:30 至 22:00" }).first();
+    const event = page.locator(".fc-timegrid-event").filter({ hasText: fixedCalendarTitle }).first();
     const startSlot = page.locator('.fc-timegrid-slot-lane[data-time="15:30:00"]').first();
     const endSlot = page.locator('.fc-timegrid-slot-lane[data-time="22:00:00"]').first();
     const [eventBox, startBox, endBox] = await Promise.all([event.boundingBox(), startSlot.boundingBox(), endSlot.boundingBox()]);
@@ -231,7 +317,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     expect(Math.abs(eventBox!.y + eventBox!.height - endBox!.y)).toBeLessThanOrEqual(6);
   }
   await page.locator(".fc-timeGridWeek-button").click();
-  const findStableEvent = () => page.locator(".fc-timegrid-event").filter({ hasText: "E2E 当前日历会面" }).first();
+  const findStableEvent = () => page.locator(".fc-timegrid-event").filter({ hasText: currentCalendarTitle }).first();
   await findStableEvent().scrollIntoViewIfNeeded();
   const scrollBeforeDrag = await page.evaluate(() => window.scrollY);
   for (let index = 0; index < 15; index += 1) {
@@ -271,9 +357,9 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     await page.evaluate((value) => { document.documentElement.style.zoom = String(value); }, zoom);
     for (const view of ["dayGridMonth", "timeGridWeek", "timeGridDay"] as const) {
       await page.locator(`.fc-${view}-button`).click();
-      const event = page.locator(".fc-event").first();
+      const event = page.locator(".fc-event").filter({ hasText: fixedCalendarTitle }).first();
       await expect(event).toBeVisible();
-      await event.locator(".calendar-event-content").hover();
+      await event.locator(".calendar-event-content").hover({ force: true });
       const tooltip = page.getByTestId("calendar-event-tooltip");
       await expect(tooltip).toBeVisible();
       await expect(tooltip).toHaveCSS("position", "fixed");
@@ -325,63 +411,6 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     await expect(reviewWorkspace).toBeVisible();
     expect(await reviewWorkspace.evaluate((element, previous) => element === previous, reviewWorkspaceHandle)).toBe(true);
   }
-  const sidebar = page.getByTestId("app-sidebar");
-  const topbar = page.getByTestId("app-topbar");
-  const routePageContainer = page.getByTestId("page-container");
-  const sidebarHandle = await sidebar.elementHandle();
-  const topbarHandle = await topbar.elementHandle();
-  const pageContainerHandle = await routePageContainer.elementHandle();
-  expect(sidebarHandle).not.toBeNull();
-  expect(topbarHandle).not.toBeNull();
-  expect(pageContainerHandle).not.toBeNull();
-  const routeChecks = [
-    ["/app", "经营进度"],
-    ["/app/worklog", "今日工作量"],
-    ["/app/calendar", "日历"],
-    ["/app/team", "团队"],
-    ["/app/finance", "财务"],
-    ["/app/knowledge", "学习中心"],
-    ["/app/reviews", "复盘"],
-    ["/app/analytics", "数据统计"],
-    ["/app/settings", "设置"],
-    ["/app", "经营进度"],
-  ] as const;
-  const routeGroups: Record<string, string> = {
-    "/app/worklog": "规划与执行",
-    "/app/calendar": "规划与执行",
-    "/app/team": "经营管理",
-    "/app/finance": "经营管理",
-    "/app/knowledge": "成长与复盘",
-    "/app/reviews": "成长与复盘",
-    "/app/analytics": "成长与复盘",
-    "/app/settings": "系统工具",
-  };
-  for (let round = 0; round < 3; round += 1) {
-    for (const [path, heading] of routeChecks) {
-      const routeLink = sidebar.locator(`a[href="${path}"]`).first();
-      if (await routeLink.count() === 0) await sidebar.getByRole("button", { name: routeGroups[path], exact: true }).click();
-      const frameSamples = page.evaluate(() => new Promise<Array<{ containerHeight: number; headerVisible: boolean; scrollWidth: number }>>((resolve) => {
-        const samples: Array<{ containerHeight: number; headerVisible: boolean; scrollWidth: number }> = [];
-        const sample = () => {
-          const container = document.querySelector<HTMLElement>('[data-testid="page-container"]');
-          samples.push({ containerHeight: container?.getBoundingClientRect().height ?? 0, headerVisible: Boolean(container?.querySelector("h1")), scrollWidth: document.documentElement.scrollWidth });
-          if (samples.length === 8) resolve(samples);
-          else requestAnimationFrame(sample);
-        };
-        requestAnimationFrame(sample);
-      }));
-      await routeLink.click();
-      await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}\\/?$`));
-      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
-      const frames = await frameSamples;
-      expect(frames.every((frame) => frame.containerHeight >= 400 && frame.headerVisible && frame.scrollWidth <= (page.viewportSize()?.width ?? 0) + 1)).toBe(true);
-      expect(await sidebar.evaluate((element, previous) => element === previous, sidebarHandle)).toBe(true);
-      expect(await topbar.evaluate((element, previous) => element === previous, topbarHandle)).toBe(true);
-      expect(await routePageContainer.evaluate((element, previous) => element === previous, pageContainerHandle)).toBe(true);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
-    }
-  }
-
   await page.goto("/app/analytics");
   await expect(
     page.getByRole("heading", { name: "数据统计", exact: true }),
