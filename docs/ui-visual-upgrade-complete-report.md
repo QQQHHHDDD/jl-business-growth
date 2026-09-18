@@ -9,7 +9,7 @@
 ## 基线与最终版本
 
 - 基线 HEAD（开始本轮前）：`1739dff`
-- 最终 HEAD：`88df1dd`
+- 最终功能代码 HEAD：`038dbca`
 - 工作区最终 `git status --short`：空
 - 本轮未修改后端业务逻辑、API、OpenAPI、schema、migration、权限模型、数据口径、PV 规则、收入模拟公式、日历时区/重复逻辑或团队关系逻辑。
 
@@ -37,7 +37,8 @@
 提交：`033c667 style(ui): upgrade finance tools and settings`
 
 - 财务 `/app/finance`：收入/支出/净现金流摘要改用受控 tone 的 `MetricCard`；流水与预算表受统一 DataTable 视觉规则影响；金额、分类、预算和资金快照逻辑未改。
-- 收入模拟 `/app/income`：输入分区改为统一柔和 surface，结果金额使用蓝/紫/品牌青绿重要 surface；Excel 公式、后端计算、保存/复制/删除/比较逻辑未改。
+- 营业额 `/app/turnover`：换算规则与事实记录表使用统一柔和 surface；PV/净营业额双向同步、日期编辑和历史逻辑未改。
+- 收入模拟 `/app/income-simulator`：输入分区改为统一柔和 surface，结果金额使用蓝/紫/品牌青绿重要 surface；Excel 公式、后端计算、保存/复制/删除/比较逻辑未改。
 - 导入导出 `/app/data`：步骤条、上传入口和预览表格使用统一 rounded/Notice/DataTable 语言；模板、幂等、校验、commit、去重和 ZIP 逻辑未改。
 - 设置 `/app/settings`：继续复用统一 Panel、Tabs、Input、TimezoneSelect 和 Button，不增加装饰，不改变账户、timezone 和安全逻辑。
 
@@ -72,7 +73,8 @@
 - [团队关系图](ui-visual-upgrade-complete-screenshots/1440-team.png)
 - [学习中心](ui-visual-upgrade-complete-screenshots/1440-knowledge.png)
 - [财务总览](ui-visual-upgrade-complete-screenshots/1440-finance.png)
-- [收入模拟](ui-visual-upgrade-complete-screenshots/1440-income.png)
+- [营业额](ui-visual-upgrade-complete-screenshots/1440-turnover.png)
+- [收入模拟·实际路由](ui-visual-upgrade-complete-screenshots/1440-income-simulator.png)
 - [复盘](ui-visual-upgrade-complete-screenshots/1440-reviews.png)
 - [导入导出](ui-visual-upgrade-complete-screenshots/1440-data.png)
 - [设置](ui-visual-upgrade-complete-screenshots/1440-settings.png)
@@ -107,7 +109,7 @@
 | `make build` | PASS | Go binaries、Vite production build |
 | `make check` | PASS | generate + lint + test + build |
 | `git diff --check` | PASS | 无空白错误 |
-| 真实 Chromium 截图矩阵 | PASS | 1 个矩阵 capture test passed；27 张页面截图 + 1 张 analytics 冻结回归截图 |
+| 真实 Chromium 截图矩阵 | PASS | 1 个矩阵 capture test passed；28 张页面截图 + 1 张 analytics 冻结回归截图 |
 | `make test-integration` | **BLOCKED** | `TEST_DATABASE_URL` 未配置为隔离 `jl_business_test`，未执行 6 个 integration tests |
 | `make test-performance` | **BLOCKED** | 同一 TEST_DATABASE_URL 环境阻断，未执行 `TestPerformanceIntegration` |
 | `make test-e2e`（APP_ENV=test） | **BLOCKED** | 先检查 TEST_DATABASE_URL 失败；不能用 skip 伪造通过 |
@@ -131,5 +133,7 @@
 - `b69179d` `style(ui): upgrade auth search admin and system states`
 - `8179cc5` `test(ui): capture visual upgrade regression matrix`
 - `88df1dd` `test(ui): verify frozen analytics baseline`
+- `038dbca` `style(ui): finish turnover and income route coverage`
+- 本报告提交为文档与截图清单修正，不包含业务代码变更。
 
 不部署生产，不创建 `v1.0.0`。
