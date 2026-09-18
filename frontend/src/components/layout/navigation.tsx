@@ -468,6 +468,7 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-[#f6f8fa] text-slate-950">
       <aside
+        data-testid="app-sidebar"
         className={cn(
           "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-slate-200 bg-white transition-[width] duration-200 lg:flex",
           collapsed ? "w-16" : "w-[220px]",
@@ -578,7 +579,7 @@ export function AppShell({
           collapsed ? "lg:pl-16" : "lg:pl-[220px]",
         )}
       >
-        <header className="sticky top-0 z-20 h-16 border-b border-slate-200 bg-white/95 shadow-[0_1px_0_#e2e8f0,0_2px_8px_rgba(15,23,42,0.05)] backdrop-blur">
+        <header data-testid="app-topbar" className="sticky top-0 z-20 h-16 border-b border-slate-200 bg-white/95 shadow-[0_1px_0_#e2e8f0,0_2px_8px_rgba(15,23,42,0.05)] backdrop-blur">
           <div className="mx-auto flex h-full max-w-[1360px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-2">
               <Button
