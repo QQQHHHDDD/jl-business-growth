@@ -6,7 +6,8 @@ import FullCalendarBase from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Clock, MapPin, Pencil, Plus, Repeat2, Trash2, Users } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { AuthResponse, CalendarContact, CalendarEvent, CalendarEventRequest } from "@/api/client";
 import { deleteCalendarContact, deleteCalendarEvent, getCalendarEvent, listCalendarContacts, listCalendarEvents, saveCalendarContact, saveCalendarEvent } from "@/api/client";
@@ -127,16 +128,55 @@ function eventTooltip(event: CalendarEvent, timezone: string): string[] {
   ].filter(Boolean);
 }
 
+function selectionDateTime(value: string, fallback: Date, timezone: string): string {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)
+    ? value.slice(0, 16)
+    : formatDateTimeInTimezone(fallback, timezone);
+}
+
 function CalendarEventContent({ arg, timezone }: { arg: EventContentArg; timezone: string }) {
-  const event = arg.event.extendedProps.event as CalendarEvent;
+  const event = arg.event.extendedProps.event as CalendarEvent | undefined;
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState<{ left: number; top: number } | null>(null);
+  const tooltipID = useId();
+  const updateTooltipPosition = useCallback(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+    const width = Math.min(288, (window.innerWidth - 16) / zoom);
+    const estimatedHeight = Math.min(320, 32 + (event ? eventTooltip(event, timezone).length : 1) * 28);
+    const physicalHeight = estimatedHeight * zoom;
+    const below = rect.bottom + 8 * zoom;
+    const physicalTop = below + physicalHeight <= window.innerHeight - 8
+      ? below
+      : Math.max(8, rect.top - physicalHeight - 8 * zoom);
+    const physicalLeft = Math.max(8, Math.min(rect.left, window.innerWidth - width * zoom - 8));
+    setTooltipPosition({ left: physicalLeft / zoom, top: physicalTop / zoom });
+  }, [event, timezone]);
+  useEffect(() => {
+    if (!tooltipOpen || !event) return;
+    updateTooltipPosition();
+    const handleViewportChange = () => updateTooltipPosition();
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+    return () => {
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [event, tooltipOpen, updateTooltipPosition]);
+  if (!event) {
+    return <div className="calendar-event-content min-w-0" aria-hidden="true"><span className="block truncate text-xs">{arg.timeText}</span></div>;
+  }
   const details = eventTooltip(event, timezone);
   const time = event.all_day ? "全天" : `${timeInTimezone(arg.event.start ?? event.start_at, timezone)}–${timeInTimezone(arg.event.end ?? event.end_at, timezone)}`;
   const month = arg.view.type === "dayGridMonth";
-  return <div className="calendar-event-content group relative min-w-0" tabIndex={0} aria-label={details.join("；")}>
+  return <div ref={anchorRef} className="calendar-event-content relative min-w-0" tabIndex={0} aria-label={details.join("；")} aria-describedby={tooltipOpen ? tooltipID : undefined} onMouseEnter={() => setTooltipOpen(true)} onMouseLeave={() => setTooltipOpen(false)} onFocus={() => setTooltipOpen(true)} onBlur={(focusEvent) => { if (!focusEvent.currentTarget.contains(focusEvent.relatedTarget)) setTooltipOpen(false); }}>
     {month ? <p className="truncate text-xs"><strong>{time}</strong> {event.title}</p> : <div className="min-w-0 text-xs leading-4"><strong className="block truncate">{time}</strong><span className="block truncate font-semibold">{event.title}</span>{event.location_or_link && <span className="block truncate opacity-80">{event.location_or_link}</span>}</div>}
-    <div role="tooltip" className="calendar-event-tooltip pointer-events-none absolute left-0 top-full z-50 mt-1 hidden w-72 rounded-lg border border-slate-200 bg-white p-3 text-left text-xs leading-5 text-slate-700 shadow-overlay group-hover:block group-focus:block">
+    {tooltipOpen && tooltipPosition && createPortal(<div id={tooltipID} role="tooltip" data-testid="calendar-event-tooltip" className="pointer-events-none fixed z-[100] max-h-[min(320px,calc(100vh-1rem))] w-72 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 text-left text-xs leading-5 text-slate-700 shadow-overlay" style={{ left: tooltipPosition.left, top: tooltipPosition.top }}>
       {details.map((line, index) => <p key={`${line}-${index}`} className={index === 0 ? "font-bold text-slate-950" : "mt-1"}>{line}</p>)}
-    </div>
+    </div>, document.body)}
   </div>;
 }
 
@@ -273,7 +313,12 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
     <Tabs value={view} onValueChange={(value) => setView(value as CalendarView)}><TabsList aria-label="日历模块视图"><TabsTrigger value="calendar">日历</TabsTrigger><TabsTrigger value="contacts">常用联系人</TabsTrigger></TabsList></Tabs>
 
     {view === "calendar" ? <Panel title="日程总览" description="月视图点击日期；周、日视图可拖动选择时间段，也可拖动或缩放已有事件。">
-      {eventsQuery.isPending ? <LoadingState label="正在加载日历" /> : eventsQuery.isError ? <ErrorState message="日历暂时无法加载" onRetry={() => void eventsQuery.refetch()} /> : <div className="min-w-0 overflow-x-auto"><div className="min-w-[720px]"><FullCalendar plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]} initialView="dayGridMonth" timeZone={timezone} selectable editable eventStartEditable eventDurationEditable selectMirror selectLongPressDelay={450} headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }} buttonText={{ today: "今天", month: "月", week: "周", day: "日" }} events={calendarEvents} eventContent={(arg) => <CalendarEventContent arg={arg} timezone={timezone} />} dateClick={(info) => openDay(info.dateStr.slice(0, 10))} select={(info) => { if (info.view.type.startsWith("timeGrid")) openNew(formatDateTimeInTimezone(info.start, timezone), formatDateTimeInTimezone(info.end, timezone)); }} eventClick={(info) => setDetailEvent(info.event.extendedProps.event as CalendarEvent)} eventDrop={queueCalendarChange} eventResize={queueCalendarChange} height="min(72vh, 760px)" /></div></div>}
+      {eventsQuery.isPending ? <LoadingState label="正在加载日历" /> : eventsQuery.isError ? <ErrorState message="日历暂时无法加载" onRetry={() => void eventsQuery.refetch()} /> : <div className="min-w-0 overflow-x-auto"><div className="min-w-[720px]"><FullCalendar plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]} initialView="dayGridMonth" timeZone={timezone} selectable editable eventStartEditable eventDurationEditable selectMirror selectLongPressDelay={450} headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }} buttonText={{ today: "今天", month: "月", week: "周", day: "日" }} events={calendarEvents} eventContent={(arg) => <CalendarEventContent arg={arg} timezone={timezone} />} dateClick={(info) => openDay(info.dateStr.slice(0, 10))} select={(info) => {
+        if (info.view.type.startsWith("timeGrid") && info.start) {
+          const end = info.end ?? new Date(info.start.getTime() + 30 * 60 * 1000);
+          openNew(selectionDateTime(info.startStr, info.start, timezone), selectionDateTime(info.endStr, end, timezone));
+        }
+      }} eventClick={(info) => setDetailEvent(info.event.extendedProps.event as CalendarEvent)} eventDrop={queueCalendarChange} eventResize={queueCalendarChange} height="min(72vh, 760px)" /></div></div>}
     </Panel> : <ContactsWorkspace contacts={filteredContacts} loading={contactsQuery.isPending} failed={contactsQuery.isError} search={contactSearch} onSearch={setContactSearch} onRetry={() => void contactsQuery.refetch()} onCreate={() => openContactEditor("new")} onEdit={openContactEditor} onDelete={setContactDeleteTarget} />}
 
     <Sheet open={Boolean(selectedDate)} onOpenChange={(open) => !open && closeDay()}>
