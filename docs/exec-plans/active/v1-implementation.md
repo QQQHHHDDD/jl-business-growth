@@ -189,12 +189,12 @@ The PostgreSQL commands are required for Goose migration, sqlc schema validation
 - `make lint test build`: passed; backend vet/tests/build and frontend lint/Vitest/build all pass.
 - `make check`: passed with the local cached Go module proxy and installed frontend dependencies.
 - Phase 1 security hardening: application-level login/registration rate limiting, strict JSON mutation content type, strict first-start super-admin credential pairing, PostgreSQL unique-violation handling, and ACTIVE-account session creation guard were added and tested.
-- Phase 1 browser flow: `frontend/e2e/phase1-auth.spec.ts` covers super-admin login, invitation creation, invitation registration, and same-browser normal-account linking/switching; it is skipped unless `E2E_SUPERADMIN_USERNAME` and `E2E_SUPERADMIN_PASSWORD` are explicitly supplied.
+- Administrator and account workflow: `frontend/e2e/admin-and-business-workflows.spec.ts` covers super-admin login, invitation creation, invitation registration, and same-browser normal-account linking/switching; it is skipped unless `E2E_SUPERADMIN_USERNAME` and `E2E_SUPERADMIN_PASSWORD` are explicitly supplied.
 - API HTTP smoke checks: user confirmed both `/api/health/live` and `/api/health/ready` returned OK with the migrated database.
 - Phase 1 backend unit tests, vet, and binary build: passed with the local Go 1.27.0 toolchain.
 - Phase 1 frontend Vitest, lint, TypeScript/Vite build: passed; 6 frontend tests pass.
 - Phase 1 security tests cover Argon2id password boundaries, CSRF, cross-site mutation rejection, secure/development cookie naming, and sanitized internal errors.
-- `backend/cmd/jl-business-api/main_integration_test.go` and `make test-integration` provide the PostgreSQL-backed Phase 1 API gate; the test is skipped without `TEST_DATABASE_URL` and refuses non-`jl_business_test` URLs.
+- `backend/cmd/jl-business-api/business_api_integration_test.go` and `make test-integration` provide the PostgreSQL-backed API integration gate; the test is skipped without `TEST_DATABASE_URL` and refuses non-`jl_business_test` URLs.
 - `frontend/playwright.config.ts` and `make test-e2e` enforce the test database and test-only bootstrap credentials when `APP_ENV=test`; they do not reuse a development API process in that mode.
 - `make migrate-test-up` and `make migrate-test-status` apply/check migrations through `TEST_DATABASE_URL` and refuse a URL whose database name is not exactly `jl_business_test`.
 - Final local `make check` after Phase 1 integration-test cleanup: passed; `git diff --check` passed.

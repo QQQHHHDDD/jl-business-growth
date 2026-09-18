@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const superadminUsername = process.env.E2E_SUPERADMIN_USERNAME;
 const superadminPassword = process.env.E2E_SUPERADMIN_PASSWORD;
 
-test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
+test("covers administrator, account, and core business workflows", async ({
   page,
 }) => {
   test.skip(
@@ -15,8 +15,8 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     "run against APP_ENV=test with E2E_SUPERADMIN_USERNAME and E2E_SUPERADMIN_PASSWORD",
   );
 
-  const userPassword = "phase1-user-password";
-  const secondUserPassword = "phase1-second-password";
+  const userPassword = "business-user-password";
+  const secondUserPassword = "second-business-user-password";
   const firstUsername = `e2e${Date.now().toString().slice(-10)}`;
   const secondUsername = `e2e${(Date.now() + 1).toString().slice(-10)}`;
   const currentCalendarTitle = `E2E 当前日历会面 ${Date.now()}`;
@@ -42,7 +42,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await page
     .getByLabel("新管理员账号")
     .fill(`admin${Date.now().toString().slice(-10)}`);
-  await page.getByLabel("初始密码").fill("phase1-admin-password");
+  await page.getByLabel("初始密码").fill("initial-admin-password");
   await page.getByRole("button", { name: "创建管理员" }).click();
   await expect(page.getByRole("status")).toContainText("已创建");
 
@@ -510,7 +510,7 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   expect(templatePath).toBeTruthy();
   await page.getByRole("button", { name: "下一步" }).click();
   await page.getByLabel("选择 XLSX 文件").setInputFiles({
-    name: "phase6-worklog.xlsx",
+    name: "worklog-import.xlsx",
     mimeType:
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer: readFileSync(templatePath!),
