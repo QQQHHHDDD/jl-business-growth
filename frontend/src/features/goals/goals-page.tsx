@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronLeft, ChevronRight, GripVertical, Image as ImageIcon, Plus, Sparkles, Trash2 } from "lucide-react";
+import { BarChart3, Check, ChevronLeft, ChevronRight, Compass, Eye, GripVertical, Image as ImageIcon, Leaf, Pencil, Plus, Search, Sparkles, Target, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, SelectHTMLAttributes } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
@@ -14,10 +14,9 @@ import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { EmptyState, ErrorState, PageLoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
@@ -55,6 +54,35 @@ const defaultGoal = (date: string): GoalForm => ({ title: "", type: "YEAR", pare
 function goalForm(value: Goal): GoalForm {
   const metric = value.metrics[0];
   return { title: value.title, type: value.type, parent_id: value.parent_id ?? "", start_date: value.start_date ?? "", due_date: value.due_date ?? "", status: value.status, metric_code: metric?.metric_code ?? "", target_value: metric?.target_value, unit: metric?.unit ?? "" };
+}
+
+function GoalsHeroArt() {
+  return (
+    <svg className="pointer-events-none absolute bottom-0 right-0 h-full w-[52%] max-w-[600px] opacity-90" viewBox="0 0 620 170" fill="none" aria-hidden="true">
+      <path d="M0 146C80 124 126 104 194 111c65 7 79 44 143 35 68-10 91-82 168-66 43 9 63 25 115 4v86H0v-24Z" fill="url(#goal-hill)" />
+      <path d="M122 158c78-34 135-57 212-49 80 8 140-13 211-58 17-11 35-22 56-31" stroke="#fff" strokeWidth="7" strokeLinecap="round" opacity=".9" />
+      <path d="M122 158c78-34 135-57 212-49 80 8 140-13 211-58" stroke="#99F6E4" strokeWidth="2" strokeLinecap="round" />
+      <path d="M356 100v-24" stroke="#0F766E" strokeWidth="3" strokeLinecap="round" /><path d="M356 76h18l-18 11" fill="#0F8F83" />
+      <path d="M462 67v-28" stroke="#0F766E" strokeWidth="3" strokeLinecap="round" /><path d="M462 39h22l-22 13" fill="#34D399" />
+      <g transform="translate(474 38)"><circle cx="45" cy="45" r="26" fill="#fff" fillOpacity=".8" stroke="#0F8F83" strokeWidth="4" /><circle cx="45" cy="45" r="8" fill="#0F8F83" /><path d="m45 15 8 30-8 30-8-30 8-30Z" fill="#60A5FA" opacity=".75" /><path d="m15 45 30-8 30 8-30 8-30-8Z" fill="#34D399" opacity=".55" /></g>
+      <path d="M292 157c-5-25 4-45 22-60M296 122c-20-11-31-8-43 1 16 17 28 19 45 14M306 105c8-16 20-22 34-21-3 17-14 26-32 31" stroke="#0F766E" strokeWidth="3" strokeLinecap="round" opacity=".8" />
+      <defs><linearGradient id="goal-hill" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#A7F3D0" stopOpacity=".78" /><stop offset="1" stopColor="#BAE6FD" stopOpacity=".6" /></linearGradient></defs>
+    </svg>
+  );
+}
+
+function GoalsHero({ action }: { action: ReactNode }) {
+  return (
+    <header className="relative isolate min-h-[174px] overflow-hidden rounded-hero border border-brand-100/70 bg-gradient-to-r from-brand-100/70 via-sky-50/80 to-brand-50/70 px-5 py-5 shadow-card sm:px-7 sm:py-6">
+      <GoalsHeroArt />
+      <div className="relative z-10 max-w-[62%] sm:max-w-[57%]">
+        <p className="text-xs font-bold tracking-[0.08em] text-brand-700">方向与执行</p>
+        <h1 className="mt-1 text-[30px] font-extrabold leading-tight tracking-[-0.02em] text-ink">梦想与目标</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">用层级目标把长期方向拆成可行动的路径。设置量化指标后，目标进度可根据已记录的工作量或营业额自动计算。</p>
+      </div>
+      <div className="relative z-10 mt-4 flex sm:absolute sm:right-7 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2">{action}</div>
+    </header>
+  );
 }
 
 export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
@@ -220,8 +248,8 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
     setDreamFiles(dream.file_ids); setDreamGoals(dream.goal_ids); dreamFormState.reset({ title: dream.title, description: dream.description ?? "" });
   };
 
-  if (goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending) return <PageLoadingState eyebrow="方向与执行" title="梦想与目标" description="建立梦想和目标之间的清晰路径。" label="正在加载目标工作台" />;
-  if (goalsQuery.isError || dreamsQuery.isError || filesQuery.isError) return <ErrorState message="目标数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} />;
+  if (goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending) return <div className="space-y-6"><GoalsHero action={<Button disabled><Plus size={16} />正在加载</Button>} /><LoadingState label="正在加载目标工作台" /></div>;
+  if (goalsQuery.isError || dreamsQuery.isError || filesQuery.isError) return <div className="space-y-6"><GoalsHero action={<Button disabled><Plus size={16} />新建目标</Button>} /><ErrorState message="目标数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} /></div>;
 
   const activeAction = view === "dreams"
     ? <Button onClick={openDreamCreate}><Plus size={16} />新增梦想</Button>
@@ -229,31 +257,37 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="方向与执行" title="梦想与目标" description="用层级目标把长期方向拆成可行动的路径。设置量化指标后，目标进度可根据已记录的工作量或营业额自动计算。" action={activeAction} />
+      <GoalsHero action={activeAction} />
       {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
       <Tabs value={view} onValueChange={(value) => setView(value as GoalsView)}>
-        <TabsList aria-label="目标工作台视图"><TabsTrigger value="map">目标地图</TabsTrigger><TabsTrigger value="list">目标列表</TabsTrigger><TabsTrigger value="dreams">梦想板</TabsTrigger></TabsList>
+        <TabsList className="bg-surface-muted/80" aria-label="目标工作台视图"><TabsTrigger value="map" className="min-h-10 px-4">目标地图</TabsTrigger><TabsTrigger value="list" className="min-h-10 px-4">目标列表</TabsTrigger><TabsTrigger value="dreams" className="min-h-10 px-4">梦想板</TabsTrigger></TabsList>
       </Tabs>
 
       {view === "map" && <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />}
       {view === "list" && <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />}
       {view === "dreams" && <DreamBoard dreams={dreamsQuery.data.data.items} goals={goals} files={files} onSelect={openDreamDetail} onCreate={openDreamCreate} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />}
 
-      <Sheet open={Boolean(goalSheet)} onOpenChange={(open) => !open && closeGoalSheet()}>
-        {goalSheet?.mode === "detail" ? (
+      <Sheet open={goalSheet?.mode === "detail"} onOpenChange={(open) => !open && closeGoalSheet()}>
+        {goalSheet?.mode === "detail" && (
           <SheetContent title={goalSheet.goal.title} description={`${typeLabels[goalSheet.goal.type]}目标详情`} footer={<div className="flex justify-end gap-3"><Button variant="danger" onClick={() => setDeleteTarget({ kind: "goal", id: goalSheet.goal.id, title: goalSheet.goal.title })}><Trash2 size={16} />删除</Button><Button onClick={() => setGoalSheet({ mode: "edit", goal: goalSheet.goal })}>编辑目标</Button></div>}>
             <GoalDetail goal={goalSheet.goal} goals={goals} />
           </SheetContent>
-        ) : goalSheet ? (
-          <SheetContent title={goalSheet.mode === "edit" ? "编辑目标" : "新建目标"} description="父子关系仅通过表单修改，不会因拖动画布而改变。" footer={<div className="flex justify-end gap-3"><Button variant="secondary" onClick={closeGoalSheet}>取消</Button><Button onClick={() => void onGoalSubmit()} loading={goalMutation.isPending}><Check size={16} />{goalSheet.mode === "edit" ? "保存目标" : "创建目标"}</Button></div>}>
-            <GoalEditor form={goalFormState} goals={goals} editingID={editingGoal?.id} />
-          </SheetContent>
-        ) : null}
+        )}
       </Sheet>
 
+      <Dialog open={Boolean(goalSheet && goalSheet.mode !== "detail")} onOpenChange={(open) => !open && closeGoalSheet()}>
+        {goalSheet && goalSheet.mode !== "detail" && <DialogContent className="max-w-2xl overflow-hidden p-0">
+          <div className="border-b border-brand-100/70 bg-gradient-to-r from-brand-50/85 via-sky-50/55 to-violet-50/45 px-6 py-5 pr-14">
+            <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-brand-100 text-brand-700"><Target size={19} /></span><div><DialogTitle>{goalSheet.mode === "edit" ? "编辑目标" : "新建目标"}</DialogTitle><DialogDescription>修改目标信息和量化指标</DialogDescription></div></div>
+          </div>
+          <div className="max-h-[min(68vh,620px)] overflow-y-auto px-6 py-5"><GoalEditor form={goalFormState} goals={goals} editingID={editingGoal?.id} /></div>
+          <div className="flex justify-end gap-3 border-t border-outline/55 bg-surface-muted/45 px-6 py-4"><Button variant="secondary" onClick={closeGoalSheet}>取消</Button><Button onClick={() => void onGoalSubmit()} loading={goalMutation.isPending}><Check size={16} />{goalSheet.mode === "edit" ? "保存目标" : "创建目标"}</Button></div>
+        </DialogContent>}
+      </Dialog>
+
       <Dialog open={Boolean(dreamSheet)} onOpenChange={(open) => !open && closeDreamSheet()}>
-        {dreamSheet && <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-4xl flex-col overflow-hidden p-0 sm:max-h-[min(90dvh,860px)]">
-          <div className="shrink-0 border-b border-slate-200 px-6 py-5 pr-14"><DialogTitle>{dreamSheet.mode === "detail" ? dreamSheet.dream.title : dreamSheet.mode === "create" ? "新增梦想" : "编辑梦想"}</DialogTitle><DialogDescription>{dreamSheet.mode === "detail" ? "查看梦想详情、图片和关联目标。" : "用图片、文字和关联目标呈现希望实现的方向。"}</DialogDescription></div>
+        {dreamSheet && <DialogContent className={`flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden p-0 ${dreamSheet.mode === "detail" ? "max-w-4xl sm:max-h-[min(90dvh,860px)]" : "max-w-2xl sm:max-h-[min(84dvh,720px)]"}`}>
+          <div className="shrink-0 border-b border-brand-100/70 bg-gradient-to-r from-violet-50/75 via-sky-50/45 to-brand-50/60 px-6 py-5 pr-14"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-violet-100 text-violet-700"><Sparkles size={18} /></span><div><DialogTitle>{dreamSheet.mode === "detail" ? dreamSheet.dream.title : dreamSheet.mode === "create" ? "新增梦想" : "编辑梦想"}</DialogTitle><DialogDescription>{dreamSheet.mode === "detail" ? "查看梦想详情、图片和关联目标。" : "用图片、文字和关联目标呈现希望实现的方向。"}</DialogDescription></div></div></div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
             {(notice || error) && <p role={error ? "alert" : "status"} className={`mb-5 rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
             {dreamSheet.mode === "detail" ? <DreamDetail dream={dreamSheet.dream} goals={goals} files={files} /> : <DreamEditor form={dreamFormState} goals={goals} files={files} selectedFiles={dreamFiles} selectedGoals={dreamGoals} uploads={dreamUploads} draggingID={draggingDreamFile} onFilesSelected={selectDreamFiles} onRetry={(entry) => void uploadDreamFile(entry)} onRemoveFile={removeDreamFile} onMoveFile={moveDreamFile} onDragging={setDraggingDreamFile} onToggleGoal={(id) => setDreamGoals((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])} />}
@@ -268,20 +302,58 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
 }
 
 function GoalMap({ goals, selectedID, onSelect, onCreate }: { goals: Goal[]; selectedID: string | null; onSelect: (goal: Goal) => void; onCreate: () => void }) {
-  return <Panel title="目标地图" description="父子目标以连线表达；画布支持缩放和适配，点击节点可查看并高亮关联路径。"><div className={`${goals.length ? "h-[min(68vh,720px)] min-h-[480px]" : "min-h-[240px]"} overflow-hidden rounded-[1.125rem] border border-brand-100/60 bg-brand-50/20`}>{goals.length ? <ReactFlow nodes={goalNodes(goals, selectedID)} edges={goalEdges(goals, selectedID)} fitView minZoom={0.35} maxZoom={1.8} nodesDraggable={false} onNodeClick={(_, node) => { const goal = goals.find((item) => item.id === node.id); if (goal) onSelect(goal); }}><MiniMap pannable zoomable /><Controls /><Background gap={20} size={1} /></ReactFlow> : <div className="grid min-h-[240px] place-items-center px-6"><div className="max-w-sm text-center"><p className="font-bold text-slate-950">还没有目标</p><p className="mt-2 text-sm leading-6 text-slate-500">建立第一个目标后，这里会呈现清晰的执行路径。</p><Button variant="secondary" className="mt-4" onClick={onCreate}><Plus size={16} />新建目标</Button></div></div>}</div></Panel>;
+  return (
+    <Panel title="目标地图" description="父子目标以连线表达；画布支持缩放和适配，点击节点可查看并高亮关联路径。" className="border-brand-100/70 bg-gradient-to-br from-white via-brand-50/15 to-sky-50/30 shadow-card [&>header]:border-brand-100/55">
+      <div className={`${goals.length ? "h-[min(68vh,720px)] min-h-[480px]" : "min-h-[300px]"} overflow-hidden rounded-[1.25rem] border border-brand-100/70 bg-gradient-to-br from-brand-50/70 via-sky-50/55 to-violet-50/35`}>
+        {goals.length ? (
+          <ReactFlow nodes={goalNodes(goals, selectedID)} edges={goalEdges(goals, selectedID)} fitView minZoom={0.35} maxZoom={1.8} nodesDraggable={false} onNodeClick={(_, node) => { const goal = goals.find((item) => item.id === node.id); if (goal) onSelect(goal); }}>
+            <MiniMap pannable zoomable className="!overflow-hidden !rounded-card !border-brand-100/80 !bg-white/85" />
+            <Controls className="!overflow-hidden !rounded-card !border-brand-100/80 !bg-white/90" />
+            <Background gap={24} size={1} color="#94a3b8" />
+          </ReactFlow>
+        ) : (
+          <div className="grid min-h-[300px] place-items-center px-6">
+            <div className="max-w-sm text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand-100/85 text-brand-700"><Compass size={25} /></span><p className="mt-4 font-bold text-ink">还没有目标</p><p className="mt-2 text-sm leading-6 text-ink-muted">建立第一个目标后，这里会呈现清晰的执行路径。</p><Button variant="secondary" className="mt-4 border-brand-200 bg-white/80" onClick={onCreate}><Plus size={16} />新建目标</Button></div>
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
 }
 
 function GoalListView({ goals, search, typeFilter, statusFilter, onSearch, onTypeFilter, onStatusFilter, onView, onEdit, onDelete }: { goals: Goal[]; search: string; typeFilter: string; statusFilter: string; onSearch: (value: string) => void; onTypeFilter: (value: string) => void; onStatusFilter: (value: string) => void; onView: (goal: Goal) => void; onEdit: (goal: Goal) => void; onDelete: (goal: Goal) => void }) {
-  return <Panel title="目标列表" description="搜索、筛选并处理目标。"><div className="mb-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px]"><Input label="搜索目标" value={search} onChange={(event) => onSearch(event.target.value)} placeholder="输入目标名称" /><Select label="目标层级" value={typeFilter} onChange={(event) => onTypeFilter(event.target.value)}><option value="">全部层级</option>{goalTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}</Select><Select label="目标状态" value={statusFilter} onChange={(event) => onStatusFilter(event.target.value)}><option value="">全部状态</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></div>{goals.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b border-slate-200 text-xs font-bold text-slate-500"><tr><th className="px-3 py-3">目标</th><th className="px-3 py-3">层级</th><th className="px-3 py-3">状态</th><th className="px-3 py-3">自动进度</th><th className="px-3 py-3 text-right">操作</th></tr></thead><tbody>{goals.map((goal) => <tr key={goal.id} className="border-b border-slate-100 last:border-0"><td className="px-3 py-3"><button type="button" className="font-bold text-slate-900 hover:text-teal-800" onClick={() => onView(goal)}>{goal.title}</button><p className="mt-1 text-xs text-slate-500">{goal.metrics.length ? `${goal.metrics.length} 个指标` : "无量化指标"}</p></td><td className="px-3 py-3 text-slate-600">{typeLabels[goal.type]}</td><td className="px-3 py-3"><StatusBadge tone={statusTones[goal.status]}>{statusLabels[goal.status]}</StatusBadge></td><td className="px-3 py-3 font-bold tabular-nums text-teal-800">{Math.round(goal.progress * 100)}%</td><td className="px-3 py-3"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => onEdit(goal)}>编辑</Button><Button variant="icon" size="sm" aria-label={`删除目标 ${goal.title}`} onClick={() => onDelete(goal)}><Trash2 size={15} /></Button></div></td></tr>)}</tbody></table></div> : <EmptyState title="没有匹配的目标" description="调整搜索或筛选条件。" />}</Panel>;
+  return (
+    <Panel title="目标列表" description="搜索、筛选并处理目标。" className="border-brand-100/70 bg-gradient-to-br from-white via-brand-50/15 to-sky-50/25 shadow-card [&>header]:border-brand-100/55">
+      <div className="mb-5 grid gap-3 rounded-card border border-brand-100/55 bg-brand-50/30 p-3 md:grid-cols-[minmax(0,1fr)_180px_180px]">
+        <div className="relative"><Search size={17} className="pointer-events-none absolute left-3 top-[2.35rem] z-10 text-ink-faint" /><Input label="搜索目标" value={search} onChange={(event) => onSearch(event.target.value)} placeholder="输入目标名称" className="pl-10" /></div>
+        <Select label="目标层级" value={typeFilter} onChange={(event) => onTypeFilter(event.target.value)}><option value="">全部层级</option>{goalTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}</Select>
+        <Select label="目标状态" value={statusFilter} onChange={(event) => onStatusFilter(event.target.value)}><option value="">全部状态</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
+      </div>
+      {goals.length ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[780px] text-left text-sm">
+            <thead><tr><th className="px-4 py-3">目标</th><th className="px-4 py-3">层级</th><th className="px-4 py-3">状态</th><th className="px-4 py-3">自动进度</th><th className="px-4 py-3 text-right">操作</th></tr></thead>
+            <tbody>{goals.map((goal) => { const progress = Math.round(goal.progress * 100); return <tr key={goal.id} className="border-b border-outline/35 last:border-0">
+              <td className="px-4 py-4"><button type="button" className="flex items-center gap-3 text-left font-bold text-ink hover:text-brand-800" onClick={() => onView(goal)}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700"><Target size={17} /></span><span><span className="block">{goal.title}</span><span className="mt-1 block text-xs font-normal text-ink-faint">{goal.metrics.length ? `${goal.metrics.length} 个指标` : "无量化指标"}</span></span></button></td>
+              <td className="px-4 py-4"><span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-semibold text-ink-muted">{typeLabels[goal.type]}</span></td>
+              <td className="px-4 py-4"><StatusBadge tone={statusTones[goal.status]}>{statusLabels[goal.status]}</StatusBadge></td>
+              <td className="px-4 py-4"><div className="flex min-w-40 items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted"><div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-sky-500" style={{ width: `${Math.min(100, progress)}%` }} /></div><strong className="w-10 text-right tabular-nums text-brand-800">{progress}%</strong></div></td>
+              <td className="px-4 py-4"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => onView(goal)}><Eye size={15} />查看</Button><Button variant="ghost" size="sm" onClick={() => onEdit(goal)}><Pencil size={15} />编辑</Button><Button variant="icon" size="sm" aria-label={`删除目标 ${goal.title}`} onClick={() => onDelete(goal)}><Trash2 size={15} /></Button></div></td>
+            </tr>; })}</tbody>
+          </table>
+        </div>
+      ) : <EmptyState title="没有匹配的目标" description="调整搜索或筛选条件。" />}
+    </Panel>
+  );
 }
 
 function DreamBoard({ dreams, goals, files, onSelect, onCreate, onDelete }: { dreams: Dream[]; goals: Goal[]; files: FileAsset[]; onSelect: (dream: Dream) => void; onCreate: () => void; onDelete: (dream: Dream) => void }) {
-  if (!dreams.length) return <Panel><div className="grid min-h-[220px] place-items-center py-8 text-center"><div><ImageIcon className="mx-auto text-slate-300" size={32} /><p className="mt-3 font-bold text-slate-950">梦想板还是空的</p><p className="mt-2 text-sm text-slate-500">添加梦想、图片并关联正在推进的目标。</p><Button variant="secondary" className="mt-4" onClick={onCreate}><Plus size={16} />新增梦想</Button></div></div></Panel>;
-  return <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{dreams.map((dream) => { const image = files.find((file) => file.id === dream.file_ids[0]); const linkedGoals = goals.filter((goal) => dream.goal_ids.includes(goal.id)); return <article key={dream.id} className="group overflow-hidden rounded-[1.25rem] border border-violet-100/70 bg-gradient-to-br from-white via-violet-50/20 to-rose-50/25 shadow-card transition-shadow hover:shadow-card-hover"><button type="button" className="block w-full text-left" onClick={() => onSelect(dream)}>{image ? <div className="relative"><img className="aspect-[16/9] w-full object-cover" src={`/api/files/${image.id}/content?disposition=inline`} alt={image.original_name} /><span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent" aria-hidden="true" /></div> : <div className="grid aspect-[16/9] place-items-center bg-gradient-to-br from-violet-50 to-brand-50 text-violet-400"><ImageIcon size={30} /></div>}<div className="p-4"><h2 className="font-bold text-slate-950 group-hover:text-brand-800">{dream.title}</h2>{dream.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{dream.description}</p>}<span className="mt-3 inline-flex rounded-full bg-violet-100/75 px-2.5 py-1 text-xs font-semibold text-violet-700">关联目标 {linkedGoals.length}</span></div></button><div className="flex justify-end border-t border-violet-100/60 px-3 py-2"><Button variant="icon" size="sm" aria-label={`删除梦想 ${dream.title}`} onClick={() => onDelete(dream)}><Trash2 size={15} /></Button></div></article>; })}</div>;
+  if (!dreams.length) return <Panel className="border-violet-100/70 bg-gradient-to-br from-white via-violet-50/20 to-brand-50/25 shadow-card"><div className="grid min-h-[300px] place-items-center py-8 text-center"><div><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-violet-100 text-violet-700"><Sparkles size={24} /></span><p className="mt-4 font-bold text-ink">梦想板还是空的</p><p className="mt-2 text-sm text-ink-muted">添加梦想、图片并关联正在推进的目标。</p><Button variant="secondary" className="mt-4 border-violet-200 bg-white/80" onClick={onCreate}><Plus size={16} />新增梦想</Button></div></div></Panel>;
+  return <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{dreams.map((dream) => { const image = files.find((file) => file.id === dream.file_ids[0]); const linkedGoals = goals.filter((goal) => dream.goal_ids.includes(goal.id)); return <article key={dream.id} className="group overflow-hidden rounded-[1.25rem] border border-violet-100/70 bg-gradient-to-br from-white via-violet-50/20 to-rose-50/25 shadow-card transition-shadow hover:shadow-card-hover"><button type="button" className="block w-full text-left" onClick={() => onSelect(dream)}>{image ? <div className="relative"><img className="aspect-[16/9] w-full object-cover" src={`/api/files/${image.id}/content?disposition=inline`} alt={image.original_name} /><span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent" aria-hidden="true" /></div> : <div className="grid aspect-[16/9] place-items-center bg-gradient-to-br from-violet-50 to-brand-50 text-violet-400"><ImageIcon size={30} /></div>}<div className="p-4"><h2 className="font-bold text-ink group-hover:text-brand-800">{dream.title}</h2>{dream.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-ink-muted">{dream.description}</p>}<span className="mt-3 inline-flex items-center gap-1 rounded-full bg-violet-100/75 px-2.5 py-1 text-xs font-semibold text-violet-700"><Target size={13} />关联目标 {linkedGoals.length}</span></div></button><div className="flex justify-end border-t border-violet-100/60 px-3 py-2"><Button variant="icon" size="sm" aria-label={`删除梦想 ${dream.title}`} onClick={() => onDelete(dream)}><Trash2 size={15} /></Button></div></article>; })}<button type="button" onClick={onCreate} className="grid min-h-[300px] place-items-center rounded-[1.25rem] border border-dashed border-brand-200 bg-gradient-to-br from-brand-50/55 to-sky-50/45 p-6 text-center text-brand-800 transition hover:border-brand-400 hover:shadow-card"><span><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/80 text-brand-700 shadow-hairline"><Leaf size={24} /></span><strong className="mt-4 block">添加新梦想</strong><span className="mt-1 block text-sm text-brand-700/80">把梦想放在这里，让它成为前进的动力</span><span className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-control border border-brand-200 bg-white/80 px-4 text-sm font-semibold"><Plus size={15} />新增梦想</span></span></button></div>;
 }
 
 function GoalEditor({ form, goals, editingID }: { form: UseFormReturn<GoalForm>; goals: Goal[]; editingID?: string }) {
-  return <form className="space-y-5" onSubmit={(event) => event.preventDefault()}><Input label="目标名称" required error={form.formState.errors.title?.message} {...form.register("title")} /><div className="grid gap-4 sm:grid-cols-2"><Select label="目标层级" {...form.register("type")}>{goalTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}</Select><Select label="父目标" {...form.register("parent_id")}><option value="">无父目标</option>{goals.filter((goal) => goal.id !== editingID).map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</Select></div><div className="grid gap-4 sm:grid-cols-2"><Input label="开始日期" type="date" {...form.register("start_date")} /><Input label="截止日期" type="date" {...form.register("due_date")} /></div><Select label="状态" {...form.register("status")}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select><div className="border-t border-slate-200 pt-5"><p className="mb-4 text-sm font-bold text-slate-900">量化指标（可选）</p><div className="space-y-4"><Select label="指标" {...form.register("metric_code")}><option value="">暂不设置</option>{metricCodes.map((code) => <option key={code} value={code}>{metricLabel(code)}</option>)}</Select><div className="grid gap-4 sm:grid-cols-2"><Input label="目标值" type="number" min={0} step="0.01" error={form.formState.errors.target_value?.message} {...form.register("target_value", { setValueAs: (value) => value === "" ? undefined : Number(value) })} /><Input label="单位" placeholder="次 / PV / 分钟" {...form.register("unit")} /></div></div></div></form>;
+  return <form className="space-y-5" onSubmit={(event) => event.preventDefault()}><Input label="目标名称" required error={form.formState.errors.title?.message} {...form.register("title")} /><div className="grid gap-4 sm:grid-cols-2"><Select label="目标层级" {...form.register("type")}>{goalTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}</Select><Select label="父目标" {...form.register("parent_id")}><option value="">无父目标</option>{goals.filter((goal) => goal.id !== editingID).map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</Select></div><div className="grid gap-4 sm:grid-cols-2"><Input label="开始日期" type="date" {...form.register("start_date")} /><Input label="截止日期" type="date" {...form.register("due_date")} /></div><Select label="状态" {...form.register("status")}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select><div className="rounded-card border border-brand-100/70 bg-brand-50/35 p-4"><div className="mb-4 flex items-center gap-2 text-sm font-bold text-brand-900"><BarChart3 size={16} />量化指标（可选）</div><div className="space-y-4"><Select label="指标" {...form.register("metric_code")}><option value="">暂不设置</option>{metricCodes.map((code) => <option key={code} value={code}>{metricLabel(code)}</option>)}</Select><div className="grid gap-4 sm:grid-cols-2"><Input label="目标值" type="number" min={0} step="0.01" error={form.formState.errors.target_value?.message} {...form.register("target_value", { setValueAs: (value) => value === "" ? undefined : Number(value) })} /><Input label="单位" placeholder="次 / PV / 分钟" {...form.register("unit")} /></div></div></div></form>;
 }
 
 function DreamEditor({ form, goals, files, selectedFiles, selectedGoals, uploads, draggingID, onFilesSelected, onRetry, onRemoveFile, onMoveFile, onDragging, onToggleGoal }: { form: UseFormReturn<DreamForm>; goals: Goal[]; files: FileAsset[]; selectedFiles: string[]; selectedGoals: string[]; uploads: DreamUpload[]; draggingID: string | null; onFilesSelected: (files: File[]) => void; onRetry: (entry: DreamUpload) => void; onRemoveFile: (id: string) => void; onMoveFile: (id: string, targetID: string) => void; onDragging: (id: string | null) => void; onToggleGoal: (id: string) => void }) {
@@ -306,9 +378,9 @@ function GoalDetail({ goal, goals }: { goal: Goal; goals: Goal[] }) {
 }
 
 function Select({ label, children, ...props }: { label: string; children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) {
-  return <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">{label}</span><select className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" {...props}>{children}</select></label>;
+  return <label className="block space-y-1.5"><span className="text-xs font-bold text-ink-muted">{label}</span><select className="min-h-10 w-full rounded-control border border-outline bg-surface px-3 text-sm text-ink outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100" {...props}>{children}</select></label>;
 }
 function metricLabel(code: string): string { const labels: Record<string, string> = { conversation_open_count: "开启对话", deep_conversation_count: "深入对话", buffer_count: "Buffer", story_share_count: "分享故事", screening_count: "筛选", opportunity_count: "提供机会", meeting_count: "会面", customer_followup_count: "顾客跟进", reading_minutes: "读书分钟", audio_minutes: "听音频分钟", turnover_pv: "营业额 PV", turnover_net_amount: "净营业额" }; return labels[code] ?? code; }
 function highlightedGoals(goals: Goal[], selectedID: string | null): Set<string> { const result = new Set<string>(); if (!selectedID) return result; const byID = new Map(goals.map((goal) => [goal.id, goal])); let current: string | null | undefined = selectedID; while (current && !result.has(current)) { result.add(current); current = byID.get(current)?.parent_id; } const addChildren = (id: string) => goals.filter((goal) => goal.parent_id === id).forEach((goal) => { if (!result.has(goal.id)) { result.add(goal.id); addChildren(goal.id); } }); addChildren(selectedID); return result; }
-function goalNodes(goals: Goal[], selectedID: string | null): Node[] { const byID = new Map(goals.map((goal) => [goal.id, goal])); const highlighted = highlightedGoals(goals, selectedID); const rowsByDepth = new Map<number, number>(); return goals.map((goal) => { let depth = 0; let parent = goal.parent_id; const visited = new Set<string>(); while (parent && byID.has(parent) && !visited.has(parent)) { visited.add(parent); depth += 1; parent = byID.get(parent)?.parent_id; } const row = rowsByDepth.get(depth) ?? 0; rowsByDepth.set(depth, row + 1); const selected = goal.id === selectedID; return { id: goal.id, position: { x: depth * 300, y: row * 130 }, data: { label: `${goal.title}  ${Math.round(goal.progress * 100)}%` }, draggable: false, style: { width: 220, border: selected ? "3px solid #d97706" : highlighted.has(goal.id) ? "2px solid #0f766e" : "1px solid #cbd5e1", borderRadius: 8, background: selected ? "#fffbeb" : "#ffffff", color: "#0f172a", fontWeight: 700, padding: 14, boxShadow: selected ? "0 0 0 3px rgb(251 191 36 / 0.25)" : "0 1px 3px rgb(15 23 42 / 0.08)" } }; }); }
+function goalNodes(goals: Goal[], selectedID: string | null): Node[] { const byID = new Map(goals.map((goal) => [goal.id, goal])); const highlighted = highlightedGoals(goals, selectedID); const rowsByDepth = new Map<number, number>(); return goals.map((goal) => { let depth = 0; let parent = goal.parent_id; const visited = new Set<string>(); while (parent && byID.has(parent) && !visited.has(parent)) { visited.add(parent); depth += 1; parent = byID.get(parent)?.parent_id; } const row = rowsByDepth.get(depth) ?? 0; rowsByDepth.set(depth, row + 1); const selected = goal.id === selectedID; const accent = depth % 3 === 0 ? "#0F8F83" : depth % 3 === 1 ? "#3B82F6" : "#8B5CF6"; return { id: goal.id, position: { x: depth * 300, y: row * 130 }, data: { label: `${goal.title}  ${Math.round(goal.progress * 100)}%` }, draggable: false, style: { width: 230, border: selected ? "3px solid #F59E0B" : highlighted.has(goal.id) ? `2px solid ${accent}` : "1px solid #CBD5E1", borderRadius: 18, background: selected ? "#FFFBEB" : "#FFFFFF", color: "#0F172A", fontWeight: 700, padding: 16, boxShadow: selected ? "0 0 0 4px rgb(251 191 36 / 0.22), 0 12px 24px -16px rgb(15 23 42 / .35)" : "0 12px 24px -18px rgb(15 23 42 / .3)" } }; }); }
 function goalEdges(goals: Goal[], selectedID: string | null): Edge[] { const highlighted = highlightedGoals(goals, selectedID); return goals.filter((goal) => goal.parent_id).map((goal) => ({ id: `${goal.parent_id}-${goal.id}`, source: goal.parent_id!, target: goal.id, type: "smoothstep", style: { stroke: highlighted.has(goal.id) && highlighted.has(goal.parent_id!) ? "#d97706" : "#0f766e", strokeWidth: highlighted.has(goal.id) && highlighted.has(goal.parent_id!) ? 3 : 1.5 } })); }
