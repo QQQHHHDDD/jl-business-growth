@@ -77,6 +77,20 @@ body {
   border-radius: var(--radius-hero);
 }
 
+/* Legacy utility aliases: older pages still use Tailwind's size names, but
+   they should resolve to the same product-wide control/card/panel scale. */
+.rounded-md {
+  border-radius: var(--radius-control);
+}
+
+.rounded-lg {
+  border-radius: var(--radius-card);
+}
+
+.rounded-xl {
+  border-radius: var(--radius-panel);
+}
+
 button,
 input,
 textarea,
