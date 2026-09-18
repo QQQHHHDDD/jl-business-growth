@@ -19,6 +19,8 @@ export function MetricCard({
   icon,
   tone = "neutral",
   className,
+  iconClassName,
+  valueClassName,
 }: {
   label: ReactNode;
   value: ReactNode;
@@ -26,18 +28,20 @@ export function MetricCard({
   icon?: ReactNode;
   tone?: MetricTone;
   className?: string;
+  iconClassName?: string;
+  valueClassName?: string;
 }) {
   return (
     <section className={cn("rounded-card border p-5 shadow-card", tones[tone].card, className)}>
       <div className="flex items-start gap-3">
         {icon && (
-          <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-control", tones[tone].icon)} aria-hidden="true">
+          <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-control", tones[tone].icon, iconClassName)} aria-hidden="true">
             {icon}
           </span>
         )}
         <div className="min-w-0">
           <p className="text-sm font-semibold text-ink-muted">{label}</p>
-          <p className="mt-1 text-3xl font-extrabold leading-none tracking-[-0.03em] text-ink">{value}</p>
+          <p className={cn("mt-1 text-3xl font-extrabold leading-none tracking-[-0.03em] text-ink", valueClassName)}>{value}</p>
           {detail && <p className="mt-2 text-xs leading-5 text-ink-faint">{detail}</p>}
         </div>
       </div>

@@ -61,8 +61,8 @@ type KpiSpec = { label: string; value: ReactNode; tone: KpiTone; icon: ReactNode
 
 function AnalyticsHero() {
   return (
-    <section className="relative isolate overflow-hidden rounded-hero border border-brand-100 bg-gradient-to-br from-brand-50 via-surface to-sky-50 px-5 py-5 shadow-panel sm:px-7 sm:py-6">
-      <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[52%] opacity-80 sm:block" aria-hidden="true">
+    <section className="relative isolate overflow-hidden rounded-hero border border-white/80 bg-gradient-to-r from-brand-50/90 via-sky-50/65 to-brand-50/80 px-5 py-5 shadow-card ring-1 ring-brand-100/70 sm:px-7 sm:py-6">
+      <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[58%] opacity-75 [mask-image:linear-gradient(to_right,transparent,black_28%)] sm:block" aria-hidden="true">
         <svg viewBox="0 0 620 180" className="h-full w-full" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
           <path d="M0 146C74 122 98 132 158 102C211 75 248 91 302 112C354 132 379 87 433 78C485 69 504 105 620 34V180H0V146Z" fill="url(#analytics-hero-fill)" />
           <path d="M66 144C122 122 168 122 211 102C259 80 291 102 330 116C376 132 410 88 453 82C504 75 548 99 608 54" stroke="#14B8A6" strokeWidth="3" strokeLinecap="round" />
@@ -79,12 +79,12 @@ function AnalyticsHero() {
         </svg>
       </div>
       <PageHeader
-        className="relative border-0 pb-0 sm:min-h-[132px] sm:items-center"
+        className="relative z-[1] max-w-2xl border-0 pb-0 sm:min-h-[132px] sm:items-center"
         eyebrow="经营分析"
         title="数据统计"
         description="按业务领域和时间范围查看当前账号已记录的数据。"
       />
-      <div className="relative mt-3 flex items-center gap-2 text-xs font-semibold text-brand-700 sm:mt-0" aria-hidden="true">
+      <div className="relative z-[1] mt-3 flex items-center gap-2 text-xs font-semibold text-brand-700 sm:mt-0" aria-hidden="true">
         <Leaf size={14} />
         <span>每一次记录，都会成为下一步行动的线索</span>
       </div>
@@ -116,21 +116,23 @@ export function AnalyticsPage({ authResponse }: { authResponse: AuthResponse }) 
   return <div className="space-y-6">
     <AnalyticsHero />
     <Tabs value={metric} onValueChange={(value) => setMetric(value as Metric)}>
-      <TabsList aria-label="统计领域">
-        <TabsTrigger value="worklogs">工作量</TabsTrigger>
-        <TabsTrigger value="turnover">营业额</TabsTrigger>
-        <TabsTrigger value="goals">目标</TabsTrigger>
-        <TabsTrigger value="team">团队</TabsTrigger>
-        <TabsTrigger value="finance">财务</TabsTrigger>
+      <TabsList aria-label="统计领域" className="w-fit rounded-card border border-outline/55 bg-surface-muted/80 p-1.5 shadow-hairline">
+        <TabsTrigger value="worklogs" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">工作量</TabsTrigger>
+        <TabsTrigger value="turnover" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">营业额</TabsTrigger>
+        <TabsTrigger value="goals" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">目标</TabsTrigger>
+        <TabsTrigger value="team" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">团队</TabsTrigger>
+        <TabsTrigger value="finance" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">财务</TabsTrigger>
       </TabsList>
     </Tabs>
-    <div data-testid="analytics-range-toolbar" className="grid min-h-[76px] items-center gap-3 rounded-panel border border-outline bg-surface p-3 shadow-panel lg:h-[88px] lg:grid-cols-[auto_minmax(320px,1fr)_auto]">
+    <div data-testid="analytics-range-toolbar" className="grid min-h-[76px] items-center gap-3 rounded-card border border-outline/55 bg-surface/85 p-3 shadow-hairline lg:h-[88px] lg:grid-cols-[auto_minmax(320px,1fr)_auto]">
       <SegmentedControl
         ariaLabel="统计时间范围"
         value={range}
         items={rangeItems}
         onValueChange={setRange}
-        className="w-fit max-w-full"
+        className="w-fit max-w-full rounded-full bg-surface-muted/70 p-1"
+        variant="brand"
+        buttonClassName="min-h-10 rounded-full px-4"
       />
       <div data-testid="analytics-range-condition" className="flex min-h-10 items-center justify-start">
         {range === "custom" && <div className="flex flex-col gap-2 sm:flex-row"><DateField label="开始日期" value={customFrom} onChange={setCustomFrom} /><DateField label="结束日期" value={customTo} onChange={setCustomTo} /></div>}
@@ -197,14 +199,14 @@ function AnalyticsWorkspace({ metric, data }: { metric: Metric; data: AnalyticsR
 
   return <div className="space-y-5">
     <div className={`grid gap-3 ${metric === "worklogs" ? "sm:grid-cols-2 xl:grid-cols-5" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
-      {kpis.map((kpi) => <MetricCard key={kpi.label} {...kpi} />)}
+      {kpis.map((kpi) => <MetricCard key={kpi.label} {...kpi} className="relative overflow-hidden rounded-[1.25rem] border-outline/45 bg-gradient-to-br from-white/35 to-transparent shadow-[0_18px_38px_-28px_rgba(15,23,42,0.4)] before:pointer-events-none before:absolute before:-right-6 before:-top-7 before:h-24 before:w-24 before:rounded-full before:bg-white/35" iconClassName="h-11 w-11 rounded-[0.95rem] shadow-hairline ring-1 ring-white/60" valueClassName="text-[2.15rem] font-black" />)}
     </div>
     {metric === "team" && buckets.length === 0 ? <div className="min-h-[240px] rounded-lg border border-slate-200 bg-white"><EmptyState title="所选周期暂无团队快照" description="创建团队快照后，这里会按快照展示成员规模变化。" /></div> : <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
-      <Panel title={`${metricLabels[metric]}趋势`} description={buckets.length > 1 ? "按所选时间范围连续展示变化。" : "保留当前周期数值，积累更多周期后可查看趋势。"}>
+      <Panel className="rounded-[1.25rem] border-outline/55 bg-surface/95 shadow-[0_20px_42px_-32px_rgba(15,23,42,0.42)] [&>header]:border-b-0 [&>header]:pb-1 [&>div]:pt-3" title={`${metricLabels[metric]}趋势`} description={buckets.length > 1 ? "按所选时间范围连续展示变化。" : "保留当前周期数值，积累更多周期后可查看趋势。"}>
         {metric === "worklogs" && <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="趋势指标">{Object.entries(actionLabels).map(([value, label]) => <button key={value} type="button" aria-pressed={actionField === value} onClick={() => setActionField(value as ActionField)} className={cn("min-h-10 rounded-control border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500", actionField === value ? "border-brand-300 bg-brand-50 text-brand-800" : "border-outline bg-surface text-ink-muted hover:bg-surface-muted")}>{label}</button>)}</div>}
         <Chart buckets={buckets} metric={metric} actionField={actionField} />
       </Panel>
-      <Panel title="结构摘要" description="汇总所选范围内的关键结果。"><Structure metric={metric} totals={totals} data={data.data} /></Panel>
+      <Panel className="rounded-[1.25rem] border-outline/55 bg-surface/95 shadow-[0_20px_42px_-32px_rgba(15,23,42,0.42)] [&>header]:border-b-0 [&>header]:pb-1 [&>div]:pt-3" title="结构摘要" description="汇总所选范围内的关键结果。"><Structure metric={metric} totals={totals} data={data.data} /></Panel>
     </div>}
     {buckets.length > 0 && <Panel title="统计明细" description="查看各周期的具体数值。"><Details metric={metric} buckets={buckets} /></Panel>}
   </div>;
@@ -221,7 +223,7 @@ function chartValue(bucket: Bucket, metric: Metric, actionField: ActionField) {
 function GrowthEmptyState({ description = "再记录几个周期后，这里会逐渐形成你的成长轨迹。" }: { description?: string }) {
   return (
     <div className="flex min-h-[268px] flex-col items-center justify-center px-4 py-8 text-center">
-      <svg width="104" height="82" viewBox="0 0 104 82" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg width="120" height="94" viewBox="0 0 104 82" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M7 68C25 56 31 45 47 51C61 56 66 32 78 35C90 38 93 26 98 18" stroke="#14B8A6" strokeWidth="3" strokeLinecap="round" />
         <path d="M7 68H98" stroke="#CCFBF1" strokeWidth="6" strokeLinecap="round" />
         <path d="M44 48C41 39 35 35 28 35C31 44 37 50 44 53M45 45C49 35 57 31 64 33C60 42 53 47 45 49" fill="#6EE7B7" fillOpacity=".78" />
@@ -232,7 +234,7 @@ function GrowthEmptyState({ description = "再记录几个周期后，这里会�
       </svg>
       <h3 className="mt-3 text-base font-bold text-ink">暂无趋势</h3>
       <p className="mt-1 max-w-sm text-sm leading-6 text-ink-muted">{description}</p>
-      <Button asChild size="sm" className="mt-5 min-h-11">
+      <Button asChild size="md" className="mt-5 min-h-11 px-5 shadow-brand-glow">
         <Link to="/app/worklog">去记录工作量 <ArrowRight size={15} /></Link>
       </Button>
     </div>
@@ -252,33 +254,33 @@ type Totals = { actions: number; open: number; deep: number; buffer: number; sto
 function Structure({ metric, totals, data }: { metric: Metric; totals: Totals; data: AnalyticsResponse["data"] }) {
   const rows: Array<{ label: string; value: ReactNode; icon: ReactNode; tone: string }> = metric === "worklogs"
     ? [
-        { label: "Buffer", value: totals.buffer, icon: <Leaf size={16} />, tone: "bg-brand-50 text-brand-700" },
-        { label: "提供机会", value: totals.opportunity, icon: <Sparkles size={16} />, tone: "bg-amber-50 text-amber-600" },
-        { label: "顾客跟进", value: totals.followup, icon: <UsersRound size={16} />, tone: "bg-blue-50 text-blue-600" },
-        { label: "阅读分钟", value: totals.reading, icon: <BookOpen size={16} />, tone: "bg-violet-50 text-violet-600" },
-        { label: "音频分钟", value: totals.audio, icon: <Volume2 size={16} />, tone: "bg-rose-50 text-rose-600" },
+        { label: "Buffer", value: totals.buffer, icon: <Leaf size={16} />, tone: "bg-brand-50/75 text-brand-700" },
+        { label: "提供机会", value: totals.opportunity, icon: <Sparkles size={16} />, tone: "bg-amber-50/75 text-amber-600" },
+        { label: "顾客跟进", value: totals.followup, icon: <UsersRound size={16} />, tone: "bg-blue-50/75 text-blue-600" },
+        { label: "阅读分钟", value: totals.reading, icon: <BookOpen size={16} />, tone: "bg-violet-50/75 text-violet-600" },
+        { label: "音频分钟", value: totals.audio, icon: <Volume2 size={16} />, tone: "bg-rose-50/75 text-rose-600" },
       ]
     : metric === "turnover"
       ? [
-          { label: "PV", value: totals.pv, icon: <ChartNoAxesColumnIncreasing size={16} />, tone: "bg-brand-50 text-brand-700" },
-          { label: "净营业额", value: formatMoney(totals.net.toFixed(2)), icon: <CircleDollarSign size={16} />, tone: "bg-blue-50 text-blue-600" },
+          { label: "PV", value: totals.pv, icon: <ChartNoAxesColumnIncreasing size={16} />, tone: "bg-brand-50/75 text-brand-700" },
+          { label: "净营业额", value: formatMoney(totals.net.toFixed(2)), icon: <CircleDollarSign size={16} />, tone: "bg-blue-50/75 text-blue-600" },
         ]
       : metric === "goals"
         ? [
-            { label: "目标", value: totals.goals, icon: <Target size={16} />, tone: "bg-violet-50 text-violet-600" },
-            { label: "完成", value: totals.completed, icon: <Sparkles size={16} />, tone: "bg-brand-50 text-brand-700" },
+            { label: "目标", value: totals.goals, icon: <Target size={16} />, tone: "bg-violet-50/75 text-violet-600" },
+            { label: "完成", value: totals.completed, icon: <Sparkles size={16} />, tone: "bg-brand-50/75 text-brand-700" },
           ]
         : metric === "team"
           ? [
-              { label: "当前成员", value: data.current_member_count, icon: <UsersRound size={16} />, tone: "bg-blue-50 text-blue-600" },
-              { label: "当前启用", value: data.current_active_member_count, icon: <Leaf size={16} />, tone: "bg-brand-50 text-brand-700" },
-              { label: "快照", value: data.snapshot_count, icon: <CalendarDays size={16} />, tone: "bg-amber-50 text-amber-600" },
+              { label: "当前成员", value: data.current_member_count, icon: <UsersRound size={16} />, tone: "bg-blue-50/75 text-blue-600" },
+              { label: "当前启用", value: data.current_active_member_count, icon: <Leaf size={16} />, tone: "bg-brand-50/75 text-brand-700" },
+              { label: "快照", value: data.snapshot_count, icon: <CalendarDays size={16} />, tone: "bg-amber-50/75 text-amber-600" },
             ]
           : [
-              { label: "收入", value: formatMoney(totals.income.toFixed(2)), icon: <WalletCards size={16} />, tone: "bg-brand-50 text-brand-700" },
-              { label: "支出", value: formatMoney(totals.expense.toFixed(2)), icon: <CircleDollarSign size={16} />, tone: "bg-rose-50 text-rose-600" },
+              { label: "收入", value: formatMoney(totals.income.toFixed(2)), icon: <WalletCards size={16} />, tone: "bg-brand-50/75 text-brand-700" },
+              { label: "支出", value: formatMoney(totals.expense.toFixed(2)), icon: <CircleDollarSign size={16} />, tone: "bg-rose-50/75 text-rose-600" },
             ];
-  return <div className="divide-y divide-outline/70">{rows.map((row) => <div key={row.label} className="flex items-center justify-between gap-3 py-3 first:pt-1 last:pb-1"><span className="flex min-w-0 items-center gap-3 text-sm font-medium text-ink-muted"><span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-control", row.tone)} aria-hidden="true">{row.icon}</span><span className="truncate">{row.label}</span></span><strong className="shrink-0 text-base font-extrabold text-ink">{row.value}</strong></div>)}</div>;
+  return <div className="space-y-2">{rows.map((row) => <div key={row.label} className="flex items-center justify-between gap-3 rounded-control bg-surface-soft/55 px-3 py-2.5"><span className="flex min-w-0 items-center gap-3 text-sm font-medium text-ink-muted"><span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[0.875rem]", row.tone)} aria-hidden="true">{row.icon}</span><span className="truncate">{row.label}</span></span><strong className="shrink-0 text-lg font-black tracking-[-0.02em] text-ink">{row.value}</strong></div>)}</div>;
 }
 
 function Details({ metric, buckets }: { metric: Metric; buckets: Bucket[] }) {
@@ -287,5 +289,5 @@ function Details({ metric, buckets }: { metric: Metric; buckets: Bucket[] }) {
 }
 
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted"><span>{label}</span><input aria-label={label} type="date" value={value} onChange={(event) => onChange(event.target.value)} className="min-h-9 rounded-control border border-outline bg-surface px-2 text-sm text-ink shadow-hairline" /></label>;
+  return <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted"><span>{label}</span><input aria-label={label} type="date" value={value} onChange={(event) => onChange(event.target.value)} className="min-h-10 rounded-full border border-outline/70 bg-surface-soft px-3 text-sm text-ink shadow-hairline" /></label>;
 }
