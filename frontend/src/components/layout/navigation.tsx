@@ -166,11 +166,13 @@ function NavItem({
   mobile = false,
   collapsed = false,
   onNavigate,
+  onPrefetchRoute,
 }: {
   item: NavigationItem;
   mobile?: boolean;
   collapsed?: boolean;
   onNavigate?: () => void;
+  onPrefetchRoute?: (path: string) => void;
 }) {
   const Icon = item.icon;
   return (
@@ -178,6 +180,8 @@ function NavItem({
       to={item.href}
       title={collapsed ? item.label : undefined}
       onClick={onNavigate}
+      onMouseEnter={() => onPrefetchRoute?.(item.href)}
+      onFocus={() => onPrefetchRoute?.(item.href)}
       className={({ isActive: active }) =>
         cn(
           "group flex items-center rounded-lg text-sm font-semibold transition-colors",
@@ -208,12 +212,14 @@ function SidebarGroup({
   current,
   onToggle,
   onNavigate,
+  onPrefetchRoute,
 }: {
   group: NavigationGroup;
   expanded: boolean;
   current: boolean;
   onToggle: () => void;
   onNavigate?: () => void;
+  onPrefetchRoute?: (path: string) => void;
 }) {
   const Icon = group.icon;
   return (
@@ -240,7 +246,7 @@ function SidebarGroup({
       {expanded && (
         <div id={`nav-group-${group.id}`} className="mt-1 space-y-1 pl-3">
           {group.items.map((item) => (
-            <NavItem key={item.href} item={item} onNavigate={onNavigate} />
+            <NavItem key={item.href} item={item} onNavigate={onNavigate} onPrefetchRoute={onPrefetchRoute} />
           ))}
         </div>
       )}
@@ -253,15 +259,17 @@ function UserNavigation({
   expandedGroups,
   onExpandedGroupsChange,
   onNavigate,
+  onPrefetchRoute,
 }: {
   pathname: string;
   expandedGroups: string[];
   onExpandedGroupsChange: (update: (groups: string[]) => string[]) => void;
   onNavigate?: () => void;
+  onPrefetchRoute?: (path: string) => void;
 }) {
   return (
     <nav className="space-y-2" aria-label="用户导航">
-      <NavItem item={homeItem} onNavigate={onNavigate} />
+      <NavItem item={homeItem} onNavigate={onNavigate} onPrefetchRoute={onPrefetchRoute} />
       {userGroups.map((group) => (
         <SidebarGroup
           key={group.id}
@@ -270,6 +278,7 @@ function UserNavigation({
           current={currentUserGroup(pathname)?.id === group.id}
           onToggle={() => onExpandedGroupsChange((groups) => groups.includes(group.id) ? groups.filter((id) => id !== group.id) : [...groups, group.id])}
           onNavigate={onNavigate}
+          onPrefetchRoute={onPrefetchRoute}
         />
       ))}
     </nav>
@@ -404,6 +413,7 @@ export function AppShell({
   admin = false,
   onLogout,
   loggingOut = false,
+  onPrefetchRoute,
   children,
 }: {
   authResponse: AuthResponse;
@@ -411,6 +421,7 @@ export function AppShell({
   admin?: boolean;
   onLogout: () => void;
   loggingOut?: boolean;
+  onPrefetchRoute?: (path: string) => void;
   children: ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -517,6 +528,7 @@ export function AppShell({
               pathname={location.pathname}
               expandedGroups={expandedGroups}
               onExpandedGroupsChange={setExpandedGroups}
+              onPrefetchRoute={onPrefetchRoute}
             />
           )}
         </div>
@@ -581,6 +593,7 @@ export function AppShell({
                 expandedGroups={expandedGroups}
                 onExpandedGroupsChange={setExpandedGroups}
                 onNavigate={closeDrawer}
+                onPrefetchRoute={onPrefetchRoute}
               />
             )}
           </div>

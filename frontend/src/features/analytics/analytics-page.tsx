@@ -41,6 +41,7 @@ export function AnalyticsPage({ authResponse }: { authResponse: AuthResponse }) 
       : metric === "team"
         ? getTeamAnalytics(selected.from, selected.to, selected.granularity)
         : getAnalytics(metric, selected.from, selected.to, selected.granularity),
+    placeholderData: (previousData) => previousData,
   });
 
   return <div className="space-y-6">

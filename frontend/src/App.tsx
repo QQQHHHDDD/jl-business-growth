@@ -32,22 +32,11 @@ import { FinancePage } from "@/features/finance/finance-page";
 import { IncomePage } from "@/features/income/income-page";
 import { DataPage } from "@/features/importexport/data-page";
 import { roleHome } from "@/lib/utils";
+import { loadCalendarPage, loadGoalsPage, loadTeamPage, preloadRoute } from "@/lib/route-preload";
 
-const CalendarPage = lazy(() =>
-  import("@/features/calendar/calendar-page").then((module) => ({
-    default: module.CalendarPage,
-  })),
-);
-const GoalsPage = lazy(() =>
-  import("@/features/goals/goals-page").then((module) => ({
-    default: module.GoalsPage,
-  })),
-);
-const TeamPage = lazy(() =>
-  import("@/features/team/team-page").then((module) => ({
-    default: module.TeamPage,
-  })),
-);
+const CalendarPage = lazy(loadCalendarPage);
+const GoalsPage = lazy(loadGoalsPage);
+const TeamPage = lazy(loadTeamPage);
 
 const userRoutes = [
   ["/app/goals", "梦想与目标", "建立梦想和目标之间的清晰路径。"],
@@ -149,6 +138,7 @@ function ShellRoute({
   admin,
   onLogout,
   loggingOut,
+  onPrefetchRoute,
   children,
 }: {
   meQuery: MeQuery;
@@ -156,6 +146,7 @@ function ShellRoute({
   admin: boolean;
   onLogout: () => void;
   loggingOut: boolean;
+  onPrefetchRoute?: (path: string) => void;
   children?: ReactNode;
 }) {
   if (!meQuery.data) return null;
@@ -166,6 +157,7 @@ function ShellRoute({
       admin={admin}
       onLogout={onLogout}
       loggingOut={loggingOut}
+      onPrefetchRoute={onPrefetchRoute}
     >
       {children ?? <Outlet />}
     </AppShell>
@@ -303,11 +295,13 @@ function AppRoutes({
   health,
   onLogout,
   loggingOut,
+  onPrefetchRoute,
 }: {
   meQuery: MeQuery;
   health: HealthQuery;
   onLogout: () => void;
   loggingOut: boolean;
+  onPrefetchRoute?: (path: string) => void;
 }) {
   return (
     <Routes>
@@ -332,6 +326,7 @@ function AppRoutes({
                 admin={false}
                 onLogout={onLogout}
                 loggingOut={loggingOut}
+                onPrefetchRoute={onPrefetchRoute}
               />
             }
           >
@@ -464,6 +459,7 @@ function AppRoutes({
                 admin={meQuery.data?.data.account.role !== "USER"}
                 onLogout={onLogout}
                 loggingOut={loggingOut}
+                onPrefetchRoute={onPrefetchRoute}
               />
             }
           >
@@ -486,6 +482,7 @@ function AppRoutes({
                 admin
                 onLogout={onLogout}
                 loggingOut={loggingOut}
+                onPrefetchRoute={onPrefetchRoute}
               />
             }
           >
@@ -578,6 +575,7 @@ function AppContent() {
       health={healthQuery}
       onLogout={() => logoutMutation.mutate()}
       loggingOut={logoutMutation.isPending}
+      onPrefetchRoute={preloadRoute}
     />
   );
 }
