@@ -9,13 +9,29 @@
 
 :root {
   font-family: Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --color-canvas: 247 250 252;
+  --color-surface: 255 255 255;
+  --color-surface-soft: 248 251 255;
+  --color-surface-muted: 242 247 249;
+  --color-ink: 15 23 42;
+  --color-ink-muted: 71 85 105;
+  --color-ink-faint: 100 116 139;
+  --color-outline: 226 235 241;
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.25rem;
+  --radius-hero: 1.5rem;
+  --motion-fast: 120ms;
+  --motion-normal: 160ms;
+  --motion-slow: 200ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   color: #0f172a;
-  background: #f1f5f9;
+  background: rgb(var(--color-canvas));
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --brand-600: #0d9488;
+  --brand-600: #0f8f83;
   --brand-700: #0f766e;
-  --focus-ring: 0 0 0 3px rgba(13, 148, 136, 0.18);
+  --focus-ring: 0 0 0 3px rgba(20, 184, 166, 0.2);
 }
 
 html {
@@ -27,7 +43,10 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow-x: hidden;
-  background: #f1f5f9;
+  background-color: rgb(var(--color-canvas));
+  background-image:
+    radial-gradient(circle at 92% 0%, rgb(186 230 253 / 0.16), transparent 28rem),
+    radial-gradient(circle at 4% 18%, rgb(167 243 208 / 0.1), transparent 24rem);
 }
 
 * {
@@ -49,7 +68,7 @@ input[type="radio"] {
 select,
 textarea,
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
@@ -76,8 +95,19 @@ input:not([type="checkbox"]):not([type="radio"]):not(
 }
 
 :focus-visible {
-  outline: 2px solid #0d9488;
+  outline: 2px solid #0f8f83;
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 .fc .fc-day-today {

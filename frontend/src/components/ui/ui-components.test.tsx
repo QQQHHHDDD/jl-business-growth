@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { Button } from "./button";
 import { ConfirmDialog, PromptDialog } from "./dialog";
 import { Input } from "./input";
+import { MetricCard } from "./metric-card";
+import { Notice } from "./notice";
+import { SegmentedControl } from "./segmented-control";
 import { EmptyState, ErrorState, LoadingState, PageLoadingState } from "./state-block";
 import { StatusBadge } from "./badge";
 import { DataTable, TableBody, TableCell, TableHead, TableRow } from "./table";
@@ -124,5 +127,30 @@ describe("shared UI primitives", () => {
     render(<Tabs defaultValue="one"><TabsList><TabsTrigger value="one">第一个</TabsTrigger><TabsTrigger value="two">第二个</TabsTrigger></TabsList></Tabs>);
     expect(screen.getByRole("tablist")).toHaveClass("overflow-x-auto", "flex-nowrap");
     expect(screen.getByRole("tab", { name: "第一个" })).toHaveClass("shrink-0");
+  });
+
+  it("renders metric, segmented and notice primitives with accessible state", () => {
+    const onValueChange = vi.fn();
+    render(
+      <>
+        <MetricCard label="新增客户" value="12" detail="较上周 +2" tone="brand" />
+        <SegmentedControl
+          ariaLabel="统计周期"
+          value="week"
+          items={[
+            { value: "week", label: "本周" },
+            { value: "month", label: "本月" },
+          ]}
+          onValueChange={onValueChange}
+        />
+        <Notice tone="success">保存成功</Notice>
+      </>,
+    );
+
+    expect(screen.getByText("12")).toHaveClass("text-3xl");
+    expect(screen.getByRole("button", { name: "本周" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "本月" }));
+    expect(onValueChange).toHaveBeenCalledWith("month");
+    expect(screen.getByRole("status")).toHaveTextContent("保存成功");
   });
 });

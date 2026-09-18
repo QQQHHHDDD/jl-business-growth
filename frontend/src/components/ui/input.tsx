@@ -14,21 +14,21 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ i
   const inputId = id ?? `input-${generatedId}`;
   return (
     <div className="space-y-1.5">
-      {label && <label htmlFor={inputId} className="block text-sm font-semibold text-slate-700">{label}</label>}
+      {label && <label htmlFor={inputId} className="block text-sm font-semibold text-ink-muted">{label}</label>}
       <div className="relative">
-        {icon && <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</span>}
+        {icon && <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint">{icon}</span>}
         <input
           id={inputId}
           type={type}
           inputMode={inputMode ?? (type === "number" ? "decimal" : undefined)}
-          className={cn("min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100", icon && "pl-10", error && "border-rose-400 focus:border-rose-600 focus:ring-rose-100", className)}
+          className={cn("min-h-10 w-full rounded-control border border-outline bg-surface px-3 py-2 text-sm text-ink outline-none transition-[border-color,box-shadow] duration-[var(--motion-normal)] placeholder:text-ink-faint focus:border-brand-600 focus:ring-2 focus:ring-brand-100 disabled:bg-surface-muted", icon && "pl-10", error && "border-rose-400 focus:border-rose-600 focus:ring-rose-100", className)}
           aria-invalid={Boolean(error)}
           aria-describedby={description || error ? `${inputId}-hint` : undefined}
           {...props}
           ref={ref}
         />
       </div>
-      {(description || error) && <p id={`${inputId}-hint`} className={cn("text-xs", error ? "text-rose-700" : "text-slate-500")}>{error ?? description}</p>}
+      {(description || error) && <p id={`${inputId}-hint`} className={cn("text-xs", error ? "text-rose-700" : "text-ink-faint")}>{error ?? description}</p>}
     </div>
   );
 });

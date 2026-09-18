@@ -9,7 +9,7 @@ export function DataTable({
   className?: string;
 }) {
   return (
-    <div className="max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-panel">
+    <div className="max-w-full overflow-x-auto rounded-card border border-outline bg-surface shadow-panel">
       <table
         className={cn(
           "w-full min-w-[760px] table-fixed text-left text-sm",
@@ -24,7 +24,7 @@ export function DataTable({
 
 export function TableHead({ children }: { children: ReactNode }) {
   return (
-    <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500">
+    <thead className="border-b border-outline bg-surface-soft text-xs font-bold text-ink-muted">
       {children}
     </thead>
   );
@@ -33,7 +33,7 @@ export function TableBody({ children }: { children: ReactNode }) {
   return <tbody className="divide-y divide-slate-100">{children}</tbody>;
 }
 export function TableRow({ children }: { children: ReactNode }) {
-  return <tr className="transition-colors hover:bg-teal-50">{children}</tr>;
+  return <tr className="transition-colors hover:bg-brand-50">{children}</tr>;
 }
 export function TableCell({
   children,
