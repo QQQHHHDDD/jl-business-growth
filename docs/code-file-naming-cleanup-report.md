@@ -2,11 +2,11 @@
 
 ## 1. 结论
 
-**NAMING CLEANUP NO-GO**
+**NAMING CLEANUP PASS**
 
 命名收口本身已按 Batch A～E 完成，Git rename、测试函数/helper、Makefile 选择器、性能测试开关、示例配置、活跃 UI 文案与长期规范文档均已落地；migration、生成代码和历史正式编号文档未被重命名或改写。
 
-但是本机没有 `node`/`npm`，且没有可用的 `DATABASE_URL`/`TEST_DATABASE_URL`，Prompt 要求的前端、E2E、数据库 integration/performance 和 migration status 门禁无法完整执行。因此不能给出 PASS。
+后续最终验证已在隔离的开发/测试数据库环境完成。Node/npm、前端、数据库 integration/performance、E2E、构建、lint、migration status 及 diff-check 门禁全部通过，因此本报告结论更新为 PASS。
 
 ## 2. 基线与提交
 
@@ -19,7 +19,8 @@
 - Batch E：`c6618ec fix(copy): remove development phase wording from active ui`
 - 命名规范：`cc0e576 docs: define code naming conventions`
 - 命名代码/测试最终 HEAD（本报告提交前）：`cc0e576`
-- 仓库交付最终 HEAD：以本报告提交后的 `git rev-parse HEAD` 和最终交付信息为准；报告提交只增加本文件，不再修改代码或测试。
+- 最终验证基线 HEAD：`2be84f26af7fd6d8d92299e59d90bee2c3236417`
+- 本次最终验证仅修复 `backend/cmd/jl-business-api/business_api_integration_test.go` 中与新 fixture 同步的测试查询；未修改业务代码、API、schema、migration 或命名方案。
 
 开始命名变更前，三份正式但未跟踪文档已作为独立 checkpoint 提交，之后工作区为空：
 
@@ -204,7 +205,7 @@ backend/internal/api/openapi.gen.go
 frontend/src/api/openapi.gen.ts
 ```
 
-`make generate` 中 Go OpenAPI/sqlc 生成步骤成功且没有产生受控差异；前端生成步骤因 `npm` 不存在而未运行。
+最终验证中 `make generate` 的 Go OpenAPI/sqlc 与前端 openapi-typescript 生成步骤均成功，且没有产生受控生成文件差异。
 
 ### 7.3 历史文档与工具固定文件
 
@@ -252,7 +253,35 @@ scripts/
 
 `deploy/README.md` 的两个命中是准确的发布阶段叙述，不是脚本、配置或运行标识符。
 
-## 9. 测试选择器真实性验证
+## 9. 本次最终验证修复与 E2E 诊断
+
+### 9.1 Knowledge 搜索 integration fixture
+
+命名收口后知识条目 fixture 为 `Knowledge book`。原有单字符查询仍使用 `P`，导致 `TestTeamKnowledgeFilesSearchAPIIntegration` 在第 806 行失败。仅将用户查询和隔离账户查询同步为新 fixture 中实际存在的单字符 `K`，保留了“单字符查询可工作”和账户隔离两个测试目的；搜索业务逻辑、API、schema 和 migration 未修改。同一文件未发现其他由 fixture 改名造成的未同步断言。
+
+专项验证：
+
+```text
+go test ./cmd/jl-business-api -run '^TestTeamKnowledgeFilesSearchAPIIntegration$' -v
+PASS
+```
+
+### 9.2 Calendar E2E waitForResponse 诊断
+
+此前超时具体位置为 `frontend/e2e/admin-and-business-workflows.spec.ts:334`，对应拖动循环中的：
+
+```text
+page.waitForResponse(value =>
+  value.request().method() === "PUT" &&
+  value.url().includes("/api/calendar/events/")
+)
+```
+
+真实 Chromium 协议日志显示请求确实发生，方法为 `PUT`，路径为 `/api/calendar/events/{event-id}`，响应状态为 `200 OK`。predicate 能匹配该响应；没有发现 `Promise.all([waitForResponse, click])` 顺序/竞态问题，也没有 Console error 或 pageerror。该问题与本轮 fixture/test rename 无直接关系，未修改 E2E 文件、业务日历逻辑或等待条件。
+
+按项目 Playwright 入口执行的单文件验证通过（使用 `npm --prefix frontend exec -- playwright test frontend/e2e/admin-and-business-workflows.spec.ts --config frontend/playwright.config.ts --project=chromium` 显式加载仓库配置）；完整 E2E 的桌面应用壳、移动端壳和管理员/业务工作流三组也全部通过。
+
+## 10. 测试选择器真实性验证
 
 `go test -list` 实际发现 9 个新名称：
 
@@ -268,38 +297,38 @@ TestFaultHandlingIntegration
 TestPerformanceIntegration
 ```
 
-又用与 Makefile 等价的业务测试正则执行 verbose Go test，输出了全部 9 个 `=== RUN`；前 8 个因缺少 `TEST_DATABASE_URL` 跳过，performance 因直接验证命令未设置 `RUN_PERFORMANCE_TESTS=1` 跳过。该证据确认测试发现和重命名后的正则不是零测试。正式 Make target 仍因数据库前置检查失败而不能算通过。
+最终验证中，`make test-integration` 实际运行并通过了 6 个业务 integration tests；`make test-performance` 设置 `RUN_PERFORMANCE_TESTS=1`，实际运行并通过 `TestPerformanceIntegration`，没有通过 skip 掩盖失败。
 
-## 10. Prompt 全量回归结果
+## 11. Prompt 全量回归结果
 
 | 命令 | 结果 | 真实输出/边界 |
 | --- | --- | --- |
-| `make generate` | FAIL / 环境阻塞 | Go OpenAPI 和 sqlc 生成成功；`generate-frontend` 报 `npm: 未找到命令`，exit 127。生成文件无 Git 差异。 |
-| `make lint` | FAIL / 环境阻塞 | `go vet ./...` 通过；前端 lint 报 `npm: 未找到命令`。 |
-| `make test` | FAIL / 环境阻塞 | `go test ./...` 全部通过；前端 Vitest 报 `npm: 未找到命令`。 |
-| `make build` | FAIL / 环境阻塞 | 两个 Go binary 构建成功；前端 build 报 `npm: 未找到命令`。 |
-| `make check` | FAIL / 环境阻塞 | 在 `generate-frontend` 因缺少 `npm` 停止。 |
-| `make test-integration` | FAIL / 环境阻塞 | `check-test-database` 明确拒绝：`TEST_DATABASE_URL must be a PostgreSQL URL targeting the isolated jl_business_test database`。 |
-| `make test-e2e` | FAIL / 环境阻塞 | 报 `npm: 未找到命令`。 |
-| `make test-performance` | FAIL / 环境阻塞 | 在 `check-test-database` 因缺少合规 `TEST_DATABASE_URL` 停止。 |
-| `git diff --check` | PASS | 当前工作树没有 whitespace error。额外的 `401e800..HEAD` range 检查只报告新纳入版本控制的正式 Prompt 44 原有 Markdown hard-break 尾随空格；未改写该保护文档。 |
-| `make migrate-status` | FAIL / 环境阻塞 | `DATABASE_URL must be set`。 |
-| `make migrate-test-status` | FAIL / 环境阻塞 | 缺少指向 `jl_business_test` 的 `TEST_DATABASE_URL`。 |
+| `make generate` | PASS | Go OpenAPI/sqlc 与前端 openapi-typescript 全部成功。 |
+| `make lint` | PASS | `go vet ./...` 与前端 ESLint 全部通过。 |
+| `make test` | PASS | Go 测试全部通过；前端 Vitest：22 个文件、99 个测试全部通过。 |
+| `make build` | PASS | 两个 Go binary 与前端 production build 全部成功。 |
+| `make check` | PASS | generate、lint、test、build 全部通过。 |
+| `make test-integration` | PASS | 6 个指定业务 integration tests 全部实际运行且 PASS。 |
+| `make test-e2e` | PASS | 3 个 Playwright 测试全部 PASS：application shell、mobile shell、administrator/business workflows。 |
+| `make test-performance` | PASS | `RUN_PERFORMANCE_TESTS=1` 下 `TestPerformanceIntegration` 实际运行并 PASS：350/350 请求成功，0 个 5xx。 |
+| `git diff --check` | PASS | 无 whitespace error。 |
+| `make migrate-status` | PASS | 开发库 `jl_business_dev` 的 00001～00010 全部 applied。 |
+| `make migrate-test-status` | PASS | 隔离测试库 `jl_business_test` 的 00001～00010 全部 applied。 |
 
 补充通过项：
 
 ```text
-go test ./...                                      PASS
-go vet ./...                                       PASS
+go test ./...                                      PASS（backend module）
+go vet ./...                                       PASS（backend module）
 Go API/jobs binary build                           PASS
 Go integration package compile                     PASS
 go test -list renamed test discovery               PASS（9/9 已发现）
-verbose renamed-test selector audit                PASS（9/9 被选中，因环境跳过执行）
+verbose renamed-test selector audit                PASS（指定 6/6 实际执行并通过）
 ```
 
-由于 Prompt 要求的所有门禁没有完整通过，本轮结论必须是 NO-GO；不能用局部 Go 通过替代前端、数据库、E2E 和性能验收。
+所有 Prompt 要求的门禁均已在正确的 Node/npm 与隔离数据库环境通过；没有使用 skip、空测试选择器或环境失败掩盖问题。
 
-## 11. `git diff --name-status`
+## 12. `git diff --name-status`
 
 相对基线 `401e800`，报告提交前为：
 
@@ -324,24 +353,29 @@ M    frontend/src/features/placeholder/placeholder-page.tsx
 本报告提交后会额外出现：
 
 ```text
-A    docs/code-file-naming-cleanup-report.md
+M    backend/cmd/jl-business-api/business_api_integration_test.go
+M    docs/code-file-naming-cleanup-report.md
 ```
 
 没有意外删除或新增业务文件。
 
-## 12. 最终工作树与行为边界
+## 13. 最终工作树与行为边界
 
-本报告提交后预期：
+本次最终验证完成后的实际工作树（报告更新后）为：
 
 ```text
 git status --short
-# 无输出
+ M backend/cmd/jl-business-api/business_api_integration_test.go
+ M docs/code-file-naming-cleanup-report.md
 ```
 
 本轮没有发生业务逻辑、API 路径、database schema、migration、权限模型、生产部署或 UI 交互变化。只发生：
 
 - 文件、测试函数、helper/type、fixture、运行开关及必要引用的命名整理；
+- 将知识搜索测试中的单字符查询从 `P` 同步为新 fixture 中存在的 `K`；
 - 仍可访问占位页面的一处产品文案调整；
 - 长期命名规范和完成报告新增。
+
+最终 HEAD：`2be84f26af7fd6d8d92299e59d90bee2c3236417`（本次未创建新 commit）。
 
 未部署生产，未创建 `v1.0.0`。

@@ -798,7 +798,7 @@ func TestTeamKnowledgeFilesSearchAPIIntegration(t *testing.T) {
 	if parentSearchResult == nil || !strings.Contains(parentSearchResult.Snippet, "级别：主任") || !strings.Contains(parentSearchResult.Snippet, "城市：上海") {
 		t.Fatalf("team search result = %+v", teamSearch.Data.Items)
 	}
-	for _, query := range []string{"P", "经"} {
+	for _, query := range []string{"K", "经"} {
 		singleCharacterBody := getTestJSON(t, userClient, server.URL, "/api/search?q="+url.QueryEscape(query), http.StatusOK)
 		var singleCharacterResult api.SearchResponse
 		decodeTestJSON(t, singleCharacterBody, &singleCharacterResult)
@@ -811,7 +811,7 @@ func TestTeamKnowledgeFilesSearchAPIIntegration(t *testing.T) {
 	isolatedRegistration := postTestJSON(t, isolatedClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "isolated-user", "password": "isolated-user-password", "invitation_code": invitation.Data.Code}, "", http.StatusCreated)
 	var isolatedAuth api.AuthResponse
 	decodeTestJSON(t, isolatedRegistration, &isolatedAuth)
-	isolatedSearchBody := getTestJSON(t, isolatedClient, server.URL, "/api/search?q=P", http.StatusOK)
+	isolatedSearchBody := getTestJSON(t, isolatedClient, server.URL, "/api/search?q=K", http.StatusOK)
 	var isolatedSearch api.SearchResponse
 	decodeTestJSON(t, isolatedSearchBody, &isolatedSearch)
 	if len(isolatedSearch.Data.Items) != 0 {
