@@ -49,12 +49,13 @@ type FormState = {
 };
 type PendingCalendarChange = {
   source: CalendarEvent;
-  start: Date;
-  end: Date;
+  start: string;
+  end: string;
   allDay: boolean;
   revert: () => void;
 };
 type ContactForm = { name: string; email: string };
+type CalendarListResponse = Awaited<ReturnType<typeof listCalendarEvents>>;
 
 const weekdayOptions = [[1, "周一"], [2, "周二"], [3, "周三"], [4, "周四"], [5, "周五"], [6, "周六"], [0, "周日"]] as const;
 const scopeOptions: Array<{ value: EditScope; label: string }> = [
@@ -134,6 +135,11 @@ function selectionDateTime(value: string, fallback: Date, timezone: string): str
     : formatDateTimeInTimezone(fallback, timezone);
 }
 
+function wallTimeAfter(value: string, durationMs: number, timezone: string): string {
+  const instant = new Date(zonedDateTimeToISO(value, timezone));
+  return formatDateTimeInTimezone(new Date(instant.getTime() + durationMs), timezone);
+}
+
 function CalendarEventContent({ arg, timezone }: { arg: EventContentArg; timezone: string }) {
   const event = arg.event.extendedProps.event as CalendarEvent | undefined;
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -170,7 +176,7 @@ function CalendarEventContent({ arg, timezone }: { arg: EventContentArg; timezon
     return <div className="calendar-event-content min-w-0" aria-hidden="true"><span className="block truncate text-xs">{arg.timeText}</span></div>;
   }
   const details = eventTooltip(event, timezone);
-  const time = event.all_day ? "全天" : `${timeInTimezone(arg.event.start ?? event.start_at, timezone)}–${timeInTimezone(arg.event.end ?? event.end_at, timezone)}`;
+  const time = event.all_day ? "全天" : `${timeInTimezone(event.start_at, timezone)}–${timeInTimezone(event.end_at, timezone)}`;
   const month = arg.view.type === "dayGridMonth";
   return <div ref={anchorRef} className="calendar-event-content relative min-w-0" tabIndex={0} aria-label={details.join("；")} aria-describedby={tooltipOpen ? tooltipID : undefined} onMouseEnter={() => setTooltipOpen(true)} onMouseLeave={() => setTooltipOpen(false)} onFocus={() => setTooltipOpen(true)} onBlur={(focusEvent) => { if (!focusEvent.currentTarget.contains(focusEvent.relatedTarget)) setTooltipOpen(false); }}>
     {month ? <p className="truncate text-xs"><strong>{time}</strong> {event.title}</p> : <div className="min-w-0 text-xs leading-4"><strong className="block truncate">{time}</strong><span className="block truncate font-semibold">{event.title}</span>{event.location_or_link && <span className="block truncate opacity-80">{event.location_or_link}</span>}</div>}
@@ -185,7 +191,8 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   const timezone = authResponse.data.account.timezone;
   const queryClient = useQueryClient();
   const range = useMemo(initialRange, []);
-  const eventsQuery = useQuery({ queryKey: ["user", accountId, "calendar", range.from, range.to], queryFn: () => listCalendarEvents(range.from, range.to) });
+  const calendarQueryKey = ["user", accountId, "calendar", range.from, range.to] as const;
+  const eventsQuery = useQuery({ queryKey: calendarQueryKey, queryFn: () => listCalendarEvents(range.from, range.to) });
   const contactsQuery = useQuery({ queryKey: ["user", accountId, "calendar-contacts"], queryFn: listCalendarContacts });
   const [searchParams] = useSearchParams();
   const deepLinkEventID = searchParams.get("event");
@@ -255,12 +262,12 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   const moveMutation = useMutation({
     mutationFn: async ({ change, scope }: { change: PendingCalendarChange; scope: EditScope }) => {
       let base = change.source;
-      let start = change.start;
-      let end = change.end;
+      let start = new Date(zonedDateTimeToISO(change.start, timezone));
+      let end = new Date(zonedDateTimeToISO(change.end, timezone));
       if (scope === "SERIES" && change.source.recurrence_freq !== "NONE") {
         base = (await getCalendarEvent(change.source.id)).data;
-        start = new Date(new Date(base.start_at).getTime() + change.start.getTime() - new Date(change.source.start_at).getTime());
-        end = new Date(new Date(base.end_at).getTime() + change.end.getTime() - new Date(change.source.end_at).getTime());
+        start = new Date(new Date(base.start_at).getTime() + start.getTime() - new Date(change.source.start_at).getTime());
+        end = new Date(new Date(base.end_at).getTime() + end.getTime() - new Date(change.source.end_at).getTime());
       }
       const movedForm = { ...formFromEvent(base, timezone), startAt: formatDateTimeInTimezone(start, timezone), endAt: formatDateTimeInTimezone(end, timezone), allDay: change.allDay, editScope: scope };
       const request = buildRequest(movedForm, change.source, timezone);
@@ -268,7 +275,16 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
       request.occurrence_start = change.source.original_occurrence_start ?? change.source.start_at;
       return saveCalendarEvent(authResponse.data.csrf_token, request, change.source.id);
     },
-    onSuccess: () => {
+    onSuccess: (response, variables) => {
+      if (variables.change.source.recurrence_freq === "NONE" && variables.scope === "SERIES") {
+        queryClient.setQueryData<CalendarListResponse>(calendarQueryKey, (current) => current ? {
+          ...current,
+          data: {
+            ...current.data,
+            items: current.data.items.map((item) => item.id === response.data.id ? { ...item, start_at: response.data.start_at, end_at: response.data.end_at, sequence: response.data.sequence } : item),
+          },
+        } : current);
+      }
       setPendingChange(null);
       setNotice("日程时间已更新。");
       setError("");
@@ -289,14 +305,14 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   });
   const deleteContactMutation = useMutation({ mutationFn: () => deleteCalendarContact(authResponse.data.csrf_token, contactDeleteTarget!.id), onSuccess: () => { setContactDeleteTarget(null); setNotice("常用联系人已删除。"); setError(""); void queryClient.invalidateQueries({ queryKey: ["user", accountId, "calendar-contacts"] }); }, onError: (value) => setError(errorMessage(value)) });
   const events = eventsQuery.data?.data.items ?? [];
-  const calendarEvents = events.map((event) => ({ id: event.occurrence_id, title: event.title, start: event.start_at, end: event.end_at, allDay: event.all_day, extendedProps: { event } }));
+  const calendarEvents = events.map((event) => ({ id: event.occurrence_id, title: event.title, start: formatDateTimeInTimezone(event.start_at, timezone), end: formatDateTimeInTimezone(event.end_at, timezone), allDay: event.all_day, extendedProps: { event } }));
   const dayEvents = selectedDate ? events.filter((event) => dateInTimezone(event.start_at, timezone) === selectedDate) : [];
 
   const queueCalendarChange = (info: EventDropArg | EventResizeDoneArg) => {
     const source = info.event.extendedProps.event as CalendarEvent;
-    const start = info.event.start;
+    const start = info.event.startStr?.slice(0, 16);
     if (!start) { info.revert(); return; }
-    const end = info.event.end ?? new Date(start.getTime() + new Date(source.end_at).getTime() - new Date(source.start_at).getTime());
+    const end = info.event.endStr?.slice(0, 16) ?? wallTimeAfter(start, new Date(source.end_at).getTime() - new Date(source.start_at).getTime(), timezone);
     const change = { source, start, end, allDay: info.event.allDay, revert: info.revert };
     if (source.recurrence_freq === "NONE") moveMutation.mutate({ change, scope: "SERIES" });
     else { setPendingScope("THIS_ONLY"); setPendingChange(change); }
@@ -313,12 +329,12 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
     <Tabs value={view} onValueChange={(value) => setView(value as CalendarView)}><TabsList aria-label="日历模块视图"><TabsTrigger value="calendar">日历</TabsTrigger><TabsTrigger value="contacts">常用联系人</TabsTrigger></TabsList></Tabs>
 
     {view === "calendar" ? <Panel title="日程总览" description="月视图点击日期；周、日视图可拖动选择时间段，也可拖动或缩放已有事件。">
-      {eventsQuery.isPending ? <LoadingState label="正在加载日历" /> : eventsQuery.isError ? <ErrorState message="日历暂时无法加载" onRetry={() => void eventsQuery.refetch()} /> : <div className="min-w-0 overflow-x-auto"><div className="min-w-[720px]"><FullCalendar plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]} initialView="dayGridMonth" timeZone={timezone} selectable editable eventStartEditable eventDurationEditable selectMirror selectLongPressDelay={450} headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }} buttonText={{ today: "今天", month: "月", week: "周", day: "日" }} events={calendarEvents} eventContent={(arg) => <CalendarEventContent arg={arg} timezone={timezone} />} dateClick={(info) => openDay(info.dateStr.slice(0, 10))} select={(info) => {
+      <div className="min-h-[420px] lg:min-h-[min(72vh,760px)]">{eventsQuery.isPending ? <LoadingState label="正在加载日历" /> : eventsQuery.isError ? <ErrorState message="日历暂时无法加载" onRetry={() => void eventsQuery.refetch()} /> : <div className="min-w-0 overflow-x-auto"><div className="min-w-[720px]"><FullCalendar plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]} initialView="dayGridMonth" timeZone={timezone} selectable editable eventStartEditable eventDurationEditable selectMirror selectLongPressDelay={450} headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }} buttonText={{ today: "今天", month: "月", week: "周", day: "日" }} events={calendarEvents} eventContent={(arg) => <CalendarEventContent arg={arg} timezone={timezone} />} dateClick={(info) => openDay(info.dateStr.slice(0, 10))} select={(info) => {
         if (info.view.type.startsWith("timeGrid") && info.start) {
           const end = info.end ?? new Date(info.start.getTime() + 30 * 60 * 1000);
           openNew(selectionDateTime(info.startStr, info.start, timezone), selectionDateTime(info.endStr, end, timezone));
         }
-      }} eventClick={(info) => setDetailEvent(info.event.extendedProps.event as CalendarEvent)} eventDrop={queueCalendarChange} eventResize={queueCalendarChange} height="min(72vh, 760px)" /></div></div>}
+      }} eventClick={(info) => setDetailEvent(info.event.extendedProps.event as CalendarEvent)} eventDrop={queueCalendarChange} eventResize={queueCalendarChange} height="min(72vh, 760px)" /></div></div>}</div>
     </Panel> : <ContactsWorkspace contacts={filteredContacts} loading={contactsQuery.isPending} failed={contactsQuery.isError} search={contactSearch} onSearch={setContactSearch} onRetry={() => void contactsQuery.refetch()} onCreate={() => openContactEditor("new")} onEdit={openContactEditor} onDelete={setContactDeleteTarget} />}
 
     <Sheet open={Boolean(selectedDate)} onOpenChange={(open) => !open && closeDay()}>

@@ -26,7 +26,7 @@ vi.mock("@fullcalendar/react", () => ({
     editable: boolean;
     eventDurationEditable: boolean;
   }) => {
-    const calendarEvent = (event: (typeof events)[number], start: string, end: string) => ({ start: new Date(start), end: new Date(end), allDay: event.allDay, extendedProps: event.extendedProps });
+    const calendarEvent = (event: (typeof events)[number], start: string, end: string) => ({ start: new Date(start), end: new Date(end), startStr: start.slice(0, 16), endStr: end.slice(0, 16), allDay: event.allDay, extendedProps: event.extendedProps });
     const recurring = events.find((event) => event.extendedProps.event.recurrence_freq !== "NONE");
     const single = events.find((event) => event.extendedProps.event.recurrence_freq === "NONE");
     return <div data-testid="full-calendar" data-timezone={timeZone} data-selectable={String(selectable)} data-editable={String(editable)} data-resizable={String(eventDurationEditable)}>
@@ -145,7 +145,7 @@ describe("CalendarPage", () => {
   it("updates a single event after drag and rolls back a failed resize", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "拖动单次日程" }));
-    await waitFor(() => expect(saveCalendarEvent).toHaveBeenCalledWith("csrf-token", expect.objectContaining({ start_at: "2026-09-17T03:00:00.000Z", end_at: "2026-09-17T04:00:00.000Z", edit_scope: "SERIES" }), singleEvent.id));
+    await waitFor(() => expect(saveCalendarEvent).toHaveBeenCalledWith("csrf-token", expect.objectContaining({ start_at: "2026-09-16T19:00:00.000Z", end_at: "2026-09-16T20:00:00.000Z", edit_scope: "SERIES" }), singleEvent.id));
     vi.mocked(saveCalendarEvent).mockRejectedValueOnce(new Error("network unavailable"));
     fireEvent.click(screen.getByRole("button", { name: "缩放单次日程" }));
     await waitFor(() => expect(calendarMocks.resizeRevert).toHaveBeenCalledTimes(1));

@@ -15,6 +15,18 @@ describe("business date ranges", () => {
     expect(zonedDateTimeToISO("2026-07-01T14:00", "America/New_York")).toBe("2026-07-01T18:00:00.000Z");
   });
 
+  it.each([
+    ["30 minutes", "2026-09-16T09:00", "2026-09-16T09:30"],
+    ["90 minutes", "2026-09-16T15:30", "2026-09-16T17:00"],
+    ["15:30 to 22:00", "2026-09-16T15:30", "2026-09-16T22:00"],
+    ["cross midnight", "2026-09-16T23:30", "2026-09-17T01:00"],
+  ])("round-trips %s through the account timezone", (_label, start, end) => {
+    const startInstant = zonedDateTimeToISO(start, "Asia/Shanghai");
+    const endInstant = zonedDateTimeToISO(end, "Asia/Shanghai");
+    expect(formatDateTimeInTimezone(startInstant, "Asia/Shanghai")).toBe(start);
+    expect(formatDateTimeInTimezone(endInstant, "Asia/Shanghai")).toBe(end);
+  });
+
   it("uses Monday through Sunday for a natural week", () => {
     const range = businessRange(
       "Asia/Shanghai",
