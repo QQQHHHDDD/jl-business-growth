@@ -148,6 +148,8 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   ).toBeVisible();
   await expect(page.getByText("本月 PV", { exact: true })).toBeVisible();
 
+  const timezoneClient = await page.context().newCDPSession(page);
+  await timezoneClient.send("Emulation.setTimezoneOverride", { timezoneId: "UTC" });
   await page.goto("/app/calendar");
   await expect(
     page.getByRole("heading", { name: "日历", exact: true }),
@@ -165,6 +167,15 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await page.getByRole("button", { name: "保存日程" }).click();
   await expect(page.getByRole("status")).toContainText("日程已保存");
   await expect(page.getByText("E2E 当前日历会面").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "新建日程" }).click();
+  await page.getByLabel("日程标题").fill("E2E 15:30 至 22:00");
+  const businessToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(new Date());
+  await page.getByLabel("开始时间").fill(`${businessToday}T15:30`);
+  await page.getByLabel("结束时间").fill(`${businessToday}T22:00`);
+  await page.getByRole("button", { name: "保存日程" }).click();
+  await expect(page.getByRole("status")).toContainText("日程已保存");
+  await expect(page.getByText("E2E 15:30 至 22:00").first()).toBeVisible();
 
   await page.getByRole("button", { name: "新建日程" }).click();
   await page.getByLabel("日程标题").fill("E2E 日历会面");
@@ -207,6 +218,53 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
 
   await dragCalendarSelection("Week", "E2E 周视图拖动日程");
   await dragCalendarSelection("Day", "E2E 日视图拖动日程");
+  for (const view of ["Week", "Day"] as const) {
+    await page.locator(`.fc-timeGrid${view}-button`).click();
+    const event = page.locator(".fc-timegrid-event").filter({ hasText: "E2E 15:30 至 22:00" }).first();
+    const startSlot = page.locator('.fc-timegrid-slot-lane[data-time="15:30:00"]').first();
+    const endSlot = page.locator('.fc-timegrid-slot-lane[data-time="22:00:00"]').first();
+    const [eventBox, startBox, endBox] = await Promise.all([event.boundingBox(), startSlot.boundingBox(), endSlot.boundingBox()]);
+    expect(eventBox).not.toBeNull();
+    expect(startBox).not.toBeNull();
+    expect(endBox).not.toBeNull();
+    expect(Math.abs(eventBox!.y - startBox!.y)).toBeLessThanOrEqual(4);
+    expect(Math.abs(eventBox!.y + eventBox!.height - endBox!.y)).toBeLessThanOrEqual(6);
+  }
+  await page.locator(".fc-timeGridWeek-button").click();
+  const findStableEvent = () => page.locator(".fc-timegrid-event").filter({ hasText: "E2E 当前日历会面" }).first();
+  await findStableEvent().scrollIntoViewIfNeeded();
+  const scrollBeforeDrag = await page.evaluate(() => window.scrollY);
+  for (let index = 0; index < 15; index += 1) {
+    const stableEvent = findStableEvent();
+    await expect(stableEvent).toBeVisible();
+    const box = await stableEvent.locator(".calendar-event-content").boundingBox();
+    expect(box).not.toBeNull();
+    const delta = index % 2 === 0 ? 18 : -18;
+    const response = page.waitForResponse((value) => value.request().method() === "PUT" && value.url().includes("/api/calendar/events/"));
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2 + delta, { steps: 6 });
+    await page.mouse.up();
+    expect((await response).ok()).toBe(true);
+    await expect(findStableEvent()).toBeVisible();
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBeforeDrag);
+  }
+  for (let index = 0; index < 5; index += 1) {
+    const stableEvent = findStableEvent();
+    await expect(stableEvent).toBeVisible();
+    await stableEvent.locator(".calendar-event-content").hover();
+    const handle = stableEvent.locator(".fc-event-resizer-end");
+    const handleBox = await handle.boundingBox();
+    expect(handleBox).not.toBeNull();
+    const response = page.waitForResponse((value) => value.request().method() === "PUT" && value.url().includes("/api/calendar/events/"));
+    await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2 + (index % 2 === 0 ? 30 : -30), { steps: 12 });
+    await page.mouse.up();
+    expect((await response).ok()).toBe(true);
+    await expect(findStableEvent()).toBeVisible();
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBeforeDrag);
+  }
   expect(browserErrors).toEqual([]);
 
   for (const zoom of [1, 1.25]) {
@@ -302,9 +360,21 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     for (const [path, heading] of routeChecks) {
       const routeLink = sidebar.locator(`a[href="${path}"]`).first();
       if (await routeLink.count() === 0) await sidebar.getByRole("button", { name: routeGroups[path], exact: true }).click();
+      const frameSamples = page.evaluate(() => new Promise<Array<{ containerHeight: number; headerVisible: boolean; scrollWidth: number }>>((resolve) => {
+        const samples: Array<{ containerHeight: number; headerVisible: boolean; scrollWidth: number }> = [];
+        const sample = () => {
+          const container = document.querySelector<HTMLElement>('[data-testid="page-container"]');
+          samples.push({ containerHeight: container?.getBoundingClientRect().height ?? 0, headerVisible: Boolean(container?.querySelector("h1")), scrollWidth: document.documentElement.scrollWidth });
+          if (samples.length === 8) resolve(samples);
+          else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      }));
       await routeLink.click();
       await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}\\/?$`));
       await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      const frames = await frameSamples;
+      expect(frames.every((frame) => frame.containerHeight >= 400 && frame.headerVisible && frame.scrollWidth <= (page.viewportSize()?.width ?? 0) + 1)).toBe(true);
       expect(await sidebar.evaluate((element, previous) => element === previous, sidebarHandle)).toBe(true);
       expect(await topbar.evaluate((element, previous) => element === previous, topbarHandle)).toBe(true);
       expect(await routePageContainer.evaluate((element, previous) => element === previous, pageContainerHandle)).toBe(true);

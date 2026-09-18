@@ -82,17 +82,17 @@ describe("AppShell navigation", () => {
     expect(screen.getAllByRole("button", { name: "全局搜索" })).toHaveLength(2);
   });
 
-  it("keeps only one user group expanded and supports desktop collapse", () => {
+  it("keeps user groups independently expanded and supports desktop collapse", () => {
     renderShell("/app/worklog");
     fireEvent.click(screen.getByRole("button", { name: "成长与复盘" }));
     expect(screen.getByRole("button", { name: "成长与复盘" })).toHaveAttribute(
       "aria-expanded",
       "true",
     );
-    expect(screen.getByRole("button", { name: "规划与执行" })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
+    expect(screen.getByRole("button", { name: "规划与执行" })).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("button", { name: "规划与执行" }));
+    expect(screen.getByRole("button", { name: "规划与执行" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: "成长与复盘" })).toHaveAttribute("aria-expanded", "true");
 
     fireEvent.click(screen.getByRole("button", { name: "收起侧边栏" }));
     expect(
@@ -101,6 +101,19 @@ describe("AppShell navigation", () => {
     expect(localStorage.getItem("jl-business-growth:sidebar-collapsed")).toBe(
       "true",
     );
+    expect(localStorage.getItem("jl-business-growth:sidebar-expanded-groups")).toBe('["growth"]');
+  });
+
+  it("persists independent groups and restores them after rail collapse", () => {
+    localStorage.setItem("jl-business-growth:sidebar-expanded-groups", '["planning","operations","growth","system"]');
+    renderShell("/app");
+    for (const label of ["规划与执行", "经营管理", "成长与复盘", "系统工具"]) {
+      expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-expanded", "true");
+    }
+    fireEvent.click(screen.getByRole("button", { name: "收起侧边栏" }));
+    fireEvent.click(screen.getByRole("button", { name: "展开侧边栏" }));
+    expect(screen.getByRole("button", { name: "规划与执行" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "系统工具" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("keeps the full brand name inside a shrinkable wrapping region", () => {
