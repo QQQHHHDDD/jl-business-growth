@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AnalyticsResponse, AuthResponse } from "@/api/client";
 import { getAnalytics, getFinanceAnalytics, getTeamAnalytics } from "@/api/client";
@@ -16,10 +17,11 @@ beforeEach(() => { vi.clearAllMocks(); vi.mocked(getAnalytics).mockResolvedValue
 describe("AnalyticsPage", () => {
   it("switches domains and time ranges while showing KPI trend and details", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={client}><AnalyticsPage authResponse={authResponse} /></QueryClientProvider>);
+    render(<MemoryRouter><QueryClientProvider client={client}><AnalyticsPage authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
     expect(await screen.findByRole("tab", { name: "工作量" })).toHaveAttribute("data-state", "active");
     expect(await screen.findByRole("heading", { name: "工作量趋势" })).toBeVisible();
-    expect(screen.getByText("当前只有 1 个统计周期，数据不足以形成趋势。")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "暂无趋势" })).toBeVisible();
+    expect(screen.getByRole("link", { name: /去记录工作量/ })).toHaveAttribute("href", "/app/worklog");
     expect(screen.getAllByText("开启对话").length).toBeGreaterThan(0);
     expect(screen.getByRole("table")).toBeVisible();
     const toolbar = screen.getByTestId("analytics-range-toolbar");
@@ -38,7 +40,7 @@ describe("AnalyticsPage", () => {
 
   it("offers separate natural and fiscal year ranges", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={client}><AnalyticsPage authResponse={authResponse} /></QueryClientProvider>);
+    render(<MemoryRouter><QueryClientProvider client={client}><AnalyticsPage authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
     await screen.findByRole("heading", { name: "工作量趋势" });
     fireEvent.click(screen.getByRole("button", { name: "自然年" }));
     expect(screen.getByRole("button", { name: "自然年" })).toHaveAttribute("aria-pressed", "true");
@@ -49,7 +51,7 @@ describe("AnalyticsPage", () => {
   it("does not draw a team trend when there are no snapshots", async () => {
     vi.mocked(getTeamAnalytics).mockResolvedValue({ ...response, data: { ...response.data, metric: "team", snapshot_count: 0, buckets: [] } });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={client}><AnalyticsPage authResponse={authResponse} /></QueryClientProvider>);
+    render(<MemoryRouter><QueryClientProvider client={client}><AnalyticsPage authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
     fireEvent.mouseDown(await screen.findByRole("tab", { name: "团队" }), { button: 0 });
     expect(await screen.findByText("所选周期暂无团队快照")).toBeVisible();
     expect(screen.getByText("当前成员数")).toBeVisible();
@@ -59,7 +61,7 @@ describe("AnalyticsPage", () => {
   it("draws a real trend when at least two periods exist", async () => {
     vi.mocked(getAnalytics).mockResolvedValue({ ...response, data: { ...response.data, buckets: [bucket, { ...bucket, period: "2026-09-17", open_conversation_count: 10 }] } });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={client}><AnalyticsPage authResponse={authResponse} /></QueryClientProvider>);
+    render(<MemoryRouter><QueryClientProvider client={client}><AnalyticsPage authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
     expect(await screen.findByLabelText("工作量趋势图")).toBeVisible();
   });
 });

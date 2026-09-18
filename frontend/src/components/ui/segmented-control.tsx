@@ -14,7 +14,7 @@ export function SegmentedControl<Value extends string>({
   className,
 }: {
   value: Value;
-  items: SegmentedControlItem<Value>[];
+  items: readonly SegmentedControlItem<Value>[];
   onValueChange: (value: Value) => void;
   ariaLabel: string;
   className?: string;
