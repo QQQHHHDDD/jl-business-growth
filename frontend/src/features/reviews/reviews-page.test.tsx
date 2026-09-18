@@ -28,7 +28,7 @@ describe("ReviewsPage", () => {
     fireEvent.mouseDown(screen.getByRole("tab", { name: "每周" }), { button: 0 });
     expect(screen.getByRole("tab", { name: "每周" })).toHaveAttribute("data-state", "active");
     expect(await screen.findByRole("heading", { name: "最近保存" })).toBeVisible();
-    expect(screen.getByLabelText("本周开始日期")).toBeVisible();
+    expect(await screen.findByLabelText("本周开始日期")).toBeVisible();
     expect(await screen.findByText("开启 10 · 深入 8 · 分享 4 · 筛选 3 · 会面 1")).toBeVisible();
     expect(screen.getByRole("button", { name: /2026-09-14/ })).toBeVisible();
   });

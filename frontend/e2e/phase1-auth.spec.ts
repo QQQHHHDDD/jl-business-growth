@@ -19,6 +19,13 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   const secondUserPassword = "phase1-second-password";
   const firstUsername = `e2e${Date.now().toString().slice(-10)}`;
   const secondUsername = `e2e${(Date.now() + 1).toString().slice(-10)}`;
+  const browserErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && !message.text().includes("Failed to load resource")) {
+      browserErrors.push(`[console:${message.type()}] ${message.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => browserErrors.push(`[pageerror] ${error.stack ?? error.message}`));
 
   await page.goto("/");
   await page.getByLabel("账号").fill(superadminUsername!);
@@ -146,18 +153,84 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
     page.getByRole("heading", { name: "日历", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "新建日程" }).click();
-  await page.getByLabel("日程标题").fill("E2E 日历会面");
-  const eventStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000);
+  await page.getByLabel("日程标题").fill("E2E 当前日历会面");
+  const currentEventStart = new Date(Date.now() + 60 * 60 * 1000);
+  const currentEventEnd = new Date(currentEventStart.getTime() + 60 * 60 * 1000);
   const localInput = (value: Date) => {
     const pad = (part: number) => String(part).padStart(2, "0");
     return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
   };
+  await page.getByLabel("开始时间").fill(localInput(currentEventStart));
+  await page.getByLabel("结束时间").fill(localInput(currentEventEnd));
+  await page.getByRole("button", { name: "保存日程" }).click();
+  await expect(page.getByRole("status")).toContainText("日程已保存");
+  await expect(page.getByText("E2E 当前日历会面").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "新建日程" }).click();
+  await page.getByLabel("日程标题").fill("E2E 日历会面");
+  const eventStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000);
   await page.getByLabel("开始时间").fill(localInput(eventStart));
   await page.getByLabel("结束时间").fill(localInput(eventEnd));
   await page.getByRole("button", { name: "保存日程" }).click();
   await expect(page.getByRole("status")).toContainText("日程已保存");
   await expect(page.getByText("E2E 日历会面").first()).toBeVisible();
+
+  const dragCalendarSelection = async (view: "Week" | "Day", title: string) => {
+    await page.locator(`.fc-timeGrid${view}-button`).click();
+    await page.locator(".fc-timegrid").scrollIntoViewIfNeeded();
+    const column = page.locator(".fc-timegrid-col[data-date]").first();
+    const startSlot = page.locator('.fc-timegrid-slot-lane[data-time="09:00:00"]').first();
+    const endSlot = page.locator('.fc-timegrid-slot-lane[data-time="10:00:00"]').first();
+    const [columnBox, startBox, endBox] = await Promise.all([
+      column.boundingBox(),
+      startSlot.boundingBox(),
+      endSlot.boundingBox(),
+    ]);
+    expect(columnBox).not.toBeNull();
+    expect(startBox).not.toBeNull();
+    expect(endBox).not.toBeNull();
+    const x = columnBox!.x + columnBox!.width / 2;
+    await page.mouse.move(x, startBox!.y + 2);
+    await page.mouse.down();
+    await page.mouse.move(x, endBox!.y + 2, { steps: 12 });
+    await page.mouse.up();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel("开始时间")).toHaveValue(/T09:00$/);
+    await expect(dialog.getByLabel("结束时间")).toHaveValue(/T10:30$/);
+    await dialog.getByLabel("日程标题").fill(title);
+    await dialog.getByRole("button", { name: "保存日程" }).click();
+    await expect(page.getByRole("status")).toContainText("日程已保存");
+    await expect(page.getByText(title).first()).toBeVisible();
+  };
+
+  await dragCalendarSelection("Week", "E2E 周视图拖动日程");
+  await dragCalendarSelection("Day", "E2E 日视图拖动日程");
+  expect(browserErrors).toEqual([]);
+
+  for (const zoom of [1, 1.25]) {
+    await page.evaluate((value) => { document.documentElement.style.zoom = String(value); }, zoom);
+    for (const view of ["dayGridMonth", "timeGridWeek", "timeGridDay"] as const) {
+      await page.locator(`.fc-${view}-button`).click();
+      const event = page.locator(".fc-event").first();
+      await expect(event).toBeVisible();
+      await event.locator(".calendar-event-content").hover();
+      const tooltip = page.getByTestId("calendar-event-tooltip");
+      await expect(tooltip).toBeVisible();
+      await expect(tooltip).toHaveCSS("position", "fixed");
+      expect(Number(await tooltip.evaluate((element) => getComputedStyle(element).zIndex))).toBeGreaterThanOrEqual(100);
+      const tooltipBox = await tooltip.boundingBox();
+      const viewport = page.viewportSize();
+      expect(tooltipBox).not.toBeNull();
+      expect(viewport).not.toBeNull();
+      expect(tooltipBox!.x).toBeGreaterThanOrEqual(0);
+      expect(tooltipBox!.y).toBeGreaterThanOrEqual(0);
+      expect(tooltipBox!.x + tooltipBox!.width).toBeLessThanOrEqual(viewport!.width);
+      expect(tooltipBox!.y + tooltipBox!.height).toBeLessThanOrEqual(viewport!.height);
+    }
+  }
+  await page.evaluate(() => { document.documentElement.style.zoom = ""; });
 
   const contactsResponse = page.waitForResponse(
     (response) =>
@@ -186,6 +259,58 @@ test("covers the Phase 1 administrator flow and Phase 2-6 core loops", async ({
   await page.getByLabel("明日重点").fill("保持每天记录");
   await page.getByRole("button", { name: "保存复盘" }).click();
   await expect(page.getByRole("status")).toContainText("复盘已保存");
+  const reviewWorkspace = page.getByTestId("review-workspace");
+  const reviewWorkspaceHandle = await reviewWorkspace.elementHandle();
+  expect(reviewWorkspaceHandle).not.toBeNull();
+  for (const tab of ["每周", "每月", "每日"]) {
+    await page.getByRole("tab", { name: tab }).click();
+    await expect(reviewWorkspace).toBeVisible();
+    expect(await reviewWorkspace.evaluate((element, previous) => element === previous, reviewWorkspaceHandle)).toBe(true);
+  }
+  const sidebar = page.getByTestId("app-sidebar");
+  const topbar = page.getByTestId("app-topbar");
+  const routePageContainer = page.getByTestId("page-container");
+  const sidebarHandle = await sidebar.elementHandle();
+  const topbarHandle = await topbar.elementHandle();
+  const pageContainerHandle = await routePageContainer.elementHandle();
+  expect(sidebarHandle).not.toBeNull();
+  expect(topbarHandle).not.toBeNull();
+  expect(pageContainerHandle).not.toBeNull();
+  const routeChecks = [
+    ["/app", "经营进度"],
+    ["/app/worklog", "今日工作量"],
+    ["/app/calendar", "日历"],
+    ["/app/team", "团队"],
+    ["/app/finance", "财务"],
+    ["/app/knowledge", "学习中心"],
+    ["/app/reviews", "复盘"],
+    ["/app/analytics", "数据统计"],
+    ["/app/settings", "设置"],
+    ["/app", "经营进度"],
+  ] as const;
+  const routeGroups: Record<string, string> = {
+    "/app/worklog": "规划与执行",
+    "/app/calendar": "规划与执行",
+    "/app/team": "经营管理",
+    "/app/finance": "经营管理",
+    "/app/knowledge": "成长与复盘",
+    "/app/reviews": "成长与复盘",
+    "/app/analytics": "成长与复盘",
+    "/app/settings": "系统工具",
+  };
+  for (let round = 0; round < 3; round += 1) {
+    for (const [path, heading] of routeChecks) {
+      const routeLink = sidebar.locator(`a[href="${path}"]`).first();
+      if (await routeLink.count() === 0) await sidebar.getByRole("button", { name: routeGroups[path], exact: true }).click();
+      await routeLink.click();
+      await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}\\/?$`));
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      expect(await sidebar.evaluate((element, previous) => element === previous, sidebarHandle)).toBe(true);
+      expect(await topbar.evaluate((element, previous) => element === previous, topbarHandle)).toBe(true);
+      expect(await routePageContainer.evaluate((element, previous) => element === previous, pageContainerHandle)).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+    }
+  }
 
   await page.goto("/app/analytics");
   await expect(

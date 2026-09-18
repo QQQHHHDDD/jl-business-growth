@@ -14,7 +14,7 @@ vi.mock("@fullcalendar/react", () => ({
   default: ({ events, dateClick, select, eventClick, eventDrop, eventResize, eventContent, buttonText, initialView, timeZone, selectable, editable, eventDurationEditable }: {
     events: Array<{ id: string; title: string; start: string; end: string; allDay: boolean; extendedProps: { event: CalendarEvent } }>;
     dateClick: (info: { dateStr: string }) => void;
-    select: (info: { start: Date; end: Date; view: { type: string } }) => void;
+    select: (info: { start: Date; end: Date; startStr: string; endStr: string; view: { type: string } }) => void;
     eventClick: (info: { event: { extendedProps: { event: CalendarEvent } } }) => void;
     eventDrop: (info: unknown) => void;
     eventResize: (info: unknown) => void;
@@ -33,7 +33,8 @@ vi.mock("@fullcalendar/react", () => ({
       <span data-testid="initial-calendar-view">{initialView}</span>
       <button type="button">{buttonText.month}</button><button type="button">{buttonText.week}</button><button type="button">{buttonText.day}</button>
       <button type="button" onClick={() => dateClick({ dateStr: "2026-09-16" })}>选择 2026-09-16</button>
-      <button type="button" onClick={() => select({ start: new Date("2026-09-16T06:00:00Z"), end: new Date("2026-09-16T07:30:00Z"), view: { type: "timeGridWeek" } })}>拖拽 14:00 至 15:30</button>
+      <button type="button" onClick={() => select({ start: new Date("2026-09-16T06:00:00Z"), end: new Date("2026-09-16T07:30:00Z"), startStr: "2026-09-16T14:00:00", endStr: "2026-09-16T15:30:00", view: { type: "timeGridWeek" } })}>拖拽 14:00 至 15:30</button>
+      {eventContent({ event: { start: null, end: null, extendedProps: {} }, view: { type: "timeGridWeek" }, isMirror: true, timeText: "09:00" } as unknown as Parameters<typeof eventContent>[0])}
       {events.map((event) => <div key={event.id}><button type="button" onClick={() => eventClick({ event: { extendedProps: event.extendedProps } })}>查看 {event.title}</button>{eventContent({ event: calendarEvent(event, event.start, event.end), view: { type: "dayGridMonth" } })}</div>)}
       {recurring && <button type="button" onClick={() => eventDrop({ event: calendarEvent(recurring, "2026-09-16T02:00:00Z", "2026-09-16T03:00:00Z"), revert: calendarMocks.dropRevert })}>拖动重复日程</button>}
       {single && <><button type="button" onClick={() => eventDrop({ event: calendarEvent(single, "2026-09-17T03:00:00Z", "2026-09-17T04:00:00Z"), revert: calendarMocks.dropRevert })}>拖动单次日程</button><button type="button" onClick={() => eventResize({ event: calendarEvent(single, single.start, "2026-09-17T04:30:00Z"), revert: calendarMocks.resizeRevert })}>缩放单次日程</button></>}
@@ -93,7 +94,8 @@ describe("CalendarPage", () => {
     expect(calendar).toHaveAttribute("data-editable", "true");
     expect(calendar).toHaveAttribute("data-resizable", "true");
     expect(screen.getAllByText(/09:00–10:00/)[0]).toBeVisible();
-    expect(screen.getAllByRole("tooltip")[0]).toHaveTextContent("会议室");
+    fireEvent.mouseEnter(screen.getAllByLabelText(/每周经营复盘；/)[0]);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("会议室");
     expect(screen.queryByText("Asia/Shanghai")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "选择 2026-09-16" }));
     expect(screen.getByRole("heading", { name: "2026-09-16" })).toBeVisible();
