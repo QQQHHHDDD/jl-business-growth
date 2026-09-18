@@ -205,3 +205,83 @@ input:not([type="checkbox"]):not([type="radio"]):not(
 .fc .fc-daygrid-day.fc-day-other .fc-daygrid-day-number {
   color: #94a3b8;
 }
+
+/* Shared visual bridge for legacy page internals. FullCalendar keeps its own
+   grid, while ordinary business tables inherit the frozen analytics language. */
+main table:not(.fc-scrollgrid) {
+  border: 1px solid rgb(var(--color-outline) / 0.55);
+  border-radius: 1.125rem;
+  border-spacing: 0;
+  overflow: hidden;
+  background: rgb(var(--color-surface));
+  box-shadow: 0 16px 34px -28px rgb(15 23 42 / 0.42);
+}
+
+main table:not(.fc-scrollgrid) thead {
+  background: rgb(236 253 245 / 0.42);
+  color: rgb(var(--color-ink-faint));
+}
+
+main table:not(.fc-scrollgrid) tbody tr {
+  border-color: rgb(var(--color-outline) / 0.35);
+  transition: background-color var(--motion-fast) var(--motion-ease);
+}
+
+main table:not(.fc-scrollgrid) tbody tr:hover {
+  background: rgb(236 253 245 / 0.52);
+}
+
+.rounded-lg.border-slate-200.bg-white,
+.rounded-xl.border-slate-200.bg-white {
+  border-color: rgb(var(--color-outline) / 0.58);
+  border-radius: 1.125rem;
+  box-shadow: 0 16px 34px -28px rgb(15 23 42 / 0.42);
+}
+
+.team-graph,
+.react-flow {
+  background-color: rgb(236 253 245 / 0.22) !important;
+}
+
+.react-flow__background pattern circle {
+  fill: rgb(148 163 184 / 0.28);
+}
+
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-outline) / 0.7) !important;
+  border-radius: var(--radius-control);
+  box-shadow: 0 8px 20px -16px rgb(15 23 42 / 0.5);
+}
+
+.react-flow__controls-button {
+  border-bottom-color: rgb(var(--color-outline) / 0.55) !important;
+  background: rgb(var(--color-surface) / 0.92) !important;
+}
+
+.fc .fc-toolbar {
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.fc .fc-toolbar-chunk {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.fc .fc-button-group {
+  gap: 0.25rem;
+}
+
+.fc .fc-button {
+  border-radius: var(--radius-control);
+  border-color: rgb(var(--color-outline) / 0.7);
+  background: rgb(var(--color-surface));
+}
+
+.fc .fc-event {
+  border: 0;
+  border-radius: 0.625rem;
+  box-shadow: 0 4px 12px -10px rgb(15 23 42 / 0.48);
+}

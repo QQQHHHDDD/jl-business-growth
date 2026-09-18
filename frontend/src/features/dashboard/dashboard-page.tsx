@@ -133,9 +133,9 @@ function SummaryLink({
   return (
     <Link
       to={href}
-      className="group flex items-start gap-3 rounded-lg px-1 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+      className="group flex items-start gap-3 rounded-card border border-brand-100/55 bg-brand-50/20 px-3 py-3 shadow-hairline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
     >
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-teal-50 text-teal-700">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-control bg-brand-100/75 text-brand-700">
         <Icon size={18} />
       </span>
       <span className="min-w-0 flex-1">
@@ -170,7 +170,8 @@ export function DashboardPage({
   });
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-2 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <header className="relative isolate overflow-hidden rounded-hero border border-brand-100/70 bg-gradient-to-r from-brand-50/90 via-amber-50/45 to-sky-50/65 px-5 py-5 shadow-card sm:px-7 sm:py-6">
+        <span className="pointer-events-none absolute -right-5 -top-8 h-32 w-32 rounded-full bg-amber-200/35 blur-2xl" aria-hidden="true" />
         <div>
           <h1 className="text-[28px] font-bold leading-tight text-slate-950">
             {greeting(account.timezone)}，{account.username}

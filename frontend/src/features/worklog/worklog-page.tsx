@@ -231,7 +231,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
         description="记录今天实际完成的行动、学习和营业额，保存后会用于统计、复盘和目标进度。"
         action={
           <div
-            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
+            className="flex items-center gap-1 rounded-card border border-brand-100/60 bg-brand-50/25 p-1.5 shadow-hairline"
             aria-label="业务日期导航"
           >
             <Button
@@ -244,7 +244,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
             >
               <ChevronLeft size={18} />
             </Button>
-            <label className="relative flex h-10 min-w-[138px] items-center justify-center rounded-md px-2 text-sm font-bold tabular-nums text-slate-800 hover:bg-slate-50">
+            <label className="relative flex h-10 min-w-[138px] items-center justify-center rounded-control px-2 text-sm font-bold tabular-nums text-slate-800 hover:bg-surface">
               <span aria-hidden="true">{selectedDate}</span>
               <input
                 aria-label="业务日期"
@@ -294,7 +294,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
       )}
       <section
         aria-label="今日概览"
-        className="grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white px-2 py-3 shadow-sm sm:px-4"
+        className="grid grid-cols-3 divide-x divide-brand-100/60 rounded-[1.125rem] border border-brand-100/60 bg-gradient-to-r from-brand-50/55 via-sky-50/35 to-brand-50/35 px-2 py-3 shadow-card sm:px-4"
       >
         <div className="px-2 sm:px-4">
           <p className="text-xs font-semibold text-slate-500">行动</p>
