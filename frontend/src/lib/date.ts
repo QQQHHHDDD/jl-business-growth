@@ -49,6 +49,17 @@ export function zonedDateTimeToISO(value: string, timezone: string): string {
     const representedWallTime = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
     candidate = new Date(candidate.getTime() + desiredWallTime - representedWallTime);
   }
+  const finalParts = zonedParts(candidate, timezone);
+  if (
+    finalParts.year !== year
+    || finalParts.month !== month
+    || finalParts.day !== day
+    || finalParts.hour !== hour
+    || finalParts.minute !== minute
+    || finalParts.second !== 0
+  ) {
+    throw new RangeError("所选时间在当前时区不存在，请重新选择。");
+  }
   return candidate.toISOString();
 }
 

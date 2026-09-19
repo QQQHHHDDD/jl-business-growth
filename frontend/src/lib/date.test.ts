@@ -15,6 +15,21 @@ describe("business date ranges", () => {
     expect(zonedDateTimeToISO("2026-07-01T14:00", "America/New_York")).toBe("2026-07-01T18:00:00.000Z");
   });
 
+  it("rejects a wall time that does not exist during the DST spring-forward gap", () => {
+    expect(() => zonedDateTimeToISO("2026-03-08T02:30", "America/New_York"))
+      .toThrow("所选时间在当前时区不存在，请重新选择。");
+  });
+
+  it("keeps DST conversions deterministic outside the spring-forward gap", () => {
+    const normal = zonedDateTimeToISO("2026-03-08T03:30", "America/New_York");
+    expect(normal).toBe("2026-03-08T07:30:00.000Z");
+    expect(formatDateTimeInTimezone(normal, "America/New_York")).toBe("2026-03-08T03:30");
+
+    const ambiguous = zonedDateTimeToISO("2026-11-01T01:30", "America/New_York");
+    expect(ambiguous).toBe("2026-11-01T05:30:00.000Z");
+    expect(formatDateTimeInTimezone(ambiguous, "America/New_York")).toBe("2026-11-01T01:30");
+  });
+
   it.each([
     ["30 minutes", "2026-09-16T09:00", "2026-09-16T09:30"],
     ["90 minutes", "2026-09-16T15:30", "2026-09-16T17:00"],

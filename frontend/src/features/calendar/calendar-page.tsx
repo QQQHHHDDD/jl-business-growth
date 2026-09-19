@@ -225,6 +225,7 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   };
   const openNew = (date?: string, end?: string) => {
     dismissDayForNextDialog();
+    setError("");
     editorReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const start = date ?? businessDate(timezone);
     setEditing(null);
@@ -234,6 +235,7 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   };
   const openEdit = (event: CalendarEvent) => {
     dismissDayForNextDialog();
+    setError("");
     editorReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setDetailEvent(null);
     setEditing(event);
@@ -353,7 +355,7 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
 
   return <div className="calendar-workspace space-y-6">
     <PageHeader className="border-outline/70" eyebrow="安排与节奏" title="日历" description="集中安排单次与重复日程，并管理常用联系人。" />
-    {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
+    {(notice || (error && !editorOpen)) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <Tabs value={view} onValueChange={(value) => setView(value as CalendarView)}><TabsList aria-label="日历模块视图"><TabsTrigger value="calendar">日历</TabsTrigger><TabsTrigger value="contacts">常用联系人</TabsTrigger></TabsList></Tabs>
       <div className="flex justify-end">
@@ -387,6 +389,7 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
           <EventEditor form={form} editing={editing} contacts={contacts} onChange={setForm} />
+          {error && <p role="alert" className="mt-4 rounded-control border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
         </div>
         <div className="flex shrink-0 justify-end gap-3 border-t border-outline bg-surface px-6 py-4">
           <Button variant="secondary" onClick={closeEditor}>取消</Button>

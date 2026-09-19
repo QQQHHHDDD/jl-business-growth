@@ -81,7 +81,6 @@ export function AccountMenu({
       if (value instanceof ApiError && (value.status === 401 || value.status === 403 || value.status === 404)) {
         removeLinkedAccount(accountId);
         void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-        setOpen(false);
         setError("该账号关联已失效，已从浏览器列表移除。");
         return;
       }

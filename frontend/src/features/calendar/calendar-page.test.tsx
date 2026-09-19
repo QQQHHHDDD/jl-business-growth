@@ -56,9 +56,9 @@ const recurringEvent = {
 const singleEvent = { ...recurringEvent, id: "00000000-0000-0000-0000-000000000011", occurrence_id: "event-11", uid: "event-11@example.test", title: "单次沟通", start_at: "2026-09-17T01:00:00Z", end_at: "2026-09-17T02:00:00Z", recurrence_freq: "NONE", recurrence_weekdays: [], recurrence_end_type: "NEVER", recurrence_count: null, original_occurrence_start: null, attendees: [] } as CalendarEvent;
 const contact = { id: "00000000-0000-0000-0000-000000000020", name: "访客", email: "guest@example.test", created_at: "2026-09-16T00:00:00Z", updated_at: "2026-09-16T00:00:00Z" } as CalendarContact;
 
-function renderPage(entry = "/app/calendar") {
+function renderPage(entry = "/app/calendar", response = authResponse) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<MemoryRouter initialEntries={[entry]}><QueryClientProvider client={client}><CalendarPage authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
+  return render(<MemoryRouter initialEntries={[entry]}><QueryClientProvider client={client}><CalendarPage authResponse={response} /></QueryClientProvider></MemoryRouter>);
 }
 
 beforeEach(() => {
@@ -139,6 +139,27 @@ describe("CalendarPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "拖拽 14:00 至 15:30" }));
     expect(screen.getByLabelText("开始时间")).toHaveValue("2026-09-16T14:00");
     expect(screen.getByLabelText("结束时间")).toHaveValue("2026-09-16T15:30");
+  });
+
+  it("keeps the editor open and explains a nonexistent DST wall time", async () => {
+    const newYorkAuth = {
+      ...authResponse,
+      data: {
+        ...authResponse.data,
+        account: { ...authResponse.data.account, timezone: "America/New_York" },
+      },
+    } as AuthResponse;
+    renderPage("/app/calendar", newYorkAuth);
+    fireEvent.click(await screen.findByRole("button", { name: "新建日程" }));
+    fireEvent.change(screen.getByLabelText("日程标题"), { target: { value: "DST gap" } });
+    fireEvent.change(screen.getByLabelText("开始时间"), { target: { value: "2026-03-08T02:30" } });
+    fireEvent.change(screen.getByLabelText("结束时间"), { target: { value: "2026-03-08T03:30" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存日程" }));
+
+    const editor = screen.getByRole("dialog");
+    expect(await within(editor).findByRole("alert")).toHaveTextContent("所选时间在当前时区不存在，请重新选择。");
+    expect(within(editor).getByRole("heading", { name: "新建日程" })).toBeVisible();
+    expect(saveCalendarEvent).not.toHaveBeenCalled();
   });
 
   it("supports selecting multiple contacts and saving a new invitee", async () => {

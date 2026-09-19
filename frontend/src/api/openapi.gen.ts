@@ -164,7 +164,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List normal accounts linked to this browser session */
+        /** List accounts linked to this browser session */
         get: operations["getAuthAccounts"];
         put?: never;
         post?: never;
@@ -183,7 +183,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Authenticate and add another normal account to this browser session */
+        /** Authenticate and add another account to this browser session */
         post: operations["postAuthAccountsAdd"];
         delete?: never;
         options?: never;
@@ -200,7 +200,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Switch the active normal account without re-entering its password */
+        /** Switch the active account without re-entering its password */
         post: operations["postAuthAccountsSwitch"];
         delete?: never;
         options?: never;
@@ -218,7 +218,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove a linked normal account from this browser session */
+        /** Remove a linked account from this browser session */
         delete: operations["deleteAuthAccount"];
         options?: never;
         head?: never;
@@ -338,7 +338,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Disable an invitation code */
+        /** Delete an invitation code */
         delete: operations["deleteAdminInvitationCode"];
         options?: never;
         head?: never;
@@ -2859,7 +2859,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Invitation disabled */
+            /** @description Invitation deleted */
             204: {
                 headers: {
                     [name: string]: unknown;

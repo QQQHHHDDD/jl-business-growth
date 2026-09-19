@@ -115,6 +115,37 @@ func TestAuthenticationAdminAPIIntegration(t *testing.T) {
 	var userOneAuth api.AuthResponse
 	decodeTestJSON(t, userOneResponse, &userOneAuth)
 
+	// A normal session read must not attempt the compatibility INSERT when the
+	// active account relation already exists. The trigger makes that write fail
+	// loudly if LoadSession regresses to an unconditional backfill.
+	if err := blockBrowserSessionAccountInsert(ctx, pool); err != nil {
+		t.Fatalf("block browser session account inserts: %v", err)
+	}
+	t.Cleanup(func() { _ = unblockBrowserSessionAccountInsert(context.Background(), pool) })
+	getTestJSON(t, userOneClient, server.URL, "/api/auth/me", http.StatusOK)
+
+	var userOneSessionID uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM browser_sessions WHERE active_account_id = $1 ORDER BY created_at DESC LIMIT 1`, userOneAuth.Data.Account.Id).Scan(&userOneSessionID); err != nil {
+		t.Fatalf("find user session: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM browser_session_accounts WHERE browser_session_id = $1 AND account_id = $2`, userOneSessionID, userOneAuth.Data.Account.Id); err != nil {
+		t.Fatalf("delete legacy browser session relation: %v", err)
+	}
+	// A legacy session without the relation remains usable even when the
+	// best-effort compatibility write is unavailable.
+	getTestJSON(t, userOneClient, server.URL, "/api/auth/me", http.StatusOK)
+	if err := unblockBrowserSessionAccountInsert(ctx, pool); err != nil {
+		t.Fatalf("unblock browser session account inserts: %v", err)
+	}
+	getTestJSON(t, userOneClient, server.URL, "/api/auth/me", http.StatusOK)
+	var relationCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM browser_session_accounts WHERE browser_session_id = $1 AND account_id = $2`, userOneSessionID, userOneAuth.Data.Account.Id).Scan(&relationCount); err != nil {
+		t.Fatalf("count restored browser session relation: %v", err)
+	}
+	if relationCount != 1 {
+		t.Fatalf("restored browser session relation count = %d, want 1", relationCount)
+	}
+
 	userTwoClient := newTestClient(t)
 	userTwoResponse := postTestJSON(t, userTwoClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{
 		"username":        "linked-user",
@@ -1345,6 +1376,34 @@ func decodeTestJSON(t *testing.T, body []byte, target interface{}) {
 	if err := json.Unmarshal(body, target); err != nil {
 		t.Fatalf("decode JSON response: %v; body=%s", err, body)
 	}
+}
+
+func blockBrowserSessionAccountInsert(ctx context.Context, pool *pgxpool.Pool) error {
+	if _, err := pool.Exec(ctx, `
+		CREATE OR REPLACE FUNCTION test_block_browser_session_account_insert() RETURNS trigger
+		LANGUAGE plpgsql AS $$
+		BEGIN
+			RAISE EXCEPTION 'browser session account insert blocked by regression test';
+		END;
+		$$;
+	`); err != nil {
+		return err
+	}
+	_, err := pool.Exec(ctx, `
+		DROP TRIGGER IF EXISTS test_block_browser_session_account_insert ON browser_session_accounts;
+		CREATE TRIGGER test_block_browser_session_account_insert
+		BEFORE INSERT ON browser_session_accounts
+		FOR EACH ROW EXECUTE FUNCTION test_block_browser_session_account_insert();
+	`)
+	return err
+}
+
+func unblockBrowserSessionAccountInsert(ctx context.Context, pool *pgxpool.Pool) error {
+	_, err := pool.Exec(ctx, `
+		DROP TRIGGER IF EXISTS test_block_browser_session_account_insert ON browser_session_accounts;
+		DROP FUNCTION IF EXISTS test_block_browser_session_account_insert();
+	`)
+	return err
 }
 
 func endpointURL(serverURL, path string) string {

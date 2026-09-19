@@ -261,14 +261,31 @@ func (q *Queries) GetAccountByUsername(ctx context.Context, lower string) (Accou
 }
 
 const getBrowserSession = `-- name: GetBrowserSession :one
-SELECT id, token_hash, active_account_id, csrf_token_hash, created_at, last_seen_at, expires_at
-FROM browser_sessions
-WHERE token_hash = $1 AND last_seen_at > now() - interval '30 days' AND expires_at > now()
+SELECT bs.id, bs.token_hash, bs.active_account_id, bs.csrf_token_hash, bs.created_at, bs.last_seen_at, bs.expires_at,
+       EXISTS (
+           SELECT 1
+           FROM browser_session_accounts bsa
+           WHERE bsa.browser_session_id = bs.id
+             AND bsa.account_id = bs.active_account_id
+       ) AS active_account_linked
+FROM browser_sessions bs
+WHERE bs.token_hash = $1 AND bs.last_seen_at > now() - interval '30 days' AND bs.expires_at > now()
 `
 
-func (q *Queries) GetBrowserSession(ctx context.Context, tokenHash []byte) (BrowserSession, error) {
+type GetBrowserSessionRow struct {
+	ID                  pgtype.UUID
+	TokenHash           []byte
+	ActiveAccountID     pgtype.UUID
+	CsrfTokenHash       []byte
+	CreatedAt           pgtype.Timestamptz
+	LastSeenAt          pgtype.Timestamptz
+	ExpiresAt           pgtype.Timestamptz
+	ActiveAccountLinked bool
+}
+
+func (q *Queries) GetBrowserSession(ctx context.Context, tokenHash []byte) (GetBrowserSessionRow, error) {
 	row := q.db.QueryRow(ctx, getBrowserSession, tokenHash)
-	var i BrowserSession
+	var i GetBrowserSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.TokenHash,
@@ -277,6 +294,7 @@ func (q *Queries) GetBrowserSession(ctx context.Context, tokenHash []byte) (Brow
 		&i.CreatedAt,
 		&i.LastSeenAt,
 		&i.ExpiresAt,
+		&i.ActiveAccountLinked,
 	)
 	return i, err
 }
