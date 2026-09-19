@@ -5,7 +5,7 @@ import interactionPlugin, { type EventResizeDoneArg } from "@fullcalendar/intera
 import FullCalendarBase from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Clock, MapPin, Pencil, Plus, Repeat2, Trash2, Users } from "lucide-react";
+import { Check, Clock, MapPin, Pencil, Plus, Repeat2, Search, Trash2, Users } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -213,26 +213,46 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const editorReturnFocus = useRef<HTMLElement | null>(null);
+  const editorOpenRef = useRef(false);
   const dayReturnFocus = useRef<HTMLElement | null>(null);
   const handledDeepLink = useRef<string | null>(null);
 
-  const closeEditor = () => { setEditorOpen(false); window.setTimeout(() => editorReturnFocus.current?.focus(), 0); };
+  const closeEditor = () => { editorOpenRef.current = false; setEditorOpen(false); window.setTimeout(() => editorReturnFocus.current?.focus(), 0); };
   const closeDay = () => { setSelectedDate(null); window.setTimeout(() => dayReturnFocus.current?.focus(), 0); };
+  const dismissDayForNextDialog = () => {
+    setSelectedDate(null);
+    dayReturnFocus.current = null;
+  };
   const openNew = (date?: string, end?: string) => {
+    dismissDayForNextDialog();
     editorReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const start = date ?? businessDate(timezone);
     setEditing(null);
     setForm(emptyForm(start, end));
+    editorOpenRef.current = true;
     setEditorOpen(true);
   };
   const openEdit = (event: CalendarEvent) => {
+    dismissDayForNextDialog();
     editorReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setDetailEvent(null);
     setEditing(event);
     setForm(formFromEvent(event, timezone));
+    editorOpenRef.current = true;
     setEditorOpen(true);
   };
-  const openDay = (date: string) => { dayReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setSelectedDate(date); };
+  const openDetail = (event: CalendarEvent) => {
+    dismissDayForNextDialog();
+    setDetailEvent(event);
+  };
+  const openDay = (date: string) => {
+    // FullCalendar can emit `select` and `dateClick` for the same all-day
+    // interaction. Once selection opened the editor, never open the day sheet
+    // behind it (the ref avoids relying on a stale render closure).
+    if (editorOpenRef.current) return;
+    dayReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setSelectedDate(date);
+  };
 
   useEffect(() => {
     if (!deepLinkEventID || handledDeepLink.current === deepLinkEventID || !deepLinkQuery.data) return;
@@ -305,7 +325,15 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   });
   const deleteContactMutation = useMutation({ mutationFn: () => deleteCalendarContact(authResponse.data.csrf_token, contactDeleteTarget!.id), onSuccess: () => { setContactDeleteTarget(null); setNotice("常用联系人已删除。"); setError(""); void queryClient.invalidateQueries({ queryKey: ["user", accountId, "calendar-contacts"] }); }, onError: (value) => setError(errorMessage(value)) });
   const events = eventsQuery.data?.data.items ?? [];
-  const calendarEvents = events.map((event) => ({ id: event.occurrence_id, title: event.title, start: formatDateTimeInTimezone(event.start_at, timezone), end: formatDateTimeInTimezone(event.end_at, timezone), allDay: event.all_day, extendedProps: { event } }));
+  const calendarEvents = events.map((event) => ({
+    id: event.occurrence_id,
+    title: event.title,
+    start: formatDateTimeInTimezone(event.start_at, timezone),
+    end: formatDateTimeInTimezone(event.end_at, timezone),
+    allDay: event.all_day,
+    classNames: new Date(event.end_at).getTime() < Date.now() ? ["calendar-event-past"] : ["calendar-event-upcoming"],
+    extendedProps: { event },
+  }));
   const dayEvents = selectedDate ? events.filter((event) => dateInTimezone(event.start_at, timezone) === selectedDate) : [];
 
   const queueCalendarChange = (info: EventDropArg | EventResizeDoneArg) => {
@@ -323,23 +351,23 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
     setContactForm(contact === "new" ? { name: "", email: "" } : { name: contact.name ?? "", email: contact.email });
   };
 
-  return <div className="space-y-6">
-    <PageHeader eyebrow="安排与节奏" title="日历" description="集中安排单次与重复日程，并管理常用联系人。" action={view === "calendar" ? <Button onClick={() => openNew()}><Plus size={16} />新建日程</Button> : undefined} />
+  return <div className="calendar-workspace space-y-6">
+    <PageHeader className="border-outline/70" eyebrow="安排与节奏" title="日历" description="集中安排单次与重复日程，并管理常用联系人。" action={view === "calendar" ? <Button onClick={() => openNew()}><Plus size={16} />新建日程</Button> : undefined} />
     {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
-    <Tabs value={view} onValueChange={(value) => setView(value as CalendarView)}><TabsList aria-label="日历模块视图"><TabsTrigger value="calendar">日历</TabsTrigger><TabsTrigger value="contacts">常用联系人</TabsTrigger></TabsList></Tabs>
+    <Tabs value={view} onValueChange={(value) => setView(value as CalendarView)}><TabsList className="gap-5 rounded-none bg-transparent p-0 shadow-none" aria-label="日历模块视图"><TabsTrigger className="min-h-11 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-brand-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none" value="calendar">日历</TabsTrigger><TabsTrigger className="min-h-11 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-brand-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none" value="contacts">常用联系人</TabsTrigger></TabsList></Tabs>
 
-    {view === "calendar" ? <Panel title="日程总览" description="月视图点击日期；周、日视图可拖动选择时间段，也可拖动或缩放已有事件。">
-      <div className="min-h-[420px] lg:min-h-[min(72vh,760px)]">{eventsQuery.isPending ? <LoadingState label="正在加载日历" /> : eventsQuery.isError ? <ErrorState message="日历暂时无法加载" onRetry={() => void eventsQuery.refetch()} /> : <div className="min-w-0 overflow-x-auto"><div className="min-w-[720px]"><FullCalendar plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]} initialView="dayGridMonth" timeZone={timezone} selectable editable eventStartEditable eventDurationEditable selectMirror selectLongPressDelay={450} headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }} buttonText={{ today: "今天", month: "月", week: "周", day: "日" }} events={calendarEvents} eventContent={(arg) => <CalendarEventContent arg={arg} timezone={timezone} />} dateClick={(info) => openDay(info.dateStr.slice(0, 10))} select={(info) => {
+    {view === "calendar" ? <Panel className="calendar-overview border-outline/80 bg-surface/95 shadow-float [&>header]:border-outline/55" title="日程总览" description="月视图点击日期；周、日视图可拖动选择时间段，也可拖动或缩放已有事件。">
+      <div className="min-h-[420px] lg:min-h-[min(72vh,760px)]">{eventsQuery.isPending ? <LoadingState label="正在加载日历" /> : eventsQuery.isError ? <ErrorState message="日历暂时无法加载" onRetry={() => void eventsQuery.refetch()} /> : <div className="min-w-0 overflow-x-auto"><div className="calendar-grid min-w-[720px]"><FullCalendar plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]} initialView="dayGridMonth" timeZone={timezone} selectable editable eventStartEditable eventDurationEditable selectMirror selectLongPressDelay={450} headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }} buttonText={{ today: "今天", month: "月", week: "周", day: "日" }} events={calendarEvents} eventContent={(arg) => <CalendarEventContent arg={arg} timezone={timezone} />} dateClick={(info) => openDay(info.dateStr.slice(0, 10))} select={(info) => {
         if (info.view.type.startsWith("timeGrid") && info.start) {
           const end = info.end ?? new Date(info.start.getTime() + 30 * 60 * 1000);
           openNew(selectionDateTime(info.startStr, info.start, timezone), selectionDateTime(info.endStr, end, timezone));
         }
-      }} eventClick={(info) => setDetailEvent(info.event.extendedProps.event as CalendarEvent)} eventDrop={queueCalendarChange} eventResize={queueCalendarChange} height="min(72vh, 760px)" /></div></div>}</div>
+      }} eventClick={(info) => openDetail(info.event.extendedProps.event as CalendarEvent)} eventDrop={queueCalendarChange} eventResize={queueCalendarChange} height="min(72vh, 760px)" /></div></div>}</div>
     </Panel> : <ContactsWorkspace contacts={filteredContacts} loading={contactsQuery.isPending} failed={contactsQuery.isError} search={contactSearch} onSearch={setContactSearch} onRetry={() => void contactsQuery.refetch()} onCreate={() => openContactEditor("new")} onEdit={openContactEditor} onDelete={setContactDeleteTarget} />}
 
     <Sheet open={Boolean(selectedDate)} onOpenChange={(open) => !open && closeDay()}>
       {selectedDate && <SheetContent title={selectedDate} description="当日日程" footer={<Button className="w-full" onClick={() => openNew(selectedDate)}><Plus size={16} />新建当日日程</Button>}>
-        {dayEvents.length ? <div className="space-y-3">{dayEvents.map((event) => <article key={event.occurrence_id} className="rounded-lg border border-slate-200 p-4"><div className="flex items-start justify-between gap-3"><button type="button" className="text-left font-bold text-slate-950 hover:text-teal-800" onClick={() => setDetailEvent(event)}>{event.title}</button>{event.recurrence_freq !== "NONE" && <Repeat2 size={16} className="shrink-0 text-teal-700" />}</div><p className="mt-2 flex items-center gap-2 text-sm text-slate-600"><Clock size={14} />{event.all_day ? "全天" : `${timeInTimezone(event.start_at, timezone)} - ${timeInTimezone(event.end_at, timezone)}`}</p>{event.location_or_link && <p className="mt-2 flex items-center gap-2 text-sm text-slate-500"><MapPin size={14} />{event.location_or_link}</p>}<div className="mt-4 flex justify-end gap-2"><Button variant="secondary" size="sm" onClick={() => setDetailEvent(event)}>查看</Button><Button variant="icon" size="sm" aria-label={`删除日程 ${event.title}`} onClick={() => setDeleteTarget(event)}><Trash2 size={15} /></Button></div></article>)}</div> : <EmptyState title="当天没有日程" description="可以直接为这一天添加日程。" />}
+        {dayEvents.length ? <div className="space-y-3">{dayEvents.map((event) => <article key={event.occurrence_id} className="rounded-lg border border-slate-200 p-4"><div className="flex items-start justify-between gap-3"><button type="button" className="text-left font-bold text-slate-950 hover:text-teal-800" onClick={() => openDetail(event)}>{event.title}</button>{event.recurrence_freq !== "NONE" && <Repeat2 size={16} className="shrink-0 text-teal-700" />}</div><p className="mt-2 flex items-center gap-2 text-sm text-slate-600"><Clock size={14} />{event.all_day ? "全天" : `${timeInTimezone(event.start_at, timezone)} - ${timeInTimezone(event.end_at, timezone)}`}</p>{event.location_or_link && <p className="mt-2 flex items-center gap-2 text-sm text-slate-500"><MapPin size={14} />{event.location_or_link}</p>}<div className="mt-4 flex justify-end gap-2"><Button variant="secondary" size="sm" onClick={() => openDetail(event)}>查看</Button><Button variant="icon" size="sm" aria-label={`删除日程 ${event.title}`} onClick={() => setDeleteTarget(event)}><Trash2 size={15} /></Button></div></article>)}</div> : <EmptyState title="当天没有日程" description="可以直接为这一天添加日程。" />}
       </SheetContent>}
     </Sheet>
 
@@ -347,11 +375,20 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
       {detailEvent && <DialogContent className="max-w-xl"><DialogHeader><DialogTitle>{detailEvent.title}</DialogTitle><DialogDescription>日程详情</DialogDescription></DialogHeader><EventDetail event={detailEvent} timezone={timezone} /><div className="mt-6 flex justify-end gap-3"><Button variant="danger" onClick={() => { setDeleteTarget(detailEvent); setDetailEvent(null); }}><Trash2 size={16} />删除</Button><Button onClick={() => openEdit(detailEvent)}><Pencil size={16} />编辑日程</Button></div></DialogContent>}
     </Dialog>
 
-    <Sheet open={editorOpen} onOpenChange={(open) => !open && closeEditor()}>
-      <SheetContent title={editing ? "编辑日程" : "新建日程"} description="填写时间、重复规则和受邀联系人。" className="sm:w-[min(94vw,580px)]" footer={<div className="flex justify-end gap-3"><Button variant="secondary" onClick={closeEditor}>取消</Button><Button onClick={() => saveMutation.mutate()} loading={saveMutation.isPending} disabled={!form.title.trim() || !form.startAt || !form.endAt}><Check size={16} />保存日程</Button></div>}>
-        <EventEditor form={form} editing={editing} contacts={contacts} onChange={setForm} />
-      </SheetContent>
-    </Sheet>
+    <Dialog open={editorOpen} onOpenChange={(open) => !open && closeEditor()}>
+      <DialogContent className="calendar-editor-dialog flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col overflow-hidden bg-surface p-0">
+        <div className="shrink-0 px-6 pt-6">
+          <DialogHeader><DialogTitle>{editing ? "编辑日程" : "新建日程"}</DialogTitle><DialogDescription>填写时间、重复规则和受邀联系人。</DialogDescription></DialogHeader>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+          <EventEditor form={form} editing={editing} contacts={contacts} onChange={setForm} />
+        </div>
+        <div className="flex shrink-0 justify-end gap-3 border-t border-outline bg-surface px-6 py-4">
+          <Button variant="secondary" onClick={closeEditor}>取消</Button>
+          <Button onClick={() => saveMutation.mutate()} loading={saveMutation.isPending} disabled={!form.title.trim() || !form.startAt || !form.endAt}><Check size={16} />保存日程</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
 
     <Dialog open={Boolean(pendingChange)} onOpenChange={(open) => !open && cancelPendingChange()}>
       {pendingChange && <DialogContent><DialogHeader><DialogTitle>选择修改范围</DialogTitle><DialogDescription>这是重复日程，请确认本次拖动或缩放影响哪些日程。</DialogDescription></DialogHeader><fieldset className="space-y-2"><legend className="sr-only">修改范围</legend>{scopeOptions.map((option) => <label key={option.value} className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm font-semibold ${pendingScope === option.value ? "border-teal-500 bg-teal-50 text-teal-900" : "border-slate-200 text-slate-700"}`}><input type="radio" name="calendar-edit-scope" value={option.value} checked={pendingScope === option.value} onChange={() => setPendingScope(option.value)} />{option.label}</label>)}</fieldset><div className="mt-6 flex justify-end gap-3"><Button variant="secondary" onClick={cancelPendingChange}>取消</Button><Button loading={moveMutation.isPending} onClick={() => moveMutation.mutate({ change: pendingChange, scope: pendingScope })}>确认修改</Button></div></DialogContent>}
@@ -367,7 +404,7 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
 }
 
 function ContactsWorkspace({ contacts, loading, failed, search, onSearch, onRetry, onCreate, onEdit, onDelete }: { contacts: CalendarContact[]; loading: boolean; failed: boolean; search: string; onSearch: (value: string) => void; onRetry: () => void; onCreate: () => void; onEdit: (contact: CalendarContact) => void; onDelete: (contact: CalendarContact) => void }) {
-  return <Panel title="常用联系人" description="联系人仅属于当前账号，不会创建系统账号或团队成员。" action={<Button onClick={onCreate}><Plus size={16} />新增联系人</Button>}><div className="mb-5 max-w-md"><Input label="搜索姓名或邮箱" value={search} onChange={(event) => onSearch(event.target.value)} placeholder="输入姓名或邮箱" /></div>{loading ? <LoadingState label="正在加载常用联系人" /> : failed ? <ErrorState message="常用联系人暂时无法加载" onRetry={onRetry} /> : contacts.length ? <DataTable className="min-w-[640px]"><TableHead><tr><TableCell asHeader>姓名</TableCell><TableCell asHeader>邮箱</TableCell><TableCell asHeader className="w-48 text-right">操作</TableCell></tr></TableHead><TableBody>{contacts.map((contact) => <TableRow key={contact.id}><TableCell className="font-semibold text-slate-900">{contact.name || "未填写"}</TableCell><TableCell>{contact.email}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => onEdit(contact)}>编辑</Button><Button variant="icon" size="sm" aria-label={`删除联系人 ${contact.name || contact.email}`} onClick={() => onDelete(contact)}><Trash2 size={15} /></Button></div></TableCell></TableRow>)}</TableBody></DataTable> : <EmptyState title={search ? "没有匹配的联系人" : "还没有常用联系人"} description={search ? "调整搜索关键词。" : "新增后可在创建日程时快速选择。"} />}</Panel>;
+  return <Panel className="calendar-contacts-panel border-outline/80 bg-gradient-to-br from-surface via-brand-50/20 to-sky-50/35 shadow-float [&>header]:border-outline/55" title="常用联系人" description="联系人仅属于当前账号，不会创建系统账号或团队成员。" action={<Button onClick={onCreate}><Plus size={16} />新增联系人</Button>}><div className="mb-6 max-w-md"><Input icon={<Search size={16} />} label="搜索姓名或邮箱" value={search} onChange={(event) => onSearch(event.target.value)} placeholder="输入姓名或邮箱" /></div>{loading ? <LoadingState label="正在加载常用联系人" /> : failed ? <ErrorState message="常用联系人暂时无法加载" onRetry={onRetry} /> : contacts.length ? <DataTable className="calendar-contacts-table min-w-[640px]"><TableHead><tr><TableCell asHeader>姓名</TableCell><TableCell asHeader>邮箱</TableCell><TableCell asHeader className="w-48 text-right">操作</TableCell></tr></TableHead><TableBody>{contacts.map((contact) => <TableRow key={contact.id}><TableCell className="py-4 font-bold text-ink">{contact.name || "未填写"}</TableCell><TableCell className="py-4 text-ink-muted">{contact.email}</TableCell><TableCell className="py-4"><div className="flex justify-end gap-1"><Button className="text-brand-700 hover:text-brand-900" variant="ghost" size="sm" onClick={() => onEdit(contact)}>编辑</Button><Button variant="icon" size="sm" aria-label={`删除联系人 ${contact.name || contact.email}`} onClick={() => onDelete(contact)}><Trash2 size={15} /></Button></div></TableCell></TableRow>)}</TableBody></DataTable> : <EmptyState title={search ? "没有匹配的联系人" : "还没有常用联系人"} description={search ? "调整搜索关键词。" : "新增后可在创建日程时快速选择。"} />}</Panel>;
 }
 
 function EventDetail({ event, timezone }: { event: CalendarEvent; timezone: string }) {

@@ -21,6 +21,7 @@ import {
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getAnalytics, getFinanceAnalytics, getTeamAnalytics, type AnalyticsResponse, type AuthResponse } from "@/api/client";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,9 @@ function AnalyticsHero() {
 export function AnalyticsPage({ authResponse }: { authResponse: AuthResponse }) {
   const accountId = authResponse.data.account.id;
   const timezone = authResponse.data.account.timezone;
-  const [metric, setMetric] = useState<Metric>("worklogs");
+  const [searchParams] = useSearchParams();
+  const requestedMetric = searchParams.get("metric");
+  const [metric, setMetric] = useState<Metric>(requestedMetric === "turnover" ? "turnover" : "worklogs");
   const [range, setRange] = useState<Range>("week");
   const month = businessRange(timezone, "month");
   const [customFrom, setCustomFrom] = useState(month.from);
@@ -218,7 +221,7 @@ function AnalyticsWorkspace({ metric, data }: { metric: Metric; data: AnalyticsR
       </Panel>
       <Panel className="rounded-[1.25rem] border-outline/55 bg-surface/95 shadow-[0_20px_42px_-32px_rgba(15,23,42,0.42)] [&>header]:border-b-0 [&>header]:pb-1 [&>div]:pt-3" title="结构摘要" description="汇总所选范围内的关键结果。"><Structure metric={metric} totals={totals} data={data.data} /></Panel>
     </div>}
-    {buckets.length > 0 && <Panel className="rounded-[1.125rem] border-outline/50 bg-surface/90 shadow-hairline [&>header]:border-b-0 [&>header]:pb-1 [&>div]:pt-3" title="统计明细" description="查看各周期的具体数值。"><Details metric={metric} buckets={buckets} /></Panel>}
+    {buckets.length > 0 && <Panel className="rounded-[1.125rem] border-outline/50 bg-surface/90 shadow-hairline [&>header]:border-b-0 [&>header]:pb-1 [&>div]:pt-3" title="统计明细" description={metric === "turnover" ? "按日查看营业额；点击编辑可返回对应日期的今日工作量。" : "查看各周期的具体数值。"}><Details metric={metric} buckets={buckets} granularity={data.data.granularity} /></Panel>}
   </div>;
 }
 
@@ -293,8 +296,9 @@ function Structure({ metric, totals, data }: { metric: Metric; totals: Totals; d
   return <div className="space-y-2">{rows.map((row) => <div key={row.label} className="flex items-center justify-between gap-3 rounded-control bg-surface-soft/55 px-3 py-2.5"><span className="flex min-w-0 items-center gap-3 text-sm font-medium text-ink-muted"><span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[0.875rem]", row.tone)} aria-hidden="true">{row.icon}</span><span className="truncate">{row.label}</span></span><strong className="shrink-0 tabular-nums text-lg font-black tracking-[-0.02em] text-ink">{row.value}</strong></div>)}</div>;
 }
 
-function Details({ metric, buckets }: { metric: Metric; buckets: Bucket[] }) {
+function Details({ metric, buckets, granularity }: { metric: Metric; buckets: Bucket[]; granularity: AnalyticsResponse["data"]["granularity"] }) {
   if (metric === "worklogs") return <DataTable><TableHead><TableRow><TableCell asHeader>周期</TableCell><TableCell asHeader>开启 / 深入</TableCell><TableCell asHeader>Buffer / 分享</TableCell><TableCell asHeader>筛选 / 机会</TableCell><TableCell asHeader>会面 / 跟进</TableCell><TableCell asHeader>阅读 / 音频</TableCell></TableRow></TableHead><TableBody>{buckets.map((bucket) => <TableRow key={bucket.period}><TableCell className="font-semibold">{bucket.period}</TableCell><TableCell className="tabular-nums">{bucket.open_conversation_count} / {bucket.deep_conversation_count}</TableCell><TableCell className="tabular-nums">{bucket.buffer_count} / {bucket.story_share_count}</TableCell><TableCell className="tabular-nums">{bucket.screening_count} / {bucket.opportunity_count}</TableCell><TableCell className="tabular-nums">{bucket.meeting_count} / {bucket.customer_followup_count}</TableCell><TableCell className="tabular-nums">{bucket.reading_minutes} / {bucket.audio_minutes}</TableCell></TableRow>)}</TableBody></DataTable>;
+  if (metric === "turnover") return <DataTable><TableHead><TableRow><TableCell asHeader>周期</TableCell><TableCell asHeader>PV</TableCell><TableCell asHeader>净营业额</TableCell><TableCell asHeader className="text-right">操作</TableCell></TableRow></TableHead><TableBody>{buckets.map((bucket) => <TableRow key={bucket.period}><TableCell className="font-semibold">{bucket.period}</TableCell><TableCell className="tabular-nums">{bucket.pv}</TableCell><TableCell className="tabular-nums">{formatMoney(bucket.net_amount)}</TableCell><TableCell className="text-right">{granularity === "day" && /^\d{4}-\d{2}-\d{2}$/.test(bucket.period) ? <Link className="font-semibold text-brand-700 hover:text-brand-900 hover:underline" to={`/app/worklog?date=${bucket.period}`}>编辑</Link> : <span className="text-xs text-ink-faint">按月汇总</span>}</TableCell></TableRow>)}</TableBody></DataTable>;
   return <DataTable><TableHead><TableRow><TableCell asHeader>周期</TableCell><TableCell asHeader>{metric === "finance" ? "收入" : metric === "team" ? "快照成员" : metric === "goals" ? "目标数" : "PV"}</TableCell><TableCell asHeader>{metric === "finance" ? "支出" : metric === "team" ? "快照启用成员" : metric === "goals" ? "已完成" : "净营业额"}</TableCell>{metric === "finance" && <TableCell asHeader>净现金流</TableCell>}</TableRow></TableHead><TableBody>{buckets.map((bucket) => <TableRow key={bucket.period}><TableCell className="font-semibold">{bucket.period}</TableCell><TableCell className="tabular-nums">{metric === "finance" ? formatMoney(bucket.income_amount) : metric === "team" ? bucket.member_count ?? 0 : metric === "goals" ? bucket.goal_count : bucket.pv}</TableCell><TableCell className="tabular-nums">{metric === "finance" ? formatMoney(bucket.expense_amount) : metric === "team" ? bucket.active_member_count ?? 0 : metric === "goals" ? bucket.completed_count : formatMoney(bucket.net_amount)}</TableCell>{metric === "finance" && <TableCell className="tabular-nums">{formatMoney(bucket.net_cash_flow)}</TableCell>}</TableRow>)}</TableBody></DataTable>;
 }
 

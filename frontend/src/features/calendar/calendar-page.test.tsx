@@ -34,6 +34,7 @@ vi.mock("@fullcalendar/react", () => ({
       <button type="button">{buttonText.month}</button><button type="button">{buttonText.week}</button><button type="button">{buttonText.day}</button>
       <button type="button" onClick={() => dateClick({ dateStr: "2026-09-16" })}>选择 2026-09-16</button>
       <button type="button" onClick={() => select({ start: new Date("2026-09-16T06:00:00Z"), end: new Date("2026-09-16T07:30:00Z"), startStr: "2026-09-16T14:00:00", endStr: "2026-09-16T15:30:00", view: { type: "timeGridWeek" } })}>拖拽 14:00 至 15:30</button>
+      <button type="button" onClick={() => { select({ start: new Date("2026-09-16T00:00:00Z"), end: new Date("2026-09-17T00:00:00Z"), startStr: "2026-09-16", endStr: "2026-09-17", view: { type: "timeGridWeek" } }); dateClick({ dateStr: "2026-09-16" }); }}>点击全天行</button>
       {eventContent({ event: { start: null, end: null, extendedProps: {} }, view: { type: "timeGridWeek" }, isMirror: true, timeText: "09:00" } as unknown as Parameters<typeof eventContent>[0])}
       {events.map((event) => <div key={event.id}><button type="button" onClick={() => eventClick({ event: { extendedProps: event.extendedProps } })}>查看 {event.title}</button>{eventContent({ event: calendarEvent(event, event.start, event.end), view: { type: "dayGridMonth" } })}</div>)}
       {recurring && <button type="button" onClick={() => eventDrop({ event: calendarEvent(recurring, "2026-09-16T02:00:00Z", "2026-09-16T03:00:00Z"), revert: calendarMocks.dropRevert })}>拖动重复日程</button>}
@@ -99,7 +100,18 @@ describe("CalendarPage", () => {
     expect(screen.queryByText("Asia/Shanghai")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "选择 2026-09-16" }));
     expect(screen.getByRole("heading", { name: "2026-09-16" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "新建当日日程" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "新建当日日程" }));
+    expect(screen.getByRole("heading", { name: "新建日程" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "2026-09-16" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+
+  it("does not open the day sheet behind the editor for an all-day selection", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "点击全天行" }));
+    expect(await screen.findByRole("heading", { name: "新建日程" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "2026-09-16" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
 
   it("opens event details first and retains recurrence and invite fields when editing", async () => {

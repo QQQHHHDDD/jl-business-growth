@@ -64,4 +64,28 @@ describe("AnalyticsPage", () => {
     render(<MemoryRouter><QueryClientProvider client={client}><AnalyticsPage authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
     expect(await screen.findByLabelText("工作量趋势图")).toBeVisible();
   });
+
+  it("links daily turnover history back to the matching worklog date", async () => {
+    vi.mocked(getAnalytics).mockResolvedValue({
+      ...response,
+      data: {
+        ...response.data,
+        metric: "turnover",
+        buckets: [{ ...bucket, period: "2026-09-16", pv: 8, net_amount: "100.00" }],
+      },
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MemoryRouter initialEntries={["/app/analytics?metric=turnover"]}>
+        <QueryClientProvider client={client}>
+          <AnalyticsPage authResponse={authResponse} />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: "营业额" })).toHaveAttribute("data-state", "active");
+    expect(await screen.findByRole("link", { name: "编辑" })).toHaveAttribute(
+      "href",
+      "/app/worklog?date=2026-09-16",
+    );
+  });
 });

@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign,
   ClipboardList,
   Database,
   FileText,
@@ -61,7 +60,6 @@ const userGroups: NavigationGroup[] = [
     label: "经营管理",
     icon: BriefcaseBusiness,
     items: [
-      { href: "/app/turnover", label: "营业额", icon: CircleDollarSign },
       { href: "/app/team", label: "团队", icon: Users },
       { href: "/app/finance", label: "财务", icon: WalletCards },
       { href: "/app/income-simulator", label: "收入模拟", icon: LineChart },

@@ -12,6 +12,7 @@ describe("PV conversion", () => {
     expect(netAmountFromPV("99999999.99")).toBe("1249999999.88");
     expect(pvAndNetAmountMatch("0.88", "11.00")).toBe(true);
     expect(pvAndNetAmountMatch("0.80", "10.01")).toBe(true);
+    expect(pvAndNetAmountMatch("8.00", "100")).toBe(true);
     expect(pvAndNetAmountMatch("0.81", "10.01")).toBe(false);
   });
 

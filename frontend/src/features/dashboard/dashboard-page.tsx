@@ -309,7 +309,7 @@ function DashboardContent({
     <>
       <div className="grid items-start gap-5 lg:grid-cols-2">
         <Panel
-          className="border-sky-100/80 bg-gradient-to-br from-white via-sky-50/35 to-blue-50/55 shadow-card [&>header]:border-sky-100/60"
+          className="border-sky-200/75 bg-gradient-to-br from-white via-sky-50/55 to-blue-50/75 shadow-card [&>header]:border-sky-200/65"
           title="今日计划"
           description={
             todayEvents.length
@@ -353,7 +353,7 @@ function DashboardContent({
           )}
         </Panel>
         <Panel
-          className="border-violet-100/80 bg-gradient-to-br from-white via-violet-50/35 to-brand-50/45 shadow-card [&>header]:border-violet-100/60"
+          className="border-violet-200/70 bg-gradient-to-br from-white via-violet-50/55 to-brand-50/65 shadow-card [&>header]:border-violet-200/60"
           title="当前目标"
           description={
             activeGoals.length ? "优先推进的进行中目标" : "还没有进行中的目标"
@@ -389,7 +389,7 @@ function DashboardContent({
       </div>
 
       <section
-        className="rounded-panel border border-brand-100/70 bg-gradient-to-br from-white via-brand-50/20 to-sky-50/25 px-5 py-5 shadow-card"
+        className="rounded-panel border border-brand-200/65 bg-gradient-to-br from-white via-brand-50/35 to-sky-50/45 px-5 py-5 shadow-card"
         aria-labelledby="weekly-operations-title"
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -457,7 +457,7 @@ function DashboardContent({
       </section>
 
       <section
-        className="rounded-panel border border-brand-100/70 bg-gradient-to-br from-white via-brand-50/15 to-amber-50/25 px-5 py-4 shadow-card"
+        className="rounded-panel border border-brand-200/65 bg-gradient-to-br from-white via-brand-50/30 to-amber-50/40 px-5 py-4 shadow-card"
         aria-labelledby="business-summary-title"
       >
         <div className="mb-2 flex items-center justify-between">

@@ -1,15 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  BarChart3,
+  BookOpen,
+  BriefcaseBusiness,
   CalendarDays,
   Check,
   ChevronLeft,
   ChevronRight,
+  Filter,
   FileText,
+  Gift,
+  Handshake,
+  Layers3,
   Minus,
+  MessageCircle,
   Plus,
+  Share2,
+  Sprout,
+  UserRoundCheck,
+  UsersRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { AuthResponse, Worklog, WorklogRequest } from "@/api/client";
@@ -37,6 +50,17 @@ const countFields = [
   ["meeting_count", "会面"],
   ["customer_followup_count", "顾客跟进"],
 ] as const;
+
+const countFieldMeta = {
+  open_conversation_count: { icon: MessageCircle, tone: "blue" },
+  deep_conversation_count: { icon: UsersRound, tone: "mint" },
+  buffer_count: { icon: Layers3, tone: "violet" },
+  story_share_count: { icon: Share2, tone: "coral" },
+  screening_count: { icon: Filter, tone: "blue" },
+  opportunity_count: { icon: Gift, tone: "amber" },
+  meeting_count: { icon: Handshake, tone: "cyan" },
+  customer_followup_count: { icon: UserRoundCheck, tone: "purple" },
+} as const;
 
 const optionalDecimal = z
   .string()
@@ -122,7 +146,10 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
   const accountId = authResponse.data.account.id;
   const timezone = authResponse.data.account.timezone;
   const currentDate = businessDate(timezone);
-  const [selectedDate, setSelectedDate] = useState(currentDate);
+  const [searchParams] = useSearchParams();
+  const requestedDate = searchParams.get("date");
+  const initialDate = requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate <= currentDate ? requestedDate : currentDate;
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const rangeStart = useMemo(
@@ -213,77 +240,54 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
   };
   const recentWorklogs = worklogsQuery.data?.data.items.slice(0, 7) ?? [];
   const updatePV = (value: string) => {
-    form.setValue("turnover_pv", value, { shouldDirty: true, shouldValidate: true });
+    form.setValue("turnover_pv", value, { shouldDirty: true });
     const converted = netAmountFromPV(value);
-    if (converted !== null) form.setValue("turnover_net_amount", converted, { shouldDirty: true, shouldValidate: true });
+    if (converted !== null) form.setValue("turnover_net_amount", converted, { shouldDirty: true });
+    void form.trigger(["turnover_pv", "turnover_net_amount"]);
   };
   const updateNetAmount = (value: string) => {
-    form.setValue("turnover_net_amount", value, { shouldDirty: true, shouldValidate: true });
+    form.setValue("turnover_net_amount", value, { shouldDirty: true });
     const converted = pvFromNetAmount(value);
-    if (converted !== null) form.setValue("turnover_pv", converted, { shouldDirty: true, shouldValidate: true });
+    if (converted !== null) form.setValue("turnover_pv", converted, { shouldDirty: true });
+    void form.trigger(["turnover_pv", "turnover_net_amount"]);
   };
 
   return (
-    <div className="space-y-7">
-      <PageHeader
-        eyebrow="每日行动"
-        title="今日工作量"
-        description="记录今天实际完成的行动、学习和营业额，保存后会用于统计、复盘和目标进度。"
-        action={
-          <div
-            className="flex items-center gap-1 rounded-card border border-brand-100/60 bg-brand-50/25 p-1.5 shadow-hairline"
-            aria-label="业务日期导航"
-          >
-            <Button
-              type="button"
-              variant="icon"
-              size="sm"
-              className="h-10 w-10 p-0"
-              aria-label="前一天"
-              onClick={() => selectDate(shiftDate(selectedDate, -1))}
-            >
-              <ChevronLeft size={18} />
-            </Button>
-            <label className="relative flex h-10 min-w-[138px] items-center justify-center rounded-control px-2 text-sm font-bold tabular-nums text-slate-800 hover:bg-surface">
-              <span aria-hidden="true">{selectedDate}</span>
-              <input
-                aria-label="业务日期"
-                type="date"
-                max={currentDate}
-                value={selectedDate}
-                onChange={(event) => selectDate(event.target.value)}
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
-            </label>
-            <Button
-              type="button"
-              variant="icon"
-              size="sm"
-              className="h-10 w-10 p-0"
-              aria-label="后一天"
-              disabled={selectedDate >= currentDate}
-              onClick={() =>
-                selectDate(
-                  shiftDate(selectedDate, 1) > currentDate
-                    ? currentDate
-                    : shiftDate(selectedDate, 1),
-                )
-              }
-            >
-              <ChevronRight size={18} />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={selectedDate === currentDate}
-              onClick={() => selectDate(currentDate)}
-            >
-              今天
-            </Button>
-          </div>
-        }
-      />
+    <div className="worklog-page space-y-7">
+      <section className="worklog-hero rounded-hero border border-brand-100/70 bg-gradient-to-br from-brand-50/90 via-sky-50/80 to-surface/95 shadow-float">
+        <div className="relative overflow-hidden px-5 pt-5 sm:px-7 sm:pt-6">
+          <PageHeader
+            className="relative z-10 border-0 pb-4 sm:items-start"
+            eyebrow="每日行动"
+            title="今日工作量"
+            description="记录今天实际完成的行动、学习和营业额，保存后会用于统计、复盘和目标进度。"
+            action={
+              <div className="worklog-date-nav" aria-label="业务日期导航">
+                <Button type="button" variant="icon" size="sm" className="h-10 w-10 p-0" aria-label="前一天" onClick={() => selectDate(shiftDate(selectedDate, -1))}><ChevronLeft size={18} /></Button>
+                <label className="worklog-date-value">
+                  <span aria-hidden="true">{selectedDate}</span>
+                  <input aria-label="业务日期" type="date" max={currentDate} value={selectedDate} onChange={(event) => selectDate(event.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+                </label>
+                <Button type="button" variant="icon" size="sm" className="h-10 w-10 p-0" aria-label="后一天" disabled={selectedDate >= currentDate} onClick={() => selectDate(shiftDate(selectedDate, 1) > currentDate ? currentDate : shiftDate(selectedDate, 1))}><ChevronRight size={18} /></Button>
+                <Button type="button" variant="ghost" size="sm" disabled={selectedDate === currentDate} onClick={() => selectDate(currentDate)}>今天</Button>
+              </div>
+            }
+          />
+          <svg className="worklog-hero-art" viewBox="0 0 520 180" fill="none" aria-hidden="true">
+            <path d="M0 143C90 106 132 137 211 111C289 85 343 130 424 99C466 83 490 89 520 73V180H0V143Z" fill="rgb(117 215 204 / .24)" />
+            <path d="M16 157C101 124 151 145 224 120C303 93 353 138 430 106C469 90 498 91 520 80" stroke="rgb(74 157 151 / .55)" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="388" cy="53" r="25" fill="rgb(248 190 77 / .75)" />
+            <path d="M388 17V5M388 101V89M352 53h-13M437 53h-13M362 27l-9-9M414 79l-9-9M414 27l9-9M362 79l-9 9" stroke="rgb(229 164 47 / .8)" strokeWidth="3" strokeLinecap="round" />
+            <path d="M444 119c6-29 12-44 27-59M455 96c17-2 29-9 39-22M454 96c-17-3-26-12-31-26" stroke="rgb(42 135 123 / .7)" strokeWidth="4" strokeLinecap="round" />
+            <path d="M459 70c12-14 24-18 37-17-4 13-14 23-37 25M443 61c-9-14-18-19-31-20 2 14 12 24 31 28" fill="rgb(84 195 166 / .7)" />
+          </svg>
+        </div>
+        <section aria-label="今日概览" className="worklog-summary mx-4 mb-4 grid grid-cols-3 gap-2 rounded-panel border border-white/80 bg-surface/70 p-2 shadow-hairline sm:mx-7 sm:mb-5 sm:gap-0 sm:p-1.5">
+          <div className="worklog-summary-item worklog-summary-mint"><span className="worklog-summary-icon"><BriefcaseBusiness size={17} /></span><span><span className="worklog-summary-label">行动</span><strong>{actionCount}</strong></span></div>
+          <div className="worklog-summary-item worklog-summary-blue"><span className="worklog-summary-icon"><BookOpen size={17} /></span><span><span className="worklog-summary-label">学习</span><strong>{learningMinutes}<small>分钟</small></strong></span></div>
+          <div className="worklog-summary-item worklog-summary-teal"><span className="worklog-summary-icon"><BarChart3 size={17} /></span><span><span className="worklog-summary-label">净营业额</span><strong>{form.watch("turnover_net_amount").trim() ? `¥${Number.isFinite(netAmount) ? netAmount.toFixed(2) : "0.00"}` : `${pv || 0} PV`}</strong></span></div>
+        </section>
+      </section>
       {(notice || error) && (
         <p
           role={error ? "alert" : "status"}
@@ -292,45 +296,19 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
           {error || notice}
         </p>
       )}
-      <section
-        aria-label="今日概览"
-        className="grid grid-cols-3 divide-x divide-brand-100/60 rounded-[1.125rem] border border-brand-100/60 bg-gradient-to-r from-brand-50/55 via-sky-50/35 to-brand-50/35 px-2 py-3 shadow-card sm:px-4"
-      >
-        <div className="px-2 sm:px-4">
-          <p className="text-xs font-semibold text-slate-500">行动</p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-slate-950">
-            {actionCount}
-          </p>
-        </div>
-        <div className="px-2 sm:px-4">
-          <p className="text-xs font-semibold text-slate-500">学习</p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-slate-950">
-            {learningMinutes}
-            <span className="ml-1 text-xs font-semibold text-slate-500">分钟</span>
-          </p>
-        </div>
-        <div className="px-2 sm:px-4">
-          <p className="text-xs font-semibold text-slate-500">净营业额</p>
-          <p className="mt-1 truncate text-xl font-bold tabular-nums text-slate-950">
-            {form.watch("turnover_net_amount").trim()
-              ? `¥${Number.isFinite(netAmount) ? netAmount.toFixed(2) : "0.00"}`
-              : `${pv || 0} PV`}
-          </p>
-        </div>
-      </section>
-
-      <Panel>
+      <Panel className="worklog-form-panel border-brand-100/70 bg-surface/80 shadow-float">
         <form className="space-y-0" onSubmit={onSubmit}>
           <input type="hidden" {...form.register("work_date")} />
-          <section aria-labelledby="worklog-actions" className="pb-7">
+          <section aria-labelledby="worklog-actions" className="worklog-actions-section pb-7">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h2 id="worklog-actions" className="text-base font-bold text-slate-950">
+                <h2 id="worklog-actions" className="flex items-center gap-2 text-base font-bold text-slate-950">
+                  <span className="worklog-section-icon worklog-section-icon-blue"><MessageCircle size={17} /></span>
                   五层对话
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">行动总数为当天八类对话行动的合计；可点击加减或直接输入。</p>
               </div>
-              <span className="shrink-0 text-sm font-semibold tabular-nums text-teal-800">
+              <span className="worklog-total-badge shrink-0 text-sm font-semibold tabular-nums">
                 共 {actionCount} 次
               </span>
             </div>
@@ -338,19 +316,17 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
               {countFields.map(([field, label]) => (
                 <div
                   key={field}
-                  className="rounded-lg border border-slate-200 bg-slate-50/70 p-3"
+                  className={`worklog-count-card worklog-count-card-${countFieldMeta[field].tone}`}
                 >
-                  <label
-                    htmlFor={`worklog-${field}`}
-                    className="flex min-h-6 items-center text-sm font-semibold text-slate-700"
-                  >
-                    {label}
-                  </label>
-                  <div className="mt-2 grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="worklog-count-icon"><>{(() => { const Icon = countFieldMeta[field].icon; return <Icon size={17} />; })()}</></span>
+                    <label htmlFor={`worklog-${field}`} className="min-h-6 text-sm font-bold text-ink">{label}</label>
+                  </div>
+                  <div className="mt-3 grid grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-2">
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-11 w-11 p-0"
+                      className="worklog-count-stepper h-10 w-10 p-0"
                       aria-label={`减少${label}`}
                       onClick={() => updateCount(field, -1)}
                     >
@@ -363,13 +339,13 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
                       step={1}
                       inputMode="numeric"
                       aria-invalid={Boolean(fieldError(field))}
-                      className="h-11 min-w-0 rounded-lg border border-slate-300 bg-white px-1 text-center text-lg font-bold tabular-nums text-slate-950 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                      className="worklog-count-input h-10 min-w-0 rounded-control border border-outline bg-surface px-1 text-center text-lg font-extrabold tabular-nums text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
                       {...form.register(field, { valueAsNumber: true })}
                     />
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-11 w-11 p-0"
+                      className="worklog-count-stepper h-10 w-10 p-0"
                       aria-label={`增加${label}`}
                       onClick={() => updateCount(field, 1)}
                     >
@@ -384,12 +360,13 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
             </div>
           </section>
 
-          <div className="grid border-t border-slate-200 lg:grid-cols-2 lg:divide-x lg:divide-slate-200">
-            <section data-testid="worklog-learning-section" aria-labelledby="worklog-learning" className="grid grid-rows-[auto_minmax(40px,auto)_auto_auto] gap-y-3 py-7 lg:pr-7">
+          <div className="worklog-detail-grid grid border-t border-outline/70 lg:grid-cols-2 lg:divide-x lg:divide-outline/70">
+            <section data-testid="worklog-learning-section" aria-labelledby="worklog-learning" className="worklog-detail-card grid grid-rows-[auto_minmax(40px,auto)_auto_auto] gap-y-3 py-7 lg:pr-7">
               <h2
                 id="worklog-learning"
-                className="text-base font-bold text-slate-950"
+                className="flex items-center gap-2 text-base font-bold text-slate-950"
               >
+                <span className="worklog-section-icon worklog-section-icon-mint"><Sprout size={17} /></span>
                 成长投入
               </h2>
               <p className="text-sm leading-5 text-slate-500">记录当天实际投入的读书和音频学习时间。</p>
@@ -413,11 +390,12 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
               </div>
               <p className="text-xs leading-5 text-slate-500">学习分钟会汇总到学习中心，使用同一份事实源。</p>
             </section>
-            <section data-testid="worklog-turnover-section" aria-labelledby="worklog-turnover" className="grid grid-rows-[auto_minmax(40px,auto)_auto_auto] gap-y-3 border-t border-slate-200 py-7 lg:border-t-0 lg:pl-7">
+            <section data-testid="worklog-turnover-section" aria-labelledby="worklog-turnover" className="worklog-detail-card grid grid-rows-[auto_minmax(40px,auto)_auto_auto] gap-y-3 border-t border-outline/70 py-7 lg:border-t-0 lg:pl-7">
               <h2
                 id="worklog-turnover"
-                className="text-base font-bold text-slate-950"
+                className="flex items-center gap-2 text-base font-bold text-slate-950"
               >
+                <span className="worklog-section-icon worklog-section-icon-amber"><BarChart3 size={17} /></span>
                 营业额
               </h2>
               <p className="text-sm leading-5 text-slate-500">填写 PV 或净营业额时，另一项会按固定比例自动换算。</p>
@@ -447,18 +425,18 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
             </section>
           </div>
 
-          <section aria-labelledby="worklog-note" className="border-t border-slate-200 py-7">
+          <section aria-labelledby="worklog-note" className="worklog-note-section border-t border-outline/70 py-7">
             <label className="block space-y-1.5" htmlFor="worklog-note-input">
-              <span id="worklog-note" className="text-base font-bold text-slate-950">备注</span>
+              <span id="worklog-note" className="flex items-center gap-2 text-base font-bold text-slate-950"><span className="worklog-section-icon worklog-section-icon-coral"><FileText size={17} /></span>备注</span>
               <span className="block text-sm font-normal text-slate-500">记录当天需要保留的上下文，可留空。</span>
               <textarea
                 id="worklog-note-input"
-                className="min-h-24 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                className="worklog-note-input min-h-24 w-full rounded-panel border border-outline bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
                 {...form.register("note")}
               />
             </label>
           </section>
-          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="worklog-save-row flex flex-col-reverse gap-3 border-t border-outline/70 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="flex items-center gap-2 text-xs text-slate-500">
               <CalendarDays size={14} className="text-teal-700" />
               正在记录 {selectedDate}
@@ -476,6 +454,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
       </Panel>
 
       <Panel
+        className="worklog-recent-panel border-brand-100/70 bg-surface/80 shadow-float"
         title="最近记录"
         description="最近 7 条记录，点击日期即可返回编辑。"
       >

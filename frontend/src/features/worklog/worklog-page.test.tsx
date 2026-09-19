@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, Worklog } from "@/api/client";
 import { listWorklogs, saveWorklog } from "@/api/client";
@@ -61,9 +62,11 @@ function renderPage() {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={client}>
-      <WorklogPage authResponse={authResponse} />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <WorklogPage authResponse={authResponse} />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -168,6 +171,11 @@ describe("WorklogPage", () => {
     expect(netInput).toHaveValue(1250);
     fireEvent.change(netInput, { target: { value: "2500.00" } });
     expect(pvInput).toHaveValue(200);
+    fireEvent.change(pvInput, { target: { value: "8.00" } });
+    fireEvent.change(netInput, { target: { value: "100" } });
+    expect(screen.queryByText("PV 与净营业额不一致")).not.toBeInTheDocument();
+    fireEvent.change(pvInput, { target: { value: "200" } });
+    fireEvent.change(netInput, { target: { value: "2500.00" } });
 
     fireEvent.click(screen.getByRole("button", { name: "保存今日记录" }));
     await waitFor(() => expect(saveWorklog).toHaveBeenCalledWith("csrf-token", expect.objectContaining({ turnover_pv: 200, turnover_net_amount: "2500.00" }), true));
