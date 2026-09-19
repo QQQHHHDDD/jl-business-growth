@@ -38,7 +38,7 @@ test("covers administrator, account, and core business workflows", async ({
     page.getByRole("heading", { name: "管理员工作台", exact: true }),
   ).toBeVisible();
 
-  await page.getByRole("tab", { name: "管理员" }).click();
+  await page.getByTestId("app-sidebar-content").getByRole("link", { name: "管理员管理" }).click();
   await page
     .getByLabel("新管理员账号")
     .fill(`admin${Date.now().toString().slice(-10)}`);
@@ -46,7 +46,7 @@ test("covers administrator, account, and core business workflows", async ({
   await page.getByRole("button", { name: "创建管理员" }).click();
   await expect(page.getByRole("status")).toContainText("已创建");
 
-  await page.getByRole("tab", { name: "邀请码" }).click();
+  await page.getByTestId("app-sidebar-content").getByRole("link", { name: "邀请码" }).click();
   await page.getByRole("button", { name: "生成邀请码" }).click();
   const invitationNotice = page.getByRole("status");
   await expect(invitationNotice).toContainText("邀请码已创建：");
