@@ -29,6 +29,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import type { AuthResponse, HealthResponse } from "@/api/client";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { VersionBadge } from "@/components/layout/version-badge";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
 import { LoadingState } from "@/components/ui/state-block";
@@ -136,27 +137,28 @@ function currentUserItem(pathname: string) {
     .find((item) => isActive(pathname, item.href));
 }
 
-function Brand({ compact = false }: { compact?: boolean }) {
+function Brand({ authResponse, compact = false }: { authResponse: AuthResponse; compact?: boolean }) {
   return (
-    <Link
-      to="/"
-      className={cn("flex min-w-0 items-center gap-3", compact && "justify-center")}
-      aria-label="返回系统首页"
-    >
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-control bg-gradient-to-br from-brand-500 to-brand-800 text-sm font-black text-white shadow-brand-glow ring-1 ring-white/50">
-        JL
-      </span>
-      {!compact && (
-        <span className="min-w-0 flex-1">
-          <span className="block text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-700">
-            JL Growth
-          </span>
-          <span className="mt-0.5 block text-xs font-bold leading-4 text-ink">
-            JL团队生意成长管理系统
-          </span>
+    <div className={cn("flex min-w-0 items-center gap-3", compact && "justify-center")}>
+      <Link to="/" aria-label="返回系统首页" className="shrink-0 rounded-control focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <span className="grid h-9 w-9 place-items-center rounded-control bg-gradient-to-br from-brand-500 to-brand-800 text-sm font-black text-white shadow-brand-glow ring-1 ring-white/50">
+          JL
         </span>
+      </Link>
+      {!compact && (
+        <div className="min-w-0 flex-1 leading-none">
+          <Link to="/" className="block min-w-0 rounded-sm focus:outline-none focus:ring-2 focus:ring-brand-500" aria-label="返回系统首页">
+            <span className="block text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-700">
+              JL Growth
+            </span>
+            <span className="mt-0.5 block text-xs font-bold leading-4 text-ink">
+              JL团队生意成长管理系统
+            </span>
+          </Link>
+          <VersionBadge authResponse={authResponse} />
+        </div>
       )}
-    </Link>
+    </div>
   );
 }
 
@@ -518,7 +520,7 @@ export function AppShell({
               collapsed ? "justify-center px-2" : "px-4",
             )}
           >
-            <Brand compact={collapsed} />
+            <Brand authResponse={authResponse} compact={collapsed} />
           </div>
           <div
             className={cn(
@@ -585,7 +587,7 @@ export function AppShell({
           aria-label="应用导航"
         >
           <div className="flex h-16 items-center justify-between border-b border-outline px-4">
-            <Brand />
+            <Brand authResponse={authResponse} />
             <Button
               variant="icon"
               size="sm"

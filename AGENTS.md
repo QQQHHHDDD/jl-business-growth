@@ -62,12 +62,13 @@ If a command is missing, add it rather than documenting many ad-hoc alternatives
 - Add tests for business-rule changes.
 - Income simulator changes require Golden Tests.
 - V1 money fields use decimal strings at API boundaries and integer cents for final Go business values.
-- Current schema migrations end at `00010_team_member_node_color.sql`; migrations are append-only.
+- Current schema migrations end at `00011_security_audit_details.sql`; migrations are append-only.
 - Do not commit secrets, `.env`, `.local`, database dumps, or user files.
 
 ## Current execution plan
 
 Phase 0-6, the V1 P0-01-P0-11 closeout, Phase 7 comprehensive testing, final
 UAT, and PR review are complete. `master` is the formal V1 release baseline.
-Do not perform production deployment or create a future production release
-unless explicitly approved by the product owner.
+Release management development happens on `feat/release-center`. Do not perform
+production deployment or create a future production release unless explicitly
+approved by the product owner.

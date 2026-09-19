@@ -45,14 +45,28 @@ make migrate-test-status
 make reset-superadmin-password  # development/test only; sync configured initial password to the existing super admin
 make build
 make check
+make release VERSION=v1.2.3  # local immutable Linux artifact and checksum
 ```
 
 Health endpoints: `GET /api/health/live` and `GET /api/health/ready`.
 
-The current schema is migration version 10, ending at
-`00010_team_member_node_color.sql`. V1 business money fields use decimal
+The current schema is migration version 11, ending at
+`00011_security_audit_details.sql`. V1 business money fields use decimal
 strings in JSON and integer cents inside the Go money boundary; PostgreSQL
 continues to use exact `numeric(14,2)` columns. `make test-integration` covers
 V1 API acceptance.
+
+## Build and release version
+
+Development builds identify themselves as `dev`. A formal release build injects
+the same stable `vX.Y.Z` version, Git commit SHA, and UTC build time into the Go
+binaries, frontend bundle, and `release.json`. The release directory, Linux
+archive, and `SHA256SUMS` are written below `.local/release/`.
+
+All account roles see the build version in the sidebar. Only `SUPER_ADMIN` can
+open Version Center and call the server-side GitHub Release API. Online update
+and application rollback are disabled by default with
+`RELEASE_UPDATE_ENABLED=false`; enabling them is a separate production
+operations decision. See [Release management](docs/release-management.md).
 
 `SUPERADMIN_INITIAL_PASSWORD` is used only when the fixed super administrator is first created. If the development or test database already contains that account and the configured password needs to be recovered, update the local environment file and run `make reset-superadmin-password`. This command refuses production and invalidates the super administrator's existing sessions.

@@ -1345,6 +1345,7 @@ type SecurityAuditLog struct {
 	UserAgentSummary pgtype.Text
 	RequestID        pgtype.Text
 	CreatedAt        pgtype.Timestamptz
+	Details          []byte
 }
 
 type Tag struct {

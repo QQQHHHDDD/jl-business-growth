@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for JL Business Growth release requests
+
+[Path]
+PathExists=/var/lib/jl-business-growth/release-updater/request.json
+Unit=jl-business-updater.service
+
+[Install]
+WantedBy=multi-user.target

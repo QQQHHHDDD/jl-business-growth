@@ -399,6 +399,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/system/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return build and release status for the super administrator */
+        get: operations["getAdminSystemRelease"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/system/release/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh the latest stable GitHub Release */
+        post: operations["postAdminSystemReleaseCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/system/release/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue an application update for the independent updater */
+        post: operations["postAdminSystemReleaseUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/system/release/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue an application-only rollback for the independent updater */
+        post: operations["postAdminSystemReleaseRollback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard": {
         parameters: {
             query?: never;
@@ -1394,6 +1462,55 @@ export interface components {
              * @default false
              */
             clear_expires_at: boolean;
+        };
+        ReleaseActionRequest: {
+            version: string;
+        };
+        LatestRelease: {
+            version: string;
+            name: string;
+            /** Format: date-time */
+            published_at: string;
+            /** Format: uri */
+            html_url: string;
+        };
+        InstalledRelease: {
+            version: string;
+            current: boolean;
+            rollback_allowed: boolean;
+            /** Format: date-time */
+            installed_at?: string | null;
+            rollback_blocked_reason?: string | null;
+        };
+        ReleaseUpdateStatus: {
+            /** Format: uuid */
+            request_id: string;
+            /** @enum {string} */
+            action: "update" | "rollback";
+            from_version: string;
+            target_version: string;
+            /** @enum {string} */
+            state: "queued" | "downloading" | "verifying" | "backing_up" | "migrating" | "switching" | "restarting" | "health_check" | "succeeded" | "failed";
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            finished_at?: string | null;
+            safe_message: string;
+        };
+        ReleaseData: {
+            current_version: string;
+            current_commit: string;
+            build_time: string;
+            latest_release?: components["schemas"]["LatestRelease"] | null;
+            update_available: boolean;
+            update_enabled: boolean;
+            installed_versions: components["schemas"]["InstalledRelease"][];
+            update_status?: components["schemas"]["ReleaseUpdateStatus"] | null;
+            check_error?: string | null;
+        };
+        ReleaseResponse: {
+            data: components["schemas"]["ReleaseData"];
+            request_id: string;
         };
         AuthData: {
             account: components["schemas"]["Account"];
@@ -3012,6 +3129,98 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResetPasswordResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getAdminSystemRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current release state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    postAdminSystemReleaseCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refreshed release state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    postAdminSystemReleaseUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Update request queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    postAdminSystemReleaseRollback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Rollback request queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
