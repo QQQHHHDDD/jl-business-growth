@@ -83,23 +83,19 @@ describe("DashboardPage", () => {
           },
           turnover: { pv: 2500, net_amount: "31250.00" },
         },
-        active_goals: [
-          {
-            id: "00000000-0000-0000-0000-000000000010",
-            title: "本月会面",
+        active_goals: Array.from({ length: 6 }, (_, index) => ({
+            id: `00000000-0000-0000-0000-00000000001${index}`,
+            title: index === 0 ? "本月会面" : `目标 ${index + 1}`,
             progress: 0.75,
             metrics: [{ id: "metric-1" }],
-          },
-        ],
+          })),
         dreams_count: 2,
-        upcoming_events: [
-          {
-            id: "00000000-0000-0000-0000-000000000020",
-            title: "客户会面",
+        upcoming_events: Array.from({ length: 6 }, (_, index) => ({
+            id: `00000000-0000-0000-0000-00000000002${index}`,
+            title: index === 0 ? "客户会面" : `日程 ${index + 1}`,
             start_at: `${date}T06:00:00Z`,
             end_at: `${date}T07:00:00Z`,
-          },
-        ],
+          })),
         team_summary: { total_members: 27, active_members: 24 },
         learning_summary: { reading_minutes: 120, audio_minutes: 65 },
         finance_summary: {
@@ -134,6 +130,11 @@ describe("DashboardPage", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("客户会面")).toBeInTheDocument();
     expect(screen.getByText("本月会面")).toBeInTheDocument();
+    expect(screen.getByText("日程 6")).toBeInTheDocument();
+    expect(screen.getByText("目标 6")).toBeInTheDocument();
+    expect(screen.getByTestId("dashboard-today-scroll")).toHaveClass("h-[216px]", "overflow-y-auto");
+    expect(screen.getByTestId("dashboard-goals-scroll")).toHaveClass("h-[216px]", "overflow-y-auto");
+    expect(screen.getAllByRole("link", { name: /查看全部/ })).toHaveLength(2);
     expect(screen.getByText("42")).toBeInTheDocument();
     expect(screen.getByText("1,200")).toBeInTheDocument();
     expect(screen.getByText("24 位活跃")).toBeInTheDocument();

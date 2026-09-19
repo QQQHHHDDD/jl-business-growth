@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign,
   ClipboardList,
   Database,
   FileText,
@@ -14,6 +13,7 @@ import {
   GraduationCap,
   Home,
   LineChart,
+  Leaf,
   Menu,
   PanelLeftOpen,
   Search,
@@ -25,12 +25,13 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import type { AuthResponse, HealthResponse } from "@/api/client";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
+import { LoadingState } from "@/components/ui/state-block";
 import { SearchOverlay } from "@/features/search/search-page";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +60,6 @@ const userGroups: NavigationGroup[] = [
     label: "经营管理",
     icon: BriefcaseBusiness,
     items: [
-      { href: "/app/turnover", label: "营业额", icon: CircleDollarSign },
       { href: "/app/team", label: "团队", icon: Users },
       { href: "/app/finance", label: "财务", icon: WalletCards },
       { href: "/app/income-simulator", label: "收入模拟", icon: LineChart },
@@ -102,6 +102,18 @@ const settingsItem: NavigationItem = {
   icon: Settings,
 };
 const collapseStorageKey = "jl-business-growth:sidebar-collapsed";
+const expandedGroupsStorageKey = "jl-business-growth:sidebar-expanded-groups";
+
+function readExpandedGroups(): string[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(expandedGroupsStorageKey) ?? "null") as unknown;
+    if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string" && userGroups.some((group) => group.id === item));
+    if (typeof value === "string" && userGroups.some((group) => group.id === value)) return [value];
+  } catch {
+    // Invalid legacy state is ignored and replaced on the next state write.
+  }
+  return [];
+}
 
 function isActive(pathname: string, href: string) {
   return href === "/app" || href === "/admin"
@@ -128,19 +140,19 @@ function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       to="/"
-      className={cn("flex items-center gap-3", compact && "justify-center")}
+      className={cn("flex min-w-0 items-center gap-3", compact && "justify-center")}
       aria-label="返回系统首页"
     >
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-teal-700 text-sm font-black text-white">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-control bg-gradient-to-br from-brand-500 to-brand-800 text-sm font-black text-white shadow-brand-glow ring-1 ring-white/50">
         JL
       </span>
       {!compact && (
-        <span>
-          <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-teal-700">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-700">
             JL Growth
           </span>
-          <span className="mt-0.5 block whitespace-nowrap text-sm font-bold text-slate-950">
-            生意成长管理系统
+          <span className="mt-0.5 block text-xs font-bold leading-4 text-ink">
+            JL团队生意成长管理系统
           </span>
         </span>
       )}
@@ -153,11 +165,13 @@ function NavItem({
   mobile = false,
   collapsed = false,
   onNavigate,
+  onPrefetchRoute,
 }: {
   item: NavigationItem;
   mobile?: boolean;
   collapsed?: boolean;
   onNavigate?: () => void;
+  onPrefetchRoute?: (path: string) => void;
 }) {
   const Icon = item.icon;
   return (
@@ -165,20 +179,19 @@ function NavItem({
       to={item.href}
       title={collapsed ? item.label : undefined}
       onClick={onNavigate}
+      onMouseEnter={() => onPrefetchRoute?.(item.href)}
+      onFocus={() => onPrefetchRoute?.(item.href)}
       className={({ isActive: active }) =>
         cn(
-          "group flex items-center rounded-lg text-sm font-semibold transition-colors",
+          "group flex items-center rounded-control text-sm font-semibold transition-[background-color,color,box-shadow] duration-[var(--motion-fast)]",
           mobile
             ? "justify-center gap-1 border-0 px-1 py-2 text-[11px]"
             : collapsed
               ? "mx-auto h-10 w-10 justify-center"
-              : "gap-3 border-l-[3px] px-3 py-2.5",
+              : "gap-3 px-3 py-2.5",
           active
-            ? "bg-teal-50 text-teal-800"
-            : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
-          !mobile &&
-            !collapsed &&
-            (active ? "border-teal-700" : "border-transparent"),
+            ? "bg-brand-50 text-brand-800 shadow-hairline ring-1 ring-inset ring-brand-100"
+            : "text-ink-muted hover:bg-surface-muted hover:text-ink",
         )
       }
       end={item.href === "/app" || item.href === "/admin"}
@@ -195,12 +208,14 @@ function SidebarGroup({
   current,
   onToggle,
   onNavigate,
+  onPrefetchRoute,
 }: {
   group: NavigationGroup;
   expanded: boolean;
   current: boolean;
   onToggle: () => void;
   onNavigate?: () => void;
+  onPrefetchRoute?: (path: string) => void;
 }) {
   const Icon = group.icon;
   return (
@@ -208,9 +223,8 @@ function SidebarGroup({
       <button
         type="button"
         className={cn(
-          "flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-semibold transition",
-          current ? "text-teal-800" : "text-slate-700 hover:bg-slate-100",
-          expanded && "bg-slate-50",
+          "flex min-h-10 w-full items-center gap-3 rounded-control px-3 text-sm font-semibold transition-[background-color,color] duration-[var(--motion-fast)]",
+          current ? "text-brand-800" : "text-ink-muted hover:bg-surface-muted hover:text-ink",
         )}
         aria-expanded={expanded}
         aria-controls={`nav-group-${group.id}`}
@@ -220,14 +234,14 @@ function SidebarGroup({
         <span className="flex-1 text-left">{group.label}</span>
         <ChevronDown
           size={15}
-          className={cn("text-slate-400 transition", expanded && "rotate-180")}
+          className={cn("text-ink-faint transition-transform duration-[var(--motion-fast)]", expanded && "rotate-180")}
           aria-hidden="true"
         />
       </button>
       {expanded && (
         <div id={`nav-group-${group.id}`} className="mt-1 space-y-1 pl-3">
           {group.items.map((item) => (
-            <NavItem key={item.href} item={item} onNavigate={onNavigate} />
+            <NavItem key={item.href} item={item} onNavigate={onNavigate} onPrefetchRoute={onPrefetchRoute} />
           ))}
         </div>
       )}
@@ -237,28 +251,29 @@ function SidebarGroup({
 
 function UserNavigation({
   pathname,
-  expandedGroup,
-  onExpandedGroupChange,
+  expandedGroups,
+  onExpandedGroupsChange,
   onNavigate,
+  onPrefetchRoute,
 }: {
   pathname: string;
-  expandedGroup: string | null;
-  onExpandedGroupChange: (id: string | null) => void;
+  expandedGroups: string[];
+  onExpandedGroupsChange: (update: (groups: string[]) => string[]) => void;
   onNavigate?: () => void;
+  onPrefetchRoute?: (path: string) => void;
 }) {
   return (
     <nav className="space-y-2" aria-label="用户导航">
-      <NavItem item={homeItem} onNavigate={onNavigate} />
+      <NavItem item={homeItem} onNavigate={onNavigate} onPrefetchRoute={onPrefetchRoute} />
       {userGroups.map((group) => (
         <SidebarGroup
           key={group.id}
           group={group}
-          expanded={expandedGroup === group.id}
+          expanded={expandedGroups.includes(group.id)}
           current={currentUserGroup(pathname)?.id === group.id}
-          onToggle={() =>
-            onExpandedGroupChange(expandedGroup === group.id ? null : group.id)
-          }
+          onToggle={() => onExpandedGroupsChange((groups) => groups.includes(group.id) ? groups.filter((id) => id !== group.id) : [...groups, group.id])}
           onNavigate={onNavigate}
+          onPrefetchRoute={onPrefetchRoute}
         />
       ))}
     </nav>
@@ -266,13 +281,10 @@ function UserNavigation({
 }
 
 function CollapsedUserNavigation({
-  pathname,
   onOpenGroup,
 }: {
-  pathname: string;
   onOpenGroup: (groupId: string) => void;
 }) {
-  const activeGroup = currentUserGroup(pathname)?.id;
   return (
     <nav className="space-y-2 px-2" aria-label="用户导航">
       <NavItem item={homeItem} collapsed />
@@ -285,10 +297,8 @@ function CollapsedUserNavigation({
             title={group.label}
             aria-label={group.label}
             className={cn(
-              "mx-auto grid h-10 w-10 place-items-center rounded-lg transition",
-              activeGroup === group.id
-                ? "bg-teal-50 text-teal-800"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
+              "mx-auto grid h-10 w-10 place-items-center rounded-control transition-[background-color,color,box-shadow] duration-[var(--motion-fast)]",
+              "text-ink-muted hover:bg-surface-muted hover:text-ink",
             )}
             onClick={() => onOpenGroup(group.id)}
           >
@@ -346,8 +356,59 @@ export function HealthIndicator({
 
 export function PageContainer({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto min-w-0 max-w-[1360px] overflow-x-clip px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
+    <div data-testid="page-container" className="mx-auto min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-[1360px] overflow-x-clip px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
       {children}
+    </div>
+  );
+}
+
+function SidebarBrandNote() {
+  return (
+    <div aria-hidden="true" className="mx-2 mb-2 rounded-card border border-brand-100 bg-brand-50/60 p-3 text-brand-800 shadow-hairline">
+      <div className="flex items-center gap-2">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-700">
+          <Leaf size={15} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-bold">Growth Together</p>
+          <p className="mt-0.5 text-[11px] leading-4 text-brand-700/80">每天一点成长</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AppLoadingShell({ label }: { label: string }) {
+  return (
+    <div data-testid="app-loading-shell" className="min-h-screen bg-canvas text-ink">
+      <aside className="fixed inset-y-0 left-0 hidden w-[220px] flex-col border-r border-outline bg-surface lg:flex">
+        <div className="flex h-16 items-center border-b border-outline px-4">
+          <div className="h-9 w-9 animate-pulse rounded-control bg-brand-100" />
+          <div className="ml-3 space-y-2">
+            <div className="h-2.5 w-20 animate-pulse rounded bg-surface-muted" />
+            <div className="h-3 w-36 animate-pulse rounded bg-surface-soft" />
+          </div>
+        </div>
+        <div className="space-y-3 px-3 py-5" aria-hidden="true">
+          <div className="h-10 animate-pulse rounded-control bg-surface-muted" />
+          <div className="h-10 animate-pulse rounded-control bg-surface-muted" />
+          <div className="h-10 animate-pulse rounded-control bg-surface-muted" />
+          <div className="h-10 animate-pulse rounded-control bg-surface-muted" />
+        </div>
+      </aside>
+      <div className="lg:pl-[220px]">
+        <header className="h-16 border-b border-outline bg-surface shadow-hairline">
+          <div className="mx-auto flex h-full max-w-[1360px] items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="h-4 w-28 animate-pulse rounded bg-surface-muted" aria-hidden="true" />
+            <div className="h-9 w-28 animate-pulse rounded-control bg-surface-soft" aria-hidden="true" />
+          </div>
+        </header>
+        <main>
+          <PageContainer>
+            <LoadingState label={label} />
+          </PageContainer>
+        </main>
+      </div>
     </div>
   );
 }
@@ -358,6 +419,7 @@ export function AppShell({
   admin = false,
   onLogout,
   loggingOut = false,
+  onPrefetchRoute,
   children,
 }: {
   authResponse: AuthResponse;
@@ -365,6 +427,7 @@ export function AppShell({
   admin?: boolean;
   onLogout: () => void;
   loggingOut?: boolean;
+  onPrefetchRoute?: (path: string) => void;
   children: ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -380,9 +443,8 @@ export function AppShell({
     settingsItem,
   ];
   const activeGroup = currentUserGroup(location.pathname)?.id ?? null;
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(
-    activeGroup,
-  );
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(readExpandedGroups);
+  const visitedGroups = useRef(new Set<string>());
   const mobileItems = admin
     ? [
         ...adminItems.slice(0, 3),
@@ -408,8 +470,13 @@ export function AppShell({
         ];
 
   useEffect(() => {
-    if (activeGroup) setExpandedGroup(activeGroup);
-  }, [activeGroup, location.pathname]);
+    if (!activeGroup || visitedGroups.current.has(activeGroup)) return;
+    visitedGroups.current.add(activeGroup);
+    setExpandedGroups((groups) => groups.includes(activeGroup) ? groups : [...groups, activeGroup]);
+  }, [activeGroup]);
+  useEffect(() => {
+    localStorage.setItem(expandedGroupsStorageKey, JSON.stringify(expandedGroups));
+  }, [expandedGroups]);
   useEffect(() => {
     localStorage.setItem(collapseStorageKey, String(collapsed));
   }, [collapsed]);
@@ -430,84 +497,94 @@ export function AppShell({
   const closeDrawer = () => setDrawerOpen(false);
   const toggleCollapsed = () => setCollapsed((value) => !value);
   return (
-    <div className="min-h-screen bg-[#f6f8fa] text-slate-950">
+    <div className="min-h-screen bg-canvas text-ink">
       <aside
+        data-testid="app-sidebar"
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-slate-200 bg-white transition-[width] duration-200 lg:flex",
+          "fixed inset-y-0 left-0 z-30 hidden overflow-hidden border-r border-outline bg-surface shadow-hairline transition-[width] duration-[var(--motion-slow)] lg:block",
           collapsed ? "w-16" : "w-[220px]",
         )}
       >
         <div
+          data-testid="app-sidebar-content"
           className={cn(
-            "flex h-16 items-center border-b border-slate-200",
-            collapsed ? "justify-center px-2" : "px-4",
+            "flex h-full shrink-0 flex-col",
+            collapsed ? "w-16" : "w-[220px]",
           )}
         >
-          <Brand compact={collapsed} />
-        </div>
-        <div
-          className={cn(
-            "flex-1 overflow-y-auto py-4",
-            collapsed ? "px-0" : "px-3",
-          )}
-        >
-          {admin ? (
-            <AdminNavigation items={adminNavigation} collapsed={collapsed} />
-          ) : collapsed ? (
-            <CollapsedUserNavigation
-              pathname={location.pathname}
-              onOpenGroup={(groupId) => {
-                setExpandedGroup(groupId);
-                setCollapsed(false);
-              }}
-            />
-          ) : (
-            <UserNavigation
-              pathname={location.pathname}
-              expandedGroup={expandedGroup}
-              onExpandedGroupChange={setExpandedGroup}
-            />
-          )}
-        </div>
-        <div className="border-t border-slate-200 p-2">
-          <button
-            type="button"
+          <div
             className={cn(
-              "flex min-h-10 w-full items-center rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-950",
-              collapsed ? "justify-center" : "gap-3 px-3",
+              "flex h-16 items-center border-b border-outline",
+              collapsed ? "justify-center px-2" : "px-4",
             )}
-            aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
-            title={collapsed ? "展开侧边栏" : undefined}
-            onClick={toggleCollapsed}
           >
-            {collapsed ? (
-              <PanelLeftOpen size={18} />
-            ) : (
-              <>
-                <ChevronLeft size={18} />
-                <span>收起侧边栏</span>
-              </>
+            <Brand compact={collapsed} />
+          </div>
+          <div
+            className={cn(
+              "flex-1 overflow-y-auto py-4",
+              collapsed ? "px-0" : "px-3",
             )}
-          </button>
+          >
+            {admin ? (
+              <AdminNavigation items={adminNavigation} collapsed={collapsed} />
+            ) : collapsed ? (
+              <CollapsedUserNavigation
+                onOpenGroup={(groupId) => {
+                  setExpandedGroups((groups) => groups.includes(groupId) ? groups : [...groups, groupId]);
+                  setCollapsed(false);
+                }}
+              />
+            ) : (
+              <UserNavigation
+                pathname={location.pathname}
+                expandedGroups={expandedGroups}
+                onExpandedGroupsChange={setExpandedGroups}
+                onPrefetchRoute={onPrefetchRoute}
+              />
+            )}
+          </div>
+          {!collapsed && !admin && <SidebarBrandNote />}
+          <div className="border-t border-outline p-2">
+            <button
+              type="button"
+              className={cn(
+                "flex min-h-10 w-full items-center rounded-control text-sm font-semibold text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink",
+                collapsed ? "justify-center" : "gap-3 px-3",
+              )}
+              aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
+              title={collapsed ? "展开侧边栏" : undefined}
+              onClick={toggleCollapsed}
+            >
+              {collapsed ? (
+                <PanelLeftOpen size={18} />
+              ) : (
+                <>
+                  <ChevronLeft size={18} />
+                  <span>收起侧边栏</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </aside>
 
       {drawerOpen && (
         <div
           data-testid="navigation-overlay"
-          className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
           aria-hidden="true"
           onClick={closeDrawer}
         />
       )}
       {drawerOpen && (
         <div
-        className="fixed inset-y-0 left-0 z-50 flex w-[min(88vw,340px)] flex-col bg-white shadow-2xl lg:hidden"
+        className="fixed inset-y-0 left-0 z-50 flex w-[min(88vw,340px)] flex-col border-r border-outline bg-surface shadow-overlay lg:hidden"
           role="dialog"
           aria-modal="true"
           aria-label="应用导航"
         >
-          <div className="flex h-16 items-center justify-between border-b border-slate-200 px-4">
+          <div className="flex h-16 items-center justify-between border-b border-outline px-4">
             <Brand />
             <Button
               variant="icon"
@@ -527,9 +604,10 @@ export function AppShell({
             ) : (
               <UserNavigation
                 pathname={location.pathname}
-                expandedGroup={expandedGroup}
-                onExpandedGroupChange={setExpandedGroup}
+                expandedGroups={expandedGroups}
+                onExpandedGroupsChange={setExpandedGroups}
                 onNavigate={closeDrawer}
+                onPrefetchRoute={onPrefetchRoute}
               />
             )}
           </div>
@@ -538,11 +616,11 @@ export function AppShell({
 
       <div
         className={cn(
-          "transition-[padding] duration-200",
+          "transition-[padding] duration-[var(--motion-slow)]",
           collapsed ? "lg:pl-16" : "lg:pl-[220px]",
         )}
       >
-        <header className="sticky top-0 z-20 h-16 border-b border-slate-200 bg-white/95 shadow-[0_1px_0_#e2e8f0,0_2px_8px_rgba(15,23,42,0.05)] backdrop-blur">
+        <header data-testid="app-topbar" className="sticky top-0 z-20 h-16 border-b border-outline bg-surface/90 shadow-hairline backdrop-blur-md">
           <div className="mx-auto flex h-full max-w-[1360px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-2">
               <Button
@@ -564,14 +642,14 @@ export function AppShell({
                     className={cn(
                       "truncate",
                       index === breadcrumb.length - 1
-                        ? "font-semibold text-slate-900"
-                        : "text-slate-500",
+                        ? "font-semibold text-ink"
+                        : "text-ink-faint",
                     )}
                   >
                     {index > 0 && (
                       <ChevronRight
                         size={14}
-                        className="mr-1.5 inline text-slate-300"
+                        className="mr-1.5 inline text-outline"
                       />
                     )}
                     {part}
@@ -611,7 +689,7 @@ export function AppShell({
       </div>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-outline bg-surface/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_-20px_rgba(15,23,42,0.3)] backdrop-blur-md lg:hidden"
         aria-label="快捷导航"
       >
         <div

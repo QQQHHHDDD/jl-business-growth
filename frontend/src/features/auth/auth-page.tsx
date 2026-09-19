@@ -85,10 +85,10 @@ export function AuthPage({
   const togglePath = mode === "login" ? "/register" : "/login";
   return (
     <AuthLayout health={health}>
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-overlay sm:p-8">
-        <div className="flex items-start gap-3 border-b border-slate-200 pb-5">
+      <section className="auth-card rounded-panel border border-brand-100/80 bg-surface p-6 shadow-overlay sm:p-8">
+        <div className="flex items-start gap-3 border-b border-outline/55 pb-5">
           <span
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-teal-50 text-teal-700"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-card bg-brand-100 text-brand-800 shadow-hairline"
             aria-hidden="true"
           >
             {mode === "login" ? <LogIn size={19} /> : <UserPlus size={19} />}
@@ -97,7 +97,7 @@ export function AuthPage({
             <h2 className="text-xl font-bold">
               {mode === "login" ? "登录系统" : "注册普通用户"}
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-ink-faint">
               {mode === "login" ? "继续你的经营记录" : "使用有效邀请码创建账号"}
             </p>
           </div>
@@ -132,7 +132,7 @@ export function AuthPage({
           {error && (
             <p
               role="alert"
-              className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-6 text-rose-800"
+              className="rounded-card border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-6 text-rose-800 shadow-hairline"
             >
               {error}
             </p>
@@ -154,7 +154,7 @@ export function AuthPage({
         <Link
           to={togglePath}
           state={location.state}
-          className="mt-5 block text-center text-sm font-semibold text-teal-800 hover:text-teal-950"
+          className="mt-5 block rounded-control py-2 text-center text-sm font-semibold text-brand-800 hover:bg-brand-50 hover:text-brand-900"
         >
           {mode === "login" ? "首次使用？注册普通用户" : "已有账号？返回登录"}
         </Link>

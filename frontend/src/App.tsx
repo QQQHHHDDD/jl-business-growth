@@ -10,8 +10,8 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { getLiveHealth, getMe, logout, type AuthResponse } from "@/api/client";
-import { AppShell } from "@/components/layout/navigation";
-import { ErrorState, LoadingState } from "@/components/ui/state-block";
+import { AppLoadingShell, AppShell } from "@/components/layout/navigation";
+import { ErrorState, LoadingState, PageLoadingState } from "@/components/ui/state-block";
 import {
   AdminAdminsPage,
   AdminHomePage,
@@ -25,35 +25,22 @@ import { DashboardPage } from "@/features/dashboard/dashboard-page";
 import { PlaceholderPage } from "@/features/placeholder/placeholder-page";
 import { ReviewsPage } from "@/features/reviews/reviews-page";
 import { SearchPage } from "@/features/search/search-page";
-import { TurnoverPage } from "@/features/turnover/turnover-page";
 import { WorklogPage } from "@/features/worklog/worklog-page";
 import { KnowledgePage } from "@/features/knowledge/knowledge-page";
 import { FinancePage } from "@/features/finance/finance-page";
 import { IncomePage } from "@/features/income/income-page";
 import { DataPage } from "@/features/importexport/data-page";
 import { roleHome } from "@/lib/utils";
+import { loadCalendarPage, loadGoalsPage, loadTeamPage, preloadRoute } from "@/lib/route-preload";
 
-const CalendarPage = lazy(() =>
-  import("@/features/calendar/calendar-page").then((module) => ({
-    default: module.CalendarPage,
-  })),
-);
-const GoalsPage = lazy(() =>
-  import("@/features/goals/goals-page").then((module) => ({
-    default: module.GoalsPage,
-  })),
-);
-const TeamPage = lazy(() =>
-  import("@/features/team/team-page").then((module) => ({
-    default: module.TeamPage,
-  })),
-);
+const CalendarPage = lazy(loadCalendarPage);
+const GoalsPage = lazy(loadGoalsPage);
+const TeamPage = lazy(loadTeamPage);
 
 const userRoutes = [
   ["/app/goals", "梦想与目标", "建立梦想和目标之间的清晰路径。"],
   ["/app/calendar", "日历", "安排需要持续推进的工作。"],
   ["/app/worklog", "今日工作", "记录今天完成的关键行动。"],
-  ["/app/turnover", "营业额", "沉淀每日经营结果。"],
   ["/app/team", "团队", "查看团队成长结构。"],
   ["/app/knowledge", "学习中心", "整理长期学习投入。"],
   ["/app/finance", "财务", "管理经营过程中的财务信息。"],
@@ -69,9 +56,17 @@ type HealthQuery = ReturnType<
   typeof useQuery<Awaited<ReturnType<typeof getLiveHealth>>>
 >;
 
-function DeferredPage({ children }: { children: ReactNode }) {
+function DeferredPage({
+  children,
+  title,
+  description,
+}: {
+  children: ReactNode;
+  title: string;
+  description: string;
+}) {
   return (
-    <Suspense fallback={<LoadingState label="正在加载页面" />}>
+    <Suspense fallback={<PageLoadingState title={title} description={description} label={`正在加载${title}`} />}>
       {children}
     </Suspense>
   );
@@ -85,7 +80,7 @@ function ProtectedRoute({
   children?: ReactNode;
 }) {
   const location = useLocation();
-  if (meQuery.isPending) return <LoadingState label="正在确认登录状态" />;
+  if (meQuery.isPending) return <AppLoadingShell label="正在确认登录状态" />;
   if (meQuery.isError)
     return (
       <ErrorState
@@ -141,6 +136,7 @@ function ShellRoute({
   admin,
   onLogout,
   loggingOut,
+  onPrefetchRoute,
   children,
 }: {
   meQuery: MeQuery;
@@ -148,6 +144,7 @@ function ShellRoute({
   admin: boolean;
   onLogout: () => void;
   loggingOut: boolean;
+  onPrefetchRoute?: (path: string) => void;
   children?: ReactNode;
 }) {
   if (!meQuery.data) return null;
@@ -158,6 +155,7 @@ function ShellRoute({
       admin={admin}
       onLogout={onLogout}
       loggingOut={loggingOut}
+      onPrefetchRoute={onPrefetchRoute}
     >
       {children ?? <Outlet />}
     </AppShell>
@@ -202,7 +200,7 @@ function UserDashboardRoute({ meQuery }: { meQuery: MeQuery }) {
 
 function UserGoalsRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? (
-    <DeferredPage>
+    <DeferredPage title="梦想与目标" description="建立梦想和目标之间的清晰路径。">
       <GoalsPage authResponse={meQuery.data} />
     </DeferredPage>
   ) : null;
@@ -212,13 +210,9 @@ function UserWorklogRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? <WorklogPage authResponse={meQuery.data} /> : null;
 }
 
-function UserTurnoverRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <TurnoverPage authResponse={meQuery.data} /> : null;
-}
-
 function UserCalendarRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? (
-    <DeferredPage>
+    <DeferredPage title="日历" description="安排需要持续推进的工作。">
       <CalendarPage authResponse={meQuery.data} />
     </DeferredPage>
   ) : null;
@@ -234,7 +228,7 @@ function UserAnalyticsRoute({ meQuery }: { meQuery: MeQuery }) {
 
 function UserTeamRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? (
-    <DeferredPage>
+    <DeferredPage title="团队" description="查看团队成长结构。">
       <TeamPage authResponse={meQuery.data} />
     </DeferredPage>
   ) : null;
@@ -295,11 +289,13 @@ function AppRoutes({
   health,
   onLogout,
   loggingOut,
+  onPrefetchRoute,
 }: {
   meQuery: MeQuery;
   health: HealthQuery;
   onLogout: () => void;
   loggingOut: boolean;
+  onPrefetchRoute?: (path: string) => void;
 }) {
   return (
     <Routes>
@@ -324,12 +320,17 @@ function AppRoutes({
                 admin={false}
                 onLogout={onLogout}
                 loggingOut={loggingOut}
+                onPrefetchRoute={onPrefetchRoute}
               />
             }
           >
             <Route
               path="/app"
               element={<UserDashboardRoute meQuery={meQuery} />}
+            />
+            <Route
+              path="/app/turnover"
+              element={<Navigate to="/app/analytics?metric=turnover" replace />}
             />
             {userRoutes.map(([path, title, description]) => {
               if (path === "/app/goals")
@@ -346,14 +347,6 @@ function AppRoutes({
                     key={path}
                     path={path}
                     element={<UserWorklogRoute meQuery={meQuery} />}
-                  />
-                );
-              if (path === "/app/turnover")
-                return (
-                  <Route
-                    key={path}
-                    path={path}
-                    element={<UserTurnoverRoute meQuery={meQuery} />}
                   />
                 );
               if (path === "/app/calendar")
@@ -456,6 +449,7 @@ function AppRoutes({
                 admin={meQuery.data?.data.account.role !== "USER"}
                 onLogout={onLogout}
                 loggingOut={loggingOut}
+                onPrefetchRoute={onPrefetchRoute}
               />
             }
           >
@@ -478,6 +472,7 @@ function AppRoutes({
                 admin
                 onLogout={onLogout}
                 loggingOut={loggingOut}
+                onPrefetchRoute={onPrefetchRoute}
               />
             }
           >
@@ -546,7 +541,6 @@ function AppContent() {
       ["/app/goals", "梦想与目标"],
       ["/app/calendar", "日历"],
       ["/app/worklog", "今日工作量"],
-      ["/app/turnover", "营业额"],
       ["/app/team", "团队"],
       ["/app/knowledge", "学习中心"],
       ["/app/finance", "财务"],
@@ -570,6 +564,7 @@ function AppContent() {
       health={healthQuery}
       onLogout={() => logoutMutation.mutate()}
       loggingOut={logoutMutation.isPending}
+      onPrefetchRoute={preloadRoute}
     />
   );
 }

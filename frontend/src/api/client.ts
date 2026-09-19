@@ -21,6 +21,8 @@ export type Goal = components["schemas"]["Goal"];
 export type GoalRequest = components["schemas"]["GoalRequest"];
 export type CalendarEvent = components["schemas"]["CalendarEvent"];
 export type CalendarEventRequest = components["schemas"]["CalendarEventRequest"];
+export type CalendarContact = components["schemas"]["CalendarContact"];
+export type CalendarContactRequest = components["schemas"]["CalendarContactRequest"];
 export type Review = components["schemas"]["Review"];
 export type ReviewRequest = components["schemas"]["ReviewRequest"];
 export type AnalyticsResponse = components["schemas"]["AnalyticsResponse"];
@@ -281,7 +283,7 @@ export function updateInvitation(
   );
 }
 
-export function disableInvitation(csrfToken: string, invitationId: string): Promise<void> {
+export function deleteInvitation(csrfToken: string, invitationId: string): Promise<void> {
   return request<void>(
     `/api/admin/invitation-codes/${encodeURIComponent(invitationId)}`,
     withCsrf(csrfToken, undefined, "DELETE"),
@@ -354,6 +356,10 @@ export function listCalendarEvents(from: string, to: string): Promise<components
   return request(`/api/calendar/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
 }
 
+export function getCalendarEvent(id: string): Promise<components["schemas"]["CalendarEventResponse"]> {
+  return request(`/api/calendar/events/${encodeURIComponent(id)}`);
+}
+
 export function saveCalendarEvent(csrfToken: string, input: CalendarEventRequest, id?: string): Promise<components["schemas"]["CalendarEventResponse"]> {
   return request(id ? `/api/calendar/events/${encodeURIComponent(id)}` : "/api/calendar/events", withCsrf(csrfToken, input, id ? "PUT" : "POST"));
 }
@@ -362,8 +368,27 @@ export function deleteCalendarEvent(csrfToken: string, id: string): Promise<void
   return request(`/api/calendar/events/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE"));
 }
 
+export function listCalendarContacts(): Promise<components["schemas"]["CalendarContactListResponse"]> {
+  return request("/api/calendar/contacts");
+}
+
+export function saveCalendarContact(csrfToken: string, input: CalendarContactRequest, id?: string): Promise<components["schemas"]["CalendarContactResponse"]> {
+  return request(id ? `/api/calendar/contacts/${encodeURIComponent(id)}` : "/api/calendar/contacts", withCsrf(csrfToken, input, id ? "PUT" : "POST"));
+}
+
+export function deleteCalendarContact(csrfToken: string, id: string): Promise<void> {
+  return request(`/api/calendar/contacts/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE"));
+}
+
 export function getReview(type: "DAILY" | "WEEKLY" | "MONTHLY", periodStart: string): Promise<components["schemas"]["ReviewResponse"]> {
   return request(`/api/reviews/${type}/${encodeURIComponent(periodStart)}`);
+}
+
+export function listReviews(from?: string, to?: string): Promise<components["schemas"]["ReviewListResponse"]> {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  return request(`/api/reviews${params.size ? `?${params}` : ""}`);
 }
 
 export function saveReview(csrfToken: string, type: "DAILY" | "WEEKLY" | "MONTHLY", periodStart: string, input: ReviewRequest): Promise<components["schemas"]["ReviewResponse"]> {

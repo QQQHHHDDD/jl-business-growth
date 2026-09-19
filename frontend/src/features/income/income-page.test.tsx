@@ -20,6 +20,9 @@ describe("IncomePage", () => {
     expect(await screen.findByRole("tab", { name: "模拟器" })).toHaveAttribute("data-state", "active");
     expect(screen.getByTestId("income-results")).toHaveClass("xl:sticky");
     expect(screen.getByRole("heading", { name: "1. 基础数据" })).toBeVisible();
+    expect(screen.getByText(/个人总PV/)).toBeVisible();
+    expect(screen.queryByText(/个人圈总/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /说明/ })).not.toBeInTheDocument();
     fireEvent.mouseDown(screen.getByRole("tab", { name: "保存方案" }), { button: 0 });
     expect(screen.getByRole("heading", { name: "已保存方案" })).toBeVisible();
     fireEvent.mouseDown(screen.getByRole("tab", { name: "方案比较" }), { button: 0 });

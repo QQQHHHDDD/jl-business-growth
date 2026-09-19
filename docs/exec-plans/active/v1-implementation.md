@@ -1,8 +1,8 @@
 # V1 Implementation Plan
 
-- Status: V1 closeout P0-01-P0-11 complete; waiting for product-owner acceptance before Phase 7
-- Updated: 2026-09-15
-- Source: `docs/00-文档索引.md`, `docs/11-开发实现差异与V1收口清单-V1.0.md`, and `docs/12-Codex-V1收口修复Prompt-V1.0.md`
+- Status: Phase 0-7 complete; final UAT and pull-request review in progress
+- Updated: 2026-09-19
+- Source: `docs/00-文档索引.md`, `docs/11-开发实现差异与V1收口清单-V1.0.md`, and repository `AGENTS.md`
 
 ## Environment Detection
 
@@ -189,26 +189,26 @@ The PostgreSQL commands are required for Goose migration, sqlc schema validation
 - `make lint test build`: passed; backend vet/tests/build and frontend lint/Vitest/build all pass.
 - `make check`: passed with the local cached Go module proxy and installed frontend dependencies.
 - Phase 1 security hardening: application-level login/registration rate limiting, strict JSON mutation content type, strict first-start super-admin credential pairing, PostgreSQL unique-violation handling, and ACTIVE-account session creation guard were added and tested.
-- Phase 1 browser flow: `frontend/e2e/phase1-auth.spec.ts` covers super-admin login, invitation creation, invitation registration, and same-browser normal-account linking/switching; it is skipped unless `E2E_SUPERADMIN_USERNAME` and `E2E_SUPERADMIN_PASSWORD` are explicitly supplied.
+- Administrator and account workflow: `frontend/e2e/admin-and-business-workflows.spec.ts` covers super-admin login, invitation creation, invitation registration, and same-browser normal-account linking/switching; it is skipped unless `E2E_SUPERADMIN_USERNAME` and `E2E_SUPERADMIN_PASSWORD` are explicitly supplied.
 - API HTTP smoke checks: user confirmed both `/api/health/live` and `/api/health/ready` returned OK with the migrated database.
 - Phase 1 backend unit tests, vet, and binary build: passed with the local Go 1.27.0 toolchain.
 - Phase 1 frontend Vitest, lint, TypeScript/Vite build: passed; 6 frontend tests pass.
 - Phase 1 security tests cover Argon2id password boundaries, CSRF, cross-site mutation rejection, secure/development cookie naming, and sanitized internal errors.
-- `backend/cmd/jl-business-api/main_integration_test.go` and `make test-integration` provide the PostgreSQL-backed Phase 1 API gate; the test is skipped without `TEST_DATABASE_URL` and refuses non-`jl_business_test` URLs.
+- `backend/cmd/jl-business-api/business_api_integration_test.go` and `make test-integration` provide the PostgreSQL-backed API integration gate; the test is skipped without `TEST_DATABASE_URL` and refuses non-`jl_business_test` URLs.
 - `frontend/playwright.config.ts` and `make test-e2e` enforce the test database and test-only bootstrap credentials when `APP_ENV=test`; they do not reuse a development API process in that mode.
 - `make migrate-test-up` and `make migrate-test-status` apply/check migrations through `TEST_DATABASE_URL` and refuse a URL whose database name is not exactly `jl_business_test`.
 - Final local `make check` after Phase 1 integration-test cleanup: passed; `git diff --check` passed.
 - Final local `make check` after security-header, strict-Origin, proxy-IP, and frontend auth-query race fixes: passed; `git diff --check` passed.
 - `go test -race ./...`: passed with the local Go 1.27.0 toolchain.
 - Final local `make check` after restricting trusted proxy IP extraction to loopback Nginx hops and forcing the test Playwright backend to use its local Origin: passed; direct-header spoofing coverage added.
-- Database-backed acceptance completed on the host: test database migration version 2, `TestPhase1APIIntegration`, and both Playwright tests passed.
+- Database-backed acceptance completed on the host: test database migration version 2, `TestAuthenticationAdminAPIIntegration`, and both Playwright tests passed.
 - Final Phase 1 regression: frontend Vitest 8 tests, backend `go test -race ./...`, `make check`, `make test-integration`, `make test-e2e`, and `git diff --check` passed.
 - Added `make reset-superadmin-password` as a development/test-only recovery command for an existing fixed super administrator; it updates the configured password hash, invalidates that account's sessions, refuses production, and was verified against the development API with HTTP 200 login.
 - Frontend shell refresh: `make generate`, `make lint`, `make test`, `make build`, and `make check` passed; Vitest now covers 21 tests across five files.
 - Frontend shell refresh: desktop baseline E2E passed; mobile shell and Phase 1 database-backed E2E are skipped when the host shell does not provide `APP_ENV=test`, `TEST_DATABASE_URL`, and explicit E2E credentials.
 - Frontend shell refresh: `make test-integration` was attempted and correctly refused the current shell because `TEST_DATABASE_URL` was unset; rerun with the isolated `jl_business_test` URL before final host acceptance.
 - Frontend shell refresh: `git diff --check` passed; only frontend source, dependency, Playwright, and this execution-plan documentation are changed.
-- Phase 2 daily-core acceptance: development and isolated test databases migrated to version 3; `TestPhase1APIIntegration` and `TestPhase2APIIntegration` passed.
+- Phase 2 daily-core acceptance: development and isolated test databases migrated to version 3; `TestAuthenticationAdminAPIIntegration` and `TestDailyBusinessAPIIntegration` passed.
 - Phase 2 frontend acceptance: Playwright baseline, Phase 1 administrator plus Phase 2 daily-core flow, and mobile shell passed (3 tests); the flow covers daily worklog entry, PV conversion, goal progress, dream creation, Dashboard totals, and account flow.
 - Phase 2 local gate: `make generate`, `make lint`, `make test`, `make build`, `make check`, backend race tests, and `git diff --check` passed; generated API/sqlc files are stable.
 - Phase 2 UI regression: shared `Input` fields now generate unique IDs when field names repeat; Vitest covers this label-association case.

@@ -165,7 +165,7 @@ paths:
     get:
       operationId: getAuthAccounts
       tags: [auth]
-      summary: List normal accounts linked to this browser session
+      summary: List accounts linked to this browser session
       security: [{ sessionCookie: [] }]
       responses:
         "200":
@@ -180,7 +180,7 @@ paths:
     post:
       operationId: postAuthAccountsAdd
       tags: [auth]
-      summary: Authenticate and add another normal account to this browser session
+      summary: Authenticate and add another account to this browser session
       security: [{ sessionCookie: [] }]
       requestBody:
         required: true
@@ -201,7 +201,7 @@ paths:
     post:
       operationId: postAuthAccountsSwitch
       tags: [auth]
-      summary: Switch the active normal account without re-entering its password
+      summary: Switch the active account without re-entering its password
       security: [{ sessionCookie: [] }]
       parameters:
         - $ref: "#/components/parameters/AccountId"
@@ -218,7 +218,7 @@ paths:
     delete:
       operationId: deleteAuthAccount
       tags: [auth]
-      summary: Remove a linked normal account from this browser session
+      summary: Remove a linked account from this browser session
       security: [{ sessionCookie: [] }]
       parameters:
         - $ref: "#/components/parameters/AccountId"
@@ -376,13 +376,13 @@ paths:
     delete:
       operationId: deleteAdminInvitationCode
       tags: [admin]
-      summary: Disable an invitation code
+      summary: Delete an invitation code
       security: [{ sessionCookie: [] }]
       parameters:
         - $ref: "#/components/parameters/InvitationId"
       responses:
         "204":
-          description: Invitation disabled
+          description: Invitation deleted
         default:
           $ref: "#/components/responses/ErrorResponse"
   /api/admin/admins:
@@ -932,6 +932,76 @@ paths:
       responses:
         "204":
           description: Calendar event deleted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/calendar/contacts:
+    get:
+      operationId: listCalendarContacts
+      tags: [calendar-reviews]
+      summary: List saved contacts owned by the current user
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Saved calendar contacts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarContactListResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: createCalendarContact
+      tags: [calendar-reviews]
+      summary: Create a saved contact for the current user
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarContactRequest"
+      responses:
+        "201":
+          description: Calendar contact created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarContactResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/calendar/contacts/{contact_id}:
+    put:
+      operationId: updateCalendarContact
+      tags: [calendar-reviews]
+      summary: Update a saved contact owned by the current user
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CalendarContactId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarContactRequest"
+      responses:
+        "200":
+          description: Calendar contact updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarContactResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: deleteCalendarContact
+      tags: [calendar-reviews]
+      summary: Delete a saved contact owned by the current user
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CalendarContactId"
+      responses:
+        "204":
+          description: Calendar contact deleted
         default:
           $ref: "#/components/responses/ErrorResponse"
   /api/reviews:
@@ -2029,6 +2099,13 @@ components:
       schema:
         type: string
         format: uuid
+    CalendarContactId:
+      name: contact_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     PromoteChildren:
       name: promote_children
       in: query
@@ -2681,6 +2758,8 @@ components:
             format: uuid
         file_ids:
           type: array
+          maxItems: 10
+          uniqueItems: true
           items:
             type: string
             format: uuid
@@ -2713,6 +2792,8 @@ components:
           default: 0
         file_ids:
           type: array
+          maxItems: 10
+          uniqueItems: true
           items:
             type: string
             format: uuid
@@ -3143,6 +3224,59 @@ components:
                 $ref: "#/components/schemas/CalendarEvent"
         request_id:
           type: string
+    CalendarContact:
+      type: object
+      required: [id, email, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CalendarContactRequest:
+      type: object
+      required: [email]
+      properties:
+        name:
+          type: string
+          nullable: true
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 320
+    CalendarContactResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/CalendarContact"
+        request_id:
+          type: string
+    CalendarContactListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/CalendarContact"
+        request_id:
+          type: string
     ReviewPeriodTotals:
       type: object
       required: [worklog_action_count, turnover_pv, turnover_net_amount]
@@ -3179,6 +3313,12 @@ components:
         summary:
           type: string
           nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
         totals:
           $ref: "#/components/schemas/ReviewPeriodTotals"
     ReviewRequest:
@@ -3219,11 +3359,27 @@ components:
           type: string
     AnalyticsBucket:
       type: object
-      required: [period, action_count, reading_minutes, audio_minutes, pv, net_amount, goal_count, completed_count]
+      required: [period, action_count, open_conversation_count, deep_conversation_count, buffer_count, story_share_count, screening_count, opportunity_count, meeting_count, customer_followup_count, reading_minutes, audio_minutes, pv, net_amount, goal_count, completed_count]
       properties:
         period:
           type: string
         action_count:
+          type: integer
+        open_conversation_count:
+          type: integer
+        deep_conversation_count:
+          type: integer
+        buffer_count:
+          type: integer
+        story_share_count:
+          type: integer
+        screening_count:
+          type: integer
+        opportunity_count:
+          type: integer
+        meeting_count:
+          type: integer
+        customer_followup_count:
           type: integer
         reading_minutes:
           type: integer
@@ -3253,7 +3409,7 @@ components:
           type: integer
     AnalyticsData:
       type: object
-      required: [metric, from, to, granularity, buckets]
+      required: [metric, from, to, granularity, current_member_count, current_active_member_count, snapshot_count, buckets]
       properties:
         metric:
           type: string
@@ -3266,6 +3422,12 @@ components:
         granularity:
           type: string
           enum: [day, week, month]
+        current_member_count:
+          type: integer
+        current_active_member_count:
+          type: integer
+        snapshot_count:
+          type: integer
         buckets:
           type: array
           items:
@@ -3280,7 +3442,7 @@ components:
           type: string
     TeamMember:
       type: object
-      required: [id, member_code, name, status, sort_order, created_at, updated_at]
+      required: [id, member_code, name, status, node_color, sort_order, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         member_code: { type: string, minLength: 1, maxLength: 100 }
@@ -3291,6 +3453,7 @@ components:
         city: { type: string, nullable: true }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
         note: { type: string, nullable: true }
+        node_color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', default: '#0f766e' }
         sort_order: { type: integer }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -3306,6 +3469,7 @@ components:
         city: { type: string, nullable: true }
         status: { type: string, enum: [ACTIVE, INACTIVE], default: ACTIVE }
         note: { type: string, nullable: true }
+        node_color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', default: '#0f766e' }
         sort_order: { type: integer, default: 0 }
     TeamMemberResponse:
       type: object

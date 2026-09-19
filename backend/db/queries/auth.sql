@@ -64,9 +64,15 @@ WHERE a.id = sqlc.arg('account_id') AND a.status = 'ACTIVE'
 RETURNING id, token_hash, active_account_id, csrf_token_hash, created_at, last_seen_at, expires_at;
 
 -- name: GetBrowserSession :one
-SELECT id, token_hash, active_account_id, csrf_token_hash, created_at, last_seen_at, expires_at
-FROM browser_sessions
-WHERE token_hash = $1 AND last_seen_at > now() - interval '30 days' AND expires_at > now();
+SELECT bs.id, bs.token_hash, bs.active_account_id, bs.csrf_token_hash, bs.created_at, bs.last_seen_at, bs.expires_at,
+       EXISTS (
+           SELECT 1
+           FROM browser_session_accounts bsa
+           WHERE bsa.browser_session_id = bs.id
+             AND bsa.account_id = bs.active_account_id
+       ) AS active_account_linked
+FROM browser_sessions bs
+WHERE bs.token_hash = $1 AND bs.last_seen_at > now() - interval '30 days' AND bs.expires_at > now();
 
 -- name: TouchBrowserSession :exec
 UPDATE browser_sessions SET last_seen_at = now() WHERE id = $1;
@@ -82,7 +88,7 @@ SELECT a.id, a.username, a.password_hash, a.role, a.status, a.timezone, a.create
 FROM browser_session_accounts bsa
 JOIN accounts a ON a.id = bsa.account_id
 JOIN browser_sessions bs ON bs.id = bsa.browser_session_id
-WHERE bsa.browser_session_id = $1 AND a.role = 'USER'
+WHERE bsa.browser_session_id = $1
 ORDER BY bsa.authenticated_at ASC;
 
 -- name: SetActiveAccount :one
@@ -92,7 +98,7 @@ WHERE bs.id = $1
   AND EXISTS (
       SELECT 1 FROM browser_session_accounts bsa
       JOIN accounts a ON a.id = bsa.account_id
-      WHERE bsa.browser_session_id = $1 AND bsa.account_id = $2 AND a.role = 'USER' AND a.status = 'ACTIVE'
+      WHERE bsa.browser_session_id = $1 AND bsa.account_id = $2 AND a.status = 'ACTIVE'
   )
 RETURNING bs.id, bs.token_hash, bs.active_account_id, bs.csrf_token_hash, bs.created_at, bs.last_seen_at, bs.expires_at;
 

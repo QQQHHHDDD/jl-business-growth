@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, Worklog } from "@/api/client";
 import { listWorklogs, saveWorklog } from "@/api/client";
@@ -61,9 +62,11 @@ function renderPage() {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={client}>
-      <WorklogPage authResponse={authResponse} />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <WorklogPage authResponse={authResponse} />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -77,7 +80,8 @@ describe("WorklogPage", () => {
     });
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "顾客行动" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "五层对话" })).toBeVisible();
+    expect(screen.queryByRole("img", { name: /说明/ })).not.toBeInTheDocument();
     const actionInput = screen.getByLabelText("开启对话");
 
     fireEvent.click(screen.getByRole("button", { name: "减少开启对话" }));
@@ -96,6 +100,17 @@ describe("WorklogPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "前一天" }));
     expect(dateInput).not.toHaveValue(today);
     expect(screen.getByRole("button", { name: "今天" })).toBeEnabled();
+  });
+
+  it("uses matching row structure for growth and turnover sections", async () => {
+    vi.mocked(listWorklogs).mockResolvedValue({ data: { items: [] }, request_id: "request-2" });
+    renderPage();
+    const learning = await screen.findByTestId("worklog-learning-section");
+    const turnover = screen.getByTestId("worklog-turnover-section");
+    expect(learning).toHaveClass("grid-rows-[auto_minmax(40px,auto)_auto_auto]");
+    expect(turnover).toHaveClass("grid-rows-[auto_minmax(40px,auto)_auto_auto]");
+    expect(learning.querySelectorAll(":scope > *")).toHaveLength(4);
+    expect(turnover.querySelectorAll(":scope > *")).toHaveLength(4);
   });
 
   it("keeps save semantics and limits recent records to seven", async () => {
@@ -136,5 +151,33 @@ describe("WorklogPage", () => {
         true,
       ),
     );
+  });
+
+  it("synchronizes PV and net turnover in both directions while editing history", async () => {
+    const today = businessDate(account.timezone);
+    const existing = worklog(today, 1);
+    existing.turnover_pv = 40;
+    existing.turnover_net_amount = "500.00";
+    vi.mocked(listWorklogs).mockResolvedValue({ data: { items: [existing] }, request_id: "request-2" });
+    vi.mocked(saveWorklog).mockResolvedValue({ data: existing, request_id: "request-3" });
+    renderPage();
+
+    const pvInput = await screen.findByLabelText("营业额 PV（可选）");
+    const netInput = screen.getByLabelText("净营业额（可选）");
+    await waitFor(() => expect(pvInput).toHaveValue(40));
+    expect(netInput).toHaveValue(500);
+
+    fireEvent.change(pvInput, { target: { value: "100" } });
+    expect(netInput).toHaveValue(1250);
+    fireEvent.change(netInput, { target: { value: "2500.00" } });
+    expect(pvInput).toHaveValue(200);
+    fireEvent.change(pvInput, { target: { value: "8.00" } });
+    fireEvent.change(netInput, { target: { value: "100" } });
+    expect(screen.queryByText("PV 与净营业额不一致")).not.toBeInTheDocument();
+    fireEvent.change(pvInput, { target: { value: "200" } });
+    fireEvent.change(netInput, { target: { value: "2500.00" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存今日记录" }));
+    await waitFor(() => expect(saveWorklog).toHaveBeenCalledWith("csrf-token", expect.objectContaining({ turnover_pv: 200, turnover_net_amount: "2500.00" }), true));
   });
 });

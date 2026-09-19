@@ -16,6 +16,14 @@ import (
 type Bucket struct {
 	Period                    string
 	ActionCount               int64
+	OpenConversationCount     int64
+	DeepConversationCount     int64
+	BufferCount               int64
+	StoryShareCount           int64
+	ScreeningCount            int64
+	OpportunityCount          int64
+	MeetingCount              int64
+	CustomerFollowupCount     int64
 	ReadingMinutes            int64
 	AudioMinutes              int64
 	PV                        float64
@@ -28,9 +36,11 @@ type Bucket struct {
 	GoalCount, CompletedCount int64
 }
 type Result struct {
-	Metric, Granularity string
-	From, To            time.Time
-	Buckets             []Bucket
+	Metric, Granularity                    string
+	From, To                               time.Time
+	Buckets                                []Bucket
+	CurrentMemberCount, CurrentActiveCount int64
+	SnapshotCount                          int64
 }
 type Service struct{ pool *pgxpool.Pool }
 
@@ -39,7 +49,12 @@ func (s *Service) Worklogs(ctx context.Context, userID uuid.UUID, from, to time.
 	if err := validRange(from, to, granularity); err != nil {
 		return Result{}, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT w.work_date,(w.open_conversation_count+w.deep_conversation_count+w.buffer_count+w.story_share_count+w.screening_count+w.opportunity_count+w.meeting_count+w.customer_followup_count)::bigint,COALESCE((SELECT ls.minutes FROM learning_sessions ls WHERE ls.user_id=w.user_id AND ls.activity_date=w.work_date AND ls.activity_type='READING' AND ls.source='DAILY_UNALLOCATED'),0)::bigint,COALESCE((SELECT ls.minutes FROM learning_sessions ls WHERE ls.user_id=w.user_id AND ls.activity_date=w.work_date AND ls.activity_type='AUDIO' AND ls.source='DAILY_UNALLOCATED'),0)::bigint FROM daily_worklogs w WHERE w.user_id=$1 AND w.work_date >= $2 AND w.work_date < $3 ORDER BY w.work_date`, auth.ToPGUUID(userID), from, to)
+	rows, err := s.pool.Query(ctx, `SELECT w.work_date,
+		w.open_conversation_count,w.deep_conversation_count,w.buffer_count,w.story_share_count,
+		w.screening_count,w.opportunity_count,w.meeting_count,w.customer_followup_count,
+		COALESCE((SELECT ls.minutes FROM learning_sessions ls WHERE ls.user_id=w.user_id AND ls.activity_date=w.work_date AND ls.activity_type='READING' AND ls.source='DAILY_UNALLOCATED'),0)::bigint,
+		COALESCE((SELECT ls.minutes FROM learning_sessions ls WHERE ls.user_id=w.user_id AND ls.activity_date=w.work_date AND ls.activity_type='AUDIO' AND ls.source='DAILY_UNALLOCATED'),0)::bigint
+		FROM daily_worklogs w WHERE w.user_id=$1 AND w.work_date >= $2 AND w.work_date < $3 ORDER BY w.work_date`, auth.ToPGUUID(userID), from, to)
 	if err != nil {
 		return Result{}, err
 	}
@@ -48,9 +63,22 @@ func (s *Service) Worklogs(ctx context.Context, userID uuid.UUID, from, to time.
 	for rows.Next() {
 		var date time.Time
 		var b Bucket
-		if err := rows.Scan(&date, &b.ActionCount, &b.ReadingMinutes, &b.AudioMinutes); err != nil {
+		if err := rows.Scan(
+			&date,
+			&b.OpenConversationCount,
+			&b.DeepConversationCount,
+			&b.BufferCount,
+			&b.StoryShareCount,
+			&b.ScreeningCount,
+			&b.OpportunityCount,
+			&b.MeetingCount,
+			&b.CustomerFollowupCount,
+			&b.ReadingMinutes,
+			&b.AudioMinutes,
+		); err != nil {
 			return Result{}, err
 		}
+		b.ActionCount = b.OpenConversationCount + b.DeepConversationCount + b.BufferCount + b.StoryShareCount + b.ScreeningCount + b.OpportunityCount + b.MeetingCount + b.CustomerFollowupCount
 		b.Period = bucketKey(date, granularity)
 		mergeWorklog(&result.Buckets, b)
 	}
@@ -117,12 +145,26 @@ func (s *Service) Team(ctx context.Context, userID uuid.UUID, from, to time.Time
 	if err := validRange(from, to, granularity); err != nil {
 		return Result{}, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT COALESCE(joined_on, created_at::date), COUNT(*), COUNT(*) FILTER (WHERE status='ACTIVE') FROM team_members WHERE user_id=$1 AND COALESCE(joined_on, created_at::date) >= $2 AND COALESCE(joined_on, created_at::date) < $3 GROUP BY 1 ORDER BY 1`, auth.ToPGUUID(userID), from, to)
+	result := Result{Metric: "team", Granularity: granularity, From: from, To: to}
+	if err := s.pool.QueryRow(ctx, `SELECT COUNT(*), COUNT(*) FILTER (WHERE status='ACTIVE') FROM team_members WHERE user_id=$1`, auth.ToPGUUID(userID)).Scan(&result.CurrentMemberCount, &result.CurrentActiveCount); err != nil {
+		return Result{}, err
+	}
+	if err := s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM team_snapshots WHERE user_id=$1 AND snapshot_month >= $2 AND snapshot_month < $3`, auth.ToPGUUID(userID), from, to).Scan(&result.SnapshotCount); err != nil {
+		return Result{}, err
+	}
+	rows, err := s.pool.Query(ctx, `WITH latest AS (
+		SELECT DISTINCT ON (snapshot_month) id,snapshot_month
+		FROM team_snapshots
+		WHERE user_id=$1 AND snapshot_month >= $2 AND snapshot_month < $3
+		ORDER BY snapshot_month,captured_at DESC
+	)
+	SELECT latest.snapshot_month,COUNT(m.id),COUNT(m.id) FILTER (WHERE m.status='ACTIVE')
+	FROM latest LEFT JOIN team_snapshot_members m ON m.snapshot_id=latest.id
+	GROUP BY latest.id,latest.snapshot_month ORDER BY latest.snapshot_month`, auth.ToPGUUID(userID), from, to)
 	if err != nil {
 		return Result{}, err
 	}
 	defer rows.Close()
-	result := Result{Metric: "team", Granularity: granularity, From: from, To: to}
 	for rows.Next() {
 		var date time.Time
 		var b Bucket
@@ -205,6 +247,14 @@ func mergeWorklog(values *[]Bucket, b Bucket) {
 		return
 	}
 	(*values)[i].ActionCount += b.ActionCount
+	(*values)[i].OpenConversationCount += b.OpenConversationCount
+	(*values)[i].DeepConversationCount += b.DeepConversationCount
+	(*values)[i].BufferCount += b.BufferCount
+	(*values)[i].StoryShareCount += b.StoryShareCount
+	(*values)[i].ScreeningCount += b.ScreeningCount
+	(*values)[i].OpportunityCount += b.OpportunityCount
+	(*values)[i].MeetingCount += b.MeetingCount
+	(*values)[i].CustomerFollowupCount += b.CustomerFollowupCount
 	(*values)[i].ReadingMinutes += b.ReadingMinutes
 	(*values)[i].AudioMinutes += b.AudioMinutes
 }

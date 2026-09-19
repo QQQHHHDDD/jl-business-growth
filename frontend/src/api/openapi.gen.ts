@@ -164,7 +164,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List normal accounts linked to this browser session */
+        /** List accounts linked to this browser session */
         get: operations["getAuthAccounts"];
         put?: never;
         post?: never;
@@ -183,7 +183,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Authenticate and add another normal account to this browser session */
+        /** Authenticate and add another account to this browser session */
         post: operations["postAuthAccountsAdd"];
         delete?: never;
         options?: never;
@@ -200,7 +200,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Switch the active normal account without re-entering its password */
+        /** Switch the active account without re-entering its password */
         post: operations["postAuthAccountsSwitch"];
         delete?: never;
         options?: never;
@@ -218,7 +218,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove a linked normal account from this browser session */
+        /** Remove a linked account from this browser session */
         delete: operations["deleteAuthAccount"];
         options?: never;
         head?: never;
@@ -338,7 +338,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Disable an invitation code */
+        /** Delete an invitation code */
         delete: operations["deleteAdminInvitationCode"];
         options?: never;
         head?: never;
@@ -596,6 +596,42 @@ export interface paths {
         post?: never;
         /** Delete a calendar event series and send cancellation notices */
         delete: operations["deleteCalendarEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List saved contacts owned by the current user */
+        get: operations["listCalendarContacts"];
+        put?: never;
+        /** Create a saved contact for the current user */
+        post: operations["createCalendarContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/contacts/{contact_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a saved contact owned by the current user */
+        put: operations["updateCalendarContact"];
+        post?: never;
+        /** Delete a saved contact owned by the current user */
+        delete: operations["deleteCalendarContact"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1753,6 +1789,32 @@ export interface components {
             };
             request_id: string;
         };
+        CalendarContact: {
+            /** Format: uuid */
+            id: string;
+            name?: string | null;
+            /** Format: email */
+            email: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CalendarContactRequest: {
+            name?: string | null;
+            /** Format: email */
+            email: string;
+        };
+        CalendarContactResponse: {
+            data: components["schemas"]["CalendarContact"];
+            request_id: string;
+        };
+        CalendarContactListResponse: {
+            data: {
+                items: components["schemas"]["CalendarContact"][];
+            };
+            request_id: string;
+        };
         ReviewPeriodTotals: {
             worklog_action_count: number;
             turnover_pv: number;
@@ -1770,6 +1832,10 @@ export interface components {
             improvements: string;
             next_focus: string;
             summary?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
             totals: components["schemas"]["ReviewPeriodTotals"];
         };
         ReviewRequest: {
@@ -1792,6 +1858,14 @@ export interface components {
         AnalyticsBucket: {
             period: string;
             action_count: number;
+            open_conversation_count: number;
+            deep_conversation_count: number;
+            buffer_count: number;
+            story_share_count: number;
+            screening_count: number;
+            opportunity_count: number;
+            meeting_count: number;
+            customer_followup_count: number;
             reading_minutes: number;
             audio_minutes: number;
             pv: number;
@@ -1812,6 +1886,9 @@ export interface components {
             to: string;
             /** @enum {string} */
             granularity: "day" | "week" | "month";
+            current_member_count: number;
+            current_active_member_count: number;
+            snapshot_count: number;
             buckets: components["schemas"]["AnalyticsBucket"][];
         };
         AnalyticsResponse: {
@@ -1832,6 +1909,8 @@ export interface components {
             /** @enum {string} */
             status: "ACTIVE" | "INACTIVE";
             note?: string | null;
+            /** @default #0f766e */
+            node_color: string;
             sort_order: number;
             /** Format: date-time */
             created_at: string;
@@ -1853,6 +1932,8 @@ export interface components {
              */
             status: "ACTIVE" | "INACTIVE";
             note?: string | null;
+            /** @default #0f766e */
+            node_color: string;
             /** @default 0 */
             sort_order: number;
         };
@@ -2288,6 +2369,7 @@ export interface components {
         KnowledgeId: string;
         SessionId: string;
         FileId: string;
+        CalendarContactId: string;
         PromoteChildren: boolean;
         FileDisposition: "inline" | "attachment";
         CategoryId: string;
@@ -2777,7 +2859,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Invitation disabled */
+            /** @description Invitation deleted */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -3543,6 +3625,100 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Calendar event deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listCalendarContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved calendar contacts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarContactListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createCalendarContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar contact created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarContactResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateCalendarContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: components["parameters"]["CalendarContactId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar contact updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarContactResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteCalendarContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: components["parameters"]["CalendarContactId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar contact deleted */
             204: {
                 headers: {
                     [name: string]: unknown;

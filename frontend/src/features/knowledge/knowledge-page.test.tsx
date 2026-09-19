@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse } from "@/api/client";
 import { listFiles, listKnowledgeItems, listLearningSessions } from "@/api/client";
@@ -13,7 +14,7 @@ vi.mock("@/api/client", async (importOriginal) => ({
 
 const account = { id: "00000000-0000-0000-0000-000000000001", username: "owner", role: "USER", status: "ACTIVE", timezone: "Asia/Shanghai", created_at: "2026-01-01T00:00:00Z", last_login_at: null } as Account;
 const authResponse = { data: { account, accounts: [{ ...account, active: true }], csrf_token: "csrf" }, request_id: "1" } as AuthResponse;
-function renderPage() { const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); return render(<QueryClientProvider client={client}><KnowledgePage authResponse={authResponse} /></QueryClientProvider>); }
+function renderPage(entry = "/app/knowledge") { const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); return render(<MemoryRouter initialEntries={[entry]}><QueryClientProvider client={client}><KnowledgePage authResponse={authResponse} /></QueryClientProvider></MemoryRouter>); }
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -32,5 +33,11 @@ describe("KnowledgePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "关闭" }));
     fireEvent.mouseDown(screen.getByRole("tab", { name: "附件库" }), { button: 0 });
     expect(screen.getByRole("heading", { name: "附件库" })).toBeVisible();
+  });
+
+  it("restores an item deep link after refresh", async () => {
+    renderPage("/app/knowledge?item=00000000-0000-0000-0000-000000000002");
+    expect(await screen.findByRole("heading", { name: "编辑学习项目" })).toBeVisible();
+    expect(screen.getByLabelText("学习项目标题")).toHaveValue("经营方法");
   });
 });

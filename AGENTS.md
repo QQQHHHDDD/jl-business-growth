@@ -33,7 +33,7 @@ JL团队生意成长管理系统是 JL 团队内部使用的个人生意成长�
 - 附件正文不自动解析/OCR。
 - 管理员不得读取普通用户业务数据。
 - 所有 USER 业务数据必须严格按用户隔离。
-- 开发环境不得使用生产数据库或生产密钥。
+- 开发与测试环境不得使用生产数据库、生产密钥或生产文件。
 
 ## Local environment
 
@@ -68,13 +68,14 @@ If a command is missing, add it rather than documenting many ad-hoc alternatives
 - Add tests for business-rule changes.
 - Income simulator changes require Golden Tests.
 - V1 money fields use decimal strings at API boundaries and integer cents for final Go business values.
-- Current schema migrations end at `00008_v1_closure.sql`; migrations are append-only.
+- Current schema migrations end at `00010_team_member_node_color.sql`; migrations are append-only.
 - Do not commit secrets, `.env`, `.local`, database dumps, or user files.
 
 ## Current execution plan
 
 Use `docs/exec-plans/active/v1-implementation.md`. Keep it updated as implementation progresses.
 
-Phase 0-6 and the V1 P0-01-P0-11 closeout are complete in the current
-implementation. Do not start Phase 7 or production deployment as part of the
-closeout task; wait for product-owner acceptance.
+Phase 0-6, the V1 P0-01-P0-11 closeout, and Phase 7 comprehensive testing are
+complete. Current work is final UAT and PR review on `v1-final-uat-closure`.
+Do not perform production deployment or create the production release unless
+explicitly approved by the product owner.

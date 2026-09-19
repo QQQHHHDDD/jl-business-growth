@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse } from "@/api/client";
@@ -15,9 +15,23 @@ describe("SettingsPage", () => {
     render(<MemoryRouter><QueryClientProvider client={client}><SettingsPage account={account} authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
     expect(screen.getByRole("tab", { name: "账号" })).toHaveAttribute("data-state", "active");
     fireEvent.mouseDown(screen.getByRole("tab", { name: "偏好" }), { button: 0 });
-    expect(screen.getByLabelText("IANA 时区")).toHaveValue("Asia/Shanghai");
+    expect(screen.getByRole("heading", { name: "当前设备时区" })).toBeVisible();
+    expect(screen.getByRole("listbox", { name: "常用时区" })).toBeVisible();
+    expect(screen.getByText(/当前选择：/)).toHaveTextContent("Asia/Shanghai");
     fireEvent.mouseDown(screen.getByRole("tab", { name: "数据与安全" }), { button: 0 });
     expect(screen.getByRole("link", { name: "打开数据导出" })).toHaveAttribute("href", "/app/data");
     expect(screen.getByRole("button", { name: "永久删除账户" })).toBeVisible();
+  });
+
+  it("selects only supported IANA timezones from friendly choices and search", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<MemoryRouter><QueryClientProvider client={client}><SettingsPage account={account} authResponse={authResponse} /></QueryClientProvider></MemoryRouter>);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "偏好" }), { button: 0 });
+    fireEvent.click(within(screen.getByRole("listbox", { name: "常用时区" })).getByRole("option", { name: /美国东部（纽约）/ }));
+    expect(screen.getByText(/当前选择：/)).toHaveTextContent("America/New_York");
+    expect(screen.getByRole("button", { name: "保存时区" })).toBeEnabled();
+    fireEvent.click(screen.getByText("更多时区"));
+    fireEvent.change(screen.getByLabelText("搜索更多时区"), { target: { value: "Tokyo" } });
+    expect(screen.getByRole("listbox", { name: "全部 IANA 时区" })).toHaveTextContent("Asia/Tokyo");
   });
 });

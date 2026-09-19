@@ -45,4 +45,15 @@ describe("FinancePage", () => {
     expect(screen.getByRole("heading", { name: "新增财务流水" })).toBeVisible();
     expect(screen.getByLabelText("分类", { exact: true })).toBeVisible();
   });
+
+  it("exposes category management as a descriptive full-row disclosure", async () => {
+    renderPage();
+    const trigger = await screen.findByText("管理收支分类");
+    expect(screen.getByText("新增自定义分类，或归档不再使用的分类。")).toBeVisible();
+    const disclosure = trigger.closest("details");
+    expect(disclosure).not.toHaveAttribute("open");
+    fireEvent.click(trigger.closest("summary")!);
+    expect(disclosure).toHaveAttribute("open");
+    expect(screen.getByLabelText("分类名称")).toBeVisible();
+  });
 });

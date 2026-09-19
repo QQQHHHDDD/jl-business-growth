@@ -21,6 +21,29 @@ afterEach(() => {
 });
 
 describe("App", () => {
+  it("keeps a stable application frame while authentication is loading", () => {
+    window.history.replaceState(null, "", "/app/team");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        if (String(input).endsWith("/api/auth/me"))
+          return new Promise<Response>(() => undefined);
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ data: { status: "ok", checks: {} } }),
+            { status: 200 },
+          ),
+        );
+      }),
+    );
+
+    renderApp();
+
+    expect(screen.getByTestId("app-loading-shell")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("正在确认登录状态");
+    expect(screen.queryByText("暂无内容")).not.toBeInTheDocument();
+  });
+
   it("shows the system name and a successful API health state", async () => {
     vi.stubGlobal(
       "fetch",

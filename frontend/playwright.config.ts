@@ -5,6 +5,9 @@ const port = (value: string | undefined, fallback: string) => value && /^\d+$/.t
 const backendPort = port(process.env.E2E_BACKEND_PORT, "8080");
 const frontendPort = port(process.env.E2E_FRONTEND_PORT, "5173");
 const e2eBaseURL = `http://127.0.0.1:${frontendPort}`;
+const frontendCommand = process.env.E2E_PRODUCTION === "1"
+  ? `npx vite preview --host 127.0.0.1 --port ${frontendPort}`
+  : `npm run dev -- --host 127.0.0.1 --port ${frontendPort}`;
 const inheritedEnvironment = Object.fromEntries(
   Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
 );
@@ -50,7 +53,7 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: `npm run dev -- --host 127.0.0.1 --port ${frontendPort}`,
+      command: frontendCommand,
       url: e2eBaseURL,
       reuseExistingServer: !process.env.CI && !testMode,
       timeout: 120_000,

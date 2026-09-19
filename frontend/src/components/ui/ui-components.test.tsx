@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { Button } from "./button";
 import { ConfirmDialog, PromptDialog } from "./dialog";
 import { Input } from "./input";
-import { EmptyState, ErrorState, LoadingState } from "./state-block";
+import { MetricCard } from "./metric-card";
+import { Notice } from "./notice";
+import { SegmentedControl } from "./segmented-control";
+import { EmptyState, ErrorState, LoadingState, PageLoadingState } from "./state-block";
 import { StatusBadge } from "./badge";
 import { DataTable, TableBody, TableCell, TableHead, TableRow } from "./table";
 import { Sheet, SheetContent } from "./sheet";
@@ -14,13 +17,14 @@ describe("shared UI primitives", () => {
     render(
       <>
         <Button loading>保存</Button>
-        <Input label="账号" description="用于登录" error="账号不能为空" required />
+        <Input label="账号" description="用于登录" error="账号不能为空" icon={<span>搜索</span>} required />
       </>,
     );
 
     expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "保存" })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByLabelText("账号")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("账号")).toHaveClass("pl-10");
     expect(screen.getByLabelText("账号")).toHaveAttribute("aria-describedby");
     expect(screen.getByText("账号不能为空")).toBeInTheDocument();
   });
@@ -54,6 +58,21 @@ describe("shared UI primitives", () => {
     expect(screen.getByRole("heading", { name: "暂无用户" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the page identity visible while page data is loading", () => {
+    render(
+      <PageLoadingState
+        eyebrow="经营记录"
+        title="财务"
+        description="管理经营过程中的财务信息。"
+        label="正在加载财务工作台"
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "财务" })).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载财务工作台");
+    expect(screen.queryByText("暂无内容")).not.toBeInTheDocument();
   });
 
   it("keeps tables readable with a minimum width and semantic column headers", () => {
@@ -108,5 +127,30 @@ describe("shared UI primitives", () => {
     render(<Tabs defaultValue="one"><TabsList><TabsTrigger value="one">第一个</TabsTrigger><TabsTrigger value="two">第二个</TabsTrigger></TabsList></Tabs>);
     expect(screen.getByRole("tablist")).toHaveClass("overflow-x-auto", "flex-nowrap");
     expect(screen.getByRole("tab", { name: "第一个" })).toHaveClass("shrink-0");
+  });
+
+  it("renders metric, segmented and notice primitives with accessible state", () => {
+    const onValueChange = vi.fn();
+    render(
+      <>
+        <MetricCard label="新增客户" value="12" detail="较上周 +2" tone="brand" />
+        <SegmentedControl
+          ariaLabel="统计周期"
+          value="week"
+          items={[
+            { value: "week", label: "本周" },
+            { value: "month", label: "本月" },
+          ]}
+          onValueChange={onValueChange}
+        />
+        <Notice tone="success">保存成功</Notice>
+      </>,
+    );
+
+    expect(screen.getByText("12")).toHaveClass("text-3xl");
+    expect(screen.getByRole("button", { name: "本周" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "本月" }));
+    expect(onValueChange).toHaveBeenCalledWith("month");
+    expect(screen.getByRole("status")).toHaveTextContent("保存成功");
   });
 });

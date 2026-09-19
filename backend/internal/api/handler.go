@@ -65,7 +65,7 @@ func (h *Handler) PostAuthRegister(ctx echo.Context) error {
 		return err
 	}
 	h.audit(ctx, "register_success", uuid.Nil, account.ID, uuid.Nil)
-	_, csrfToken, session, err := auth.CreateSession(ctx, h.auth.Pool(), h.config, account.ID, account.Role == auth.RoleUser)
+	_, csrfToken, session, err := auth.CreateSession(ctx, h.auth.Pool(), h.config, account.ID, true)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (h *Handler) PostAuthLogin(ctx echo.Context) error {
 		return err
 	}
 	h.audit(ctx, "login_success", account.ID, account.ID, uuid.Nil)
-	_, csrfToken, session, err := auth.CreateSession(ctx, h.auth.Pool(), h.config, account.ID, account.Role == auth.RoleUser)
+	_, csrfToken, session, err := auth.CreateSession(ctx, h.auth.Pool(), h.config, account.ID, true)
 	if err != nil {
 		return err
 	}
@@ -168,18 +168,12 @@ func (h *Handler) GetAuthAccounts(ctx echo.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := requireUser(*account); err != nil {
-		return err
-	}
 	return h.accountsResponse(ctx, session, *account)
 }
 
 func (h *Handler) PostAuthAccountsAdd(ctx echo.Context) error {
 	session, account, err := auth.SessionFromContext(ctx)
 	if err != nil {
-		return err
-	}
-	if err := requireUser(*account); err != nil {
 		return err
 	}
 	if err := auth.VerifyCSRF(ctx, session); err != nil {
@@ -192,9 +186,6 @@ func (h *Handler) PostAuthAccountsAdd(ctx echo.Context) error {
 	linkedAccount, err := h.auth.Authenticate(ctx.Request().Context(), request.Username, request.Password)
 	if err != nil {
 		return err
-	}
-	if linkedAccount.Role != auth.RoleUser {
-		return problem.New("FORBIDDEN", http.StatusForbidden, "only normal users can be linked")
 	}
 	if err := h.auth.LinkBrowserAccount(ctx.Request().Context(), session.ID, linkedAccount.ID); err != nil {
 		return err
@@ -210,9 +201,6 @@ func (h *Handler) PostAuthAccountsAdd(ctx echo.Context) error {
 func (h *Handler) PostAuthAccountsSwitch(ctx echo.Context, accountID AccountId) error {
 	session, currentAccount, err := auth.SessionFromContext(ctx)
 	if err != nil {
-		return err
-	}
-	if err := requireUser(*currentAccount); err != nil {
 		return err
 	}
 	if err := auth.VerifyCSRF(ctx, session); err != nil {
@@ -240,15 +228,15 @@ func (h *Handler) DeleteAuthAccount(ctx echo.Context, accountID AccountId) error
 	if err := auth.VerifyCSRF(ctx, session); err != nil {
 		return err
 	}
-	if err := requireUser(*account); err != nil {
-		return err
-	}
 	if account.ID == accountID {
 		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "active account cannot be removed")
 	}
 	if _, err := h.auth.Queries().DeleteBrowserSessionAccount(ctx.Request().Context(), generatedDeletePair(session.ID, accountID)); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return problem.New("NOT_FOUND", http.StatusNotFound, "linked account not found")
+			// Password resets and account status changes invalidate linked
+			// accounts from the browser session. Treat a second unlink as an
+			// idempotent success so stale client state can be cleaned up.
+			return ctx.NoContent(http.StatusNoContent)
 		}
 		return err
 	}
@@ -537,10 +525,10 @@ func (h *Handler) DeleteAdminInvitationCode(ctx echo.Context, invitationID Invit
 	if err := requireAdmin(*actor); err != nil {
 		return err
 	}
-	if err := h.invitation.Disable(ctx.Request().Context(), invitationID); err != nil {
+	if err := h.invitation.Delete(ctx.Request().Context(), invitationID); err != nil {
 		return err
 	}
-	h.audit(ctx, "invitation_disabled", actor.ID, uuid.Nil, invitationID)
+	h.audit(ctx, "invitation_deleted", actor.ID, uuid.Nil, invitationID)
 	return ctx.NoContent(http.StatusNoContent)
 }
 
@@ -913,6 +901,7 @@ func (h *Handler) saveCalendarEvent(ctx echo.Context, eventID uuid.UUID, status 
 	if err := ctx.Bind(&request); err != nil {
 		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
 	}
+	request.Timezone = account.Timezone
 	item, err := h.calendar.Save(ctx.Request().Context(), account.ID, eventID, calendarInput(request))
 	if err != nil {
 		return err
@@ -932,6 +921,71 @@ func (h *Handler) DeleteCalendarEvent(ctx echo.Context, eventID CalendarEventId)
 		return err
 	}
 	if err := h.calendar.Delete(ctx.Request().Context(), account.ID, uuid.UUID(eventID)); err != nil {
+		return err
+	}
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ListCalendarContacts(ctx echo.Context) error {
+	userID, _, err := h.dailyUser(ctx)
+	if err != nil {
+		return err
+	}
+	items, err := h.calendar.ListContacts(ctx.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+	result := make([]CalendarContact, 0, len(items))
+	for _, item := range items {
+		result = append(result, calendarContactDTO(item))
+	}
+	return ctx.JSON(http.StatusOK, CalendarContactListResponse{Data: struct {
+		Items []CalendarContact `json:"items"`
+	}{Items: result}, RequestId: requestID(ctx)})
+}
+
+func (h *Handler) CreateCalendarContact(ctx echo.Context) error {
+	return h.saveCalendarContact(ctx, uuid.Nil, http.StatusCreated)
+}
+
+func (h *Handler) UpdateCalendarContact(ctx echo.Context, contactID CalendarContactId) error {
+	return h.saveCalendarContact(ctx, uuid.UUID(contactID), http.StatusOK)
+}
+
+func (h *Handler) saveCalendarContact(ctx echo.Context, contactID uuid.UUID, status int) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	var request CalendarContactRequest
+	if err := ctx.Bind(&request); err != nil {
+		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
+	}
+	item, err := h.calendar.SaveContact(ctx.Request().Context(), account.ID, contactID, calendar.ContactInput{Name: request.Name, Email: string(request.Email)})
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(status, CalendarContactResponse{Data: calendarContactDTO(item), RequestId: requestID(ctx)})
+}
+
+func (h *Handler) DeleteCalendarContact(ctx echo.Context, contactID CalendarContactId) error {
+	session, account, err := auth.SessionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if err := requireUser(*account); err != nil {
+		return err
+	}
+	if err := auth.VerifyCSRF(ctx, session); err != nil {
+		return err
+	}
+	if err := h.calendar.DeleteContact(ctx.Request().Context(), account.ID, uuid.UUID(contactID)); err != nil {
 		return err
 	}
 	return ctx.NoContent(http.StatusNoContent)
@@ -1047,9 +1101,24 @@ func (h *Handler) analyticsResponse(ctx echo.Context, granularity string, fromPa
 	for _, item := range result.Buckets {
 		memberCount, activeMemberCount := int(item.MemberCount), int(item.ActiveMemberCount)
 		income, expense, netCashFlow := money.Format(item.IncomeAmount), money.Format(item.ExpenseAmount), money.Format(item.NetCashFlow)
-		buckets = append(buckets, AnalyticsBucket{Period: item.Period, ActionCount: int(item.ActionCount), ReadingMinutes: int(item.ReadingMinutes), AudioMinutes: int(item.AudioMinutes), Pv: float32(item.PV), NetAmount: money.Format(item.NetAmount), IncomeAmount: &income, ExpenseAmount: &expense, NetCashFlow: &netCashFlow, MemberCount: &memberCount, ActiveMemberCount: &activeMemberCount, GoalCount: int(item.GoalCount), CompletedCount: int(item.CompletedCount)})
+		buckets = append(buckets, AnalyticsBucket{
+			Period: item.Period, ActionCount: int(item.ActionCount),
+			OpenConversationCount: int(item.OpenConversationCount), DeepConversationCount: int(item.DeepConversationCount),
+			BufferCount: int(item.BufferCount), StoryShareCount: int(item.StoryShareCount),
+			ScreeningCount: int(item.ScreeningCount), OpportunityCount: int(item.OpportunityCount),
+			MeetingCount: int(item.MeetingCount), CustomerFollowupCount: int(item.CustomerFollowupCount),
+			ReadingMinutes: int(item.ReadingMinutes), AudioMinutes: int(item.AudioMinutes),
+			Pv: float32(item.PV), NetAmount: money.Format(item.NetAmount), IncomeAmount: &income,
+			ExpenseAmount: &expense, NetCashFlow: &netCashFlow, MemberCount: &memberCount,
+			ActiveMemberCount: &activeMemberCount, GoalCount: int(item.GoalCount), CompletedCount: int(item.CompletedCount),
+		})
 	}
-	return ctx.JSON(http.StatusOK, AnalyticsResponse{Data: AnalyticsData{Metric: result.Metric, Granularity: AnalyticsDataGranularity(result.Granularity), From: apiDate(result.From), To: apiDate(result.To), Buckets: buckets}, RequestId: requestID(ctx)})
+	return ctx.JSON(http.StatusOK, AnalyticsResponse{Data: AnalyticsData{
+		Metric: result.Metric, Granularity: AnalyticsDataGranularity(result.Granularity),
+		From: apiDate(result.From), To: apiDate(result.To), Buckets: buckets,
+		CurrentMemberCount: int(result.CurrentMemberCount), CurrentActiveMemberCount: int(result.CurrentActiveCount),
+		SnapshotCount: int(result.SnapshotCount),
+	}, RequestId: requestID(ctx)})
 }
 
 func (h *Handler) dailyUser(ctx echo.Context) (uuid.UUID, *auth.Session, error) {
@@ -1293,13 +1362,19 @@ func calendarDTO(value calendar.Event) CalendarEvent {
 	return CalendarEvent{Id: value.ID, OccurrenceId: calendar.EventOccurrenceID(value), Uid: value.UID, Sequence: value.Sequence, Title: value.Title, Description: value.Description, LocationOrLink: value.Location, Timezone: value.Timezone, AllDay: value.AllDay, StartAt: value.StartAt, EndAt: value.EndAt, RecurrenceFreq: CalendarEventRecurrenceFreq(value.RecurrenceFreq), RecurrenceInterval: value.RecurrenceInterval, RecurrenceWeekdays: weekdays, RecurrenceEndType: CalendarEventRecurrenceEndType(value.RecurrenceEndType), RecurrenceUntil: value.RecurrenceUntil, RecurrenceCount: value.RecurrenceCount, OriginalOccurrenceStart: value.OriginalOccurrenceStart, IsException: &isException, Attendees: attendees}
 }
 
+func calendarContactDTO(value calendar.Contact) CalendarContact {
+	return CalendarContact{Id: value.ID, Name: value.Name, Email: openapi_types.Email(value.Email), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+}
+
 func reviewDTO(value reviews.Review) Review {
 	var id *openapi_types.UUID
+	var createdAt, updatedAt *time.Time
 	if value.ID != uuid.Nil {
 		converted := openapi_types.UUID(value.ID)
 		id = &converted
+		createdAt, updatedAt = &value.CreatedAt, &value.UpdatedAt
 	}
-	return Review{Id: id, Type: ReviewType(value.Type), PeriodStart: apiDate(value.PeriodStart), Good: stringPointerValue(value.Good), Problems: stringPointerValue(value.Problems), Improvements: stringPointerValue(value.Improvements), NextFocus: stringPointerValue(value.NextFocus), Summary: value.Summary, Totals: ReviewPeriodTotals{WorklogActionCount: int(value.WorklogActionCount), TurnoverPv: float32(value.TurnoverPV), TurnoverNetAmount: formatFloatMoney(value.TurnoverNetAmount)}}
+	return Review{Id: id, Type: ReviewType(value.Type), PeriodStart: apiDate(value.PeriodStart), Good: stringPointerValue(value.Good), Problems: stringPointerValue(value.Problems), Improvements: stringPointerValue(value.Improvements), NextFocus: stringPointerValue(value.NextFocus), Summary: value.Summary, CreatedAt: createdAt, UpdatedAt: updatedAt, Totals: ReviewPeriodTotals{WorklogActionCount: int(value.WorklogActionCount), TurnoverPv: float32(value.TurnoverPV), TurnoverNetAmount: formatFloatMoney(value.TurnoverNetAmount)}}
 }
 
 func stringPointerValue(value *string) string {

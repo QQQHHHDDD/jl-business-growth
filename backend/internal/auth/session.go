@@ -106,7 +106,7 @@ func fromGeneratedAccount(value generated.Account) Account {
 // generated representation while preserving the password hash for auth use.
 func AccountFromGenerated(value generated.Account) Account { return fromGeneratedAccount(value) }
 
-func fromGeneratedSession(value generated.BrowserSession) Session {
+func fromGeneratedSession(value generated.GetBrowserSessionRow) Session {
 	session := Session{CSRFTokenHash: value.CsrfTokenHash}
 	session.ID, _ = fromPGUUID(value.ID)
 	session.CreatedAt, _ = fromPGTime(value.CreatedAt)
@@ -233,6 +233,15 @@ func LoadSession(ctx echo.Context, pool *pgxpool.Pool, cfg config.Config) (*Sess
 	account := fromGeneratedAccount(accountRow)
 	if account.Status != StatusActive {
 		return nil, nil, problem.New("ACCOUNT_DISABLED", http.StatusForbidden, "account is disabled")
+	}
+	// Backfill only legacy sessions whose active account relation is missing.
+	// This is deliberately best-effort: a session read must not fail because a
+	// compatibility write is temporarily unavailable.
+	if !sessionRow.ActiveAccountLinked {
+		_ = queries.AddBrowserSessionAccount(ctx.Request().Context(), generated.AddBrowserSessionAccountParams{
+			BrowserSessionID: toPGUUID(session.ID),
+			AccountID:        toPGUUID(account.ID),
+		})
 	}
 	_ = queries.TouchBrowserSession(ctx.Request().Context(), toPGUUID(session.ID))
 	ctx.Set(sessionContextKey, &session)
