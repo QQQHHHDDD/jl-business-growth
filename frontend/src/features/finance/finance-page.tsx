@@ -61,10 +61,13 @@ export function FinancePage({ authResponse }: { authResponse: AuthResponse }) {
     : tab === "snapshots"
       ? <Button onClick={() => setSnapshotOpen(true)}><Plus size={16} />新增快照</Button>
       : <Button onClick={() => setTransactionOpen(true)}><Plus size={16} />新增流水</Button>;
-  return <div className="space-y-6">
-    <PageHeader eyebrow="经营数据" title="财务" description="查看已记录的收支、预算和资金状态，需要时再新增或编辑记录。" action={primaryAction} />
+  return <div className="finance-page space-y-6">
+    <PageHeader eyebrow="经营数据" title="财务" description="查看已记录的收支、预算和资金状态，需要时再新增或编辑记录。" />
     {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
-    <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}><TabsList aria-label="财务视图"><TabsTrigger value="overview">总览</TabsTrigger><TabsTrigger value="transactions">流水</TabsTrigger><TabsTrigger value="budgets">预算</TabsTrigger><TabsTrigger value="snapshots">资金快照</TabsTrigger></TabsList></Tabs>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}><TabsList aria-label="财务视图"><TabsTrigger value="overview">总览</TabsTrigger><TabsTrigger value="transactions">流水</TabsTrigger><TabsTrigger value="budgets">预算</TabsTrigger><TabsTrigger value="snapshots">资金快照</TabsTrigger></TabsList></Tabs>
+      <div className="flex justify-end">{primaryAction}</div>
+    </div>
     {tab === "overview" && <Overview income={summary.income} expense={summary.expense} transactions={transactions} categories={categories} budget={currentBudget ? Number(currentBudget.amount) : null} budgetUsed={budgetUsed} />}
     {tab === "transactions" && <Transactions transactions={transactions} categories={categories} />}
     {tab === "budgets" && <Budgets budgets={budgetsQuery.data.data.items} currentBudget={currentBudget} used={summary.expense} budgetUsed={budgetUsed} />}

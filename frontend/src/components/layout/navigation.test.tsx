@@ -77,13 +77,15 @@ describe("AppShell navigation", () => {
       "false",
     );
     expect(screen.getByRole("link", { name: "财务" })).toHaveClass(
-      "bg-teal-50",
+      "bg-brand-50",
     );
     expect(screen.getAllByRole("button", { name: "全局搜索" })).toHaveLength(2);
   });
 
   it("keeps user groups independently expanded and supports desktop collapse", () => {
     renderShell("/app/worklog");
+    expect(screen.getByTestId("app-sidebar")).toHaveClass("overflow-hidden");
+    expect(screen.getByTestId("app-sidebar-content")).toHaveClass("w-[220px]");
     fireEvent.click(screen.getByRole("button", { name: "成长与复盘" }));
     expect(screen.getByRole("button", { name: "成长与复盘" })).toHaveAttribute(
       "aria-expanded",
@@ -98,6 +100,7 @@ describe("AppShell navigation", () => {
     expect(
       screen.getByRole("button", { name: "展开侧边栏" }),
     ).toBeInTheDocument();
+    expect(screen.getByTestId("app-sidebar-content")).toHaveClass("w-16");
     expect(localStorage.getItem("jl-business-growth:sidebar-collapsed")).toBe(
       "true",
     );
@@ -142,6 +145,43 @@ describe("AppShell navigation", () => {
     expect(within(menu).getByText("切换账号")).toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "退出登录" }));
     expect(onLogout).toHaveBeenCalledOnce();
+  });
+
+  it("marks administrator roles in the account switcher", () => {
+    const elevatedAuth = {
+      ...userAuth,
+      data: {
+        ...userAuth.data,
+        accounts: [
+          userAuth.data.accounts[0],
+          {
+            ...userAuth.data.accounts[0],
+            id: "00000000-0000-0000-0000-000000000002",
+            username: "admin",
+            role: "ADMIN",
+            active: false,
+          },
+          {
+            ...userAuth.data.accounts[0],
+            id: "00000000-0000-0000-0000-000000000003",
+            username: "superadmin",
+            role: "SUPER_ADMIN",
+            active: false,
+          },
+        ],
+      },
+    } as AuthResponse;
+    renderShell("/app", elevatedAuth);
+    fireEvent.click(screen.getByRole("button", { name: "账号菜单 owner" }));
+    const menu = screen.getByRole("menu", { name: "账号操作" });
+    expect(within(menu).getByText("普通管理员")).toBeInTheDocument();
+    expect(within(menu).getByText("超级管理员")).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("menuitem", { name: "切换到admin（普通管理员）" }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("menuitem", { name: "切换到superadmin（超级管理员）" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps administrator navigation independent from user business groups", () => {

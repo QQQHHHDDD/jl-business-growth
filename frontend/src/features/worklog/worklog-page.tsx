@@ -257,7 +257,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
       <section className="worklog-hero rounded-hero border border-brand-100/70 bg-gradient-to-br from-brand-50/90 via-sky-50/80 to-surface/95 shadow-float">
         <div className="relative overflow-hidden px-5 pt-5 sm:px-7 sm:pt-6">
           <PageHeader
-            className="relative z-10 border-0 pb-4 sm:items-start"
+            className="page-header-plain relative z-10 border-0 pb-4 sm:items-start"
             eyebrow="每日行动"
             title="今日工作量"
             description="记录今天实际完成的行动、学习和营业额，保存后会用于统计、复盘和目标进度。"
@@ -282,7 +282,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
             <path d="M459 70c12-14 24-18 37-17-4 13-14 23-37 25M443 61c-9-14-18-19-31-20 2 14 12 24 31 28" fill="rgb(84 195 166 / .7)" />
           </svg>
         </div>
-        <section aria-label="今日概览" className="worklog-summary mx-4 mb-4 grid grid-cols-3 gap-2 rounded-panel border border-white/80 bg-surface/70 p-2 shadow-hairline sm:mx-7 sm:mb-5 sm:gap-0 sm:p-1.5">
+        <section aria-label="今日概览" className="worklog-summary mx-4 mb-4 mt-4 grid grid-cols-3 gap-2 rounded-panel border border-white/80 bg-surface/70 p-2 shadow-hairline sm:mx-7 sm:mb-5 sm:mt-5 sm:gap-0 sm:p-1.5">
           <div className="worklog-summary-item worklog-summary-mint"><span className="worklog-summary-icon"><BriefcaseBusiness size={17} /></span><span><span className="worklog-summary-label">行动</span><strong>{actionCount}</strong></span></div>
           <div className="worklog-summary-item worklog-summary-blue"><span className="worklog-summary-icon"><BookOpen size={17} /></span><span><span className="worklog-summary-label">学习</span><strong>{learningMinutes}<small>分钟</small></strong></span></div>
           <div className="worklog-summary-item worklog-summary-teal"><span className="worklog-summary-icon"><BarChart3 size={17} /></span><span><span className="worklog-summary-label">净营业额</span><strong>{form.watch("turnover_net_amount").trim() ? `¥${Number.isFinite(netAmount) ? netAmount.toFixed(2) : "0.00"}` : `${pv || 0} PV`}</strong></span></div>

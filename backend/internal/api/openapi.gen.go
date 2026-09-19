@@ -2136,7 +2136,7 @@ type ServerInterface interface {
 	// Create an invitation code
 	// (POST /api/admin/invitation-codes)
 	PostAdminInvitationCode(ctx echo.Context) error
-	// Disable an invitation code
+	// Delete an invitation code
 	// (DELETE /api/admin/invitation-codes/{invitation_id})
 	DeleteAdminInvitationCode(ctx echo.Context, invitationId InvitationId) error
 	// Update invitation status or limits
@@ -2172,16 +2172,16 @@ type ServerInterface interface {
 	// Permanently delete the current account and its business data
 	// (DELETE /api/auth/account)
 	DeleteCurrentAccount(ctx echo.Context) error
-	// List normal accounts linked to this browser session
+	// List accounts linked to this browser session
 	// (GET /api/auth/accounts)
 	GetAuthAccounts(ctx echo.Context) error
-	// Authenticate and add another normal account to this browser session
+	// Authenticate and add another account to this browser session
 	// (POST /api/auth/accounts/add)
 	PostAuthAccountsAdd(ctx echo.Context) error
-	// Remove a linked normal account from this browser session
+	// Remove a linked account from this browser session
 	// (DELETE /api/auth/accounts/{account_id})
 	DeleteAuthAccount(ctx echo.Context, accountId AccountId) error
-	// Switch the active normal account without re-entering its password
+	// Switch the active account without re-entering its password
 	// (POST /api/auth/accounts/{account_id}/switch)
 	PostAuthAccountsSwitch(ctx echo.Context, accountId AccountId) error
 	// Change the active account password

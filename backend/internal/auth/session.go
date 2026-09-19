@@ -234,6 +234,14 @@ func LoadSession(ctx echo.Context, pool *pgxpool.Pool, cfg config.Config) (*Sess
 	if account.Status != StatusActive {
 		return nil, nil, problem.New("ACCOUNT_DISABLED", http.StatusForbidden, "account is disabled")
 	}
+	// Backfill the active account for sessions created before administrator
+	// accounts were supported by browser switching. The insert is idempotent.
+	if err := queries.AddBrowserSessionAccount(ctx.Request().Context(), generated.AddBrowserSessionAccountParams{
+		BrowserSessionID: toPGUUID(session.ID),
+		AccountID:        toPGUUID(account.ID),
+	}); err != nil {
+		return nil, nil, err
+	}
 	_ = queries.TouchBrowserSession(ctx.Request().Context(), toPGUUID(session.ID))
 	ctx.Set(sessionContextKey, &session)
 	ctx.Set(accountContextKey, &account)

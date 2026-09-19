@@ -16,14 +16,20 @@
   font-family: Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif;
   /* A cool, lightly tinted canvas keeps the application comfortable while
      giving every surface enough contrast to read as a deliberate layer. */
-  --color-canvas: 225 236 241;
-  --color-surface: 248 250 248;
-  --color-surface-soft: 239 247 247;
-  --color-surface-muted: 216 230 235;
+  --color-canvas: 215 231 238;
+  --color-surface: 252 253 252;
+  --color-surface-soft: 239 249 247;
+  --color-surface-muted: 208 227 233;
   --color-ink: 19 37 55;
   --color-ink-muted: 66 88 110;
   --color-ink-faint: 98 119 137;
-  --color-outline: 178 202 211;
+  --color-outline: 151 185 198;
+  --color-brand-50: 240 253 250;
+  --color-brand-100: 204 251 241;
+  --color-brand-200: 153 246 228;
+  --color-brand-300: 94 234 212;
+  --color-sky-50: 240 249 255;
+  --color-violet-50: 245 243 255;
   --radius-control: 0.75rem;
   --radius-card: 1rem;
   --radius-panel: 1.25rem;
@@ -32,6 +38,12 @@
   --motion-normal: 160ms;
   --motion-slow: 200ms;
   --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --shadow-hairline: 0 1px 2px rgb(15 23 42 / 0.04);
+  --shadow-card: 0 16px 34px -22px rgb(22 70 82 / 0.34), 0 2px 8px rgb(22 70 82 / 0.04);
+  --shadow-card-hover: 0 22px 42px -24px rgb(22 70 82 / 0.4), 0 5px 14px rgb(22 70 82 / 0.07);
+  --shadow-panel: 0 20px 48px -30px rgb(22 70 82 / 0.38), 0 2px 10px rgb(22 70 82 / 0.06);
+  --shadow-float: 0 26px 58px -32px rgb(22 70 82 / 0.42), 0 4px 16px rgb(22 70 82 / 0.06);
+  --shadow-overlay: 0 28px 72px -34px rgb(16 47 62 / 0.48), 0 6px 20px rgb(16 47 62 / 0.08);
   color: #0f172a;
   background: rgb(var(--color-canvas));
   font-synthesis: none;
@@ -54,12 +66,169 @@ body {
   overflow-x: hidden;
   background-color: rgb(var(--color-canvas));
   background-image:
-    radial-gradient(circle at 92% 0%, rgb(174 220 236 / 0.22), transparent 30rem),
-    radial-gradient(circle at 4% 18%, rgb(154 220 203 / 0.14), transparent 26rem);
+    radial-gradient(circle at 92% 0%, rgb(174 220 236 / 0.38), transparent 32rem),
+    radial-gradient(circle at 4% 18%, rgb(154 220 203 / 0.25), transparent 28rem),
+    linear-gradient(180deg, rgb(226 241 245 / 0.6), transparent 34rem);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Keep the persistent navigation readable against the cool application
+   canvas even when a page background or a stale utility rule is translucent. */
+[data-testid="app-sidebar"] {
+  background: linear-gradient(180deg, rgb(252 253 252 / 0.98), rgb(239 249 247 / 0.94)) !important;
+  border-right-color: rgb(var(--color-outline) / 0.86) !important;
+  box-shadow: 12px 0 32px -26px rgb(15 66 74 / 0.48);
+}
+
+[data-testid="app-topbar"] {
+  background-color: rgb(var(--color-surface) / 0.94) !important;
+  border-bottom-color: rgb(var(--color-outline) / 0.72) !important;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.72), 0 8px 22px -22px rgb(22 70 82 / 0.38);
+}
+
+[data-testid="app-sidebar"] nav a,
+[data-testid="app-sidebar"] nav > button {
+  border: 1px solid transparent;
+}
+
+[data-testid="app-sidebar"] nav a:hover,
+[data-testid="app-sidebar"] nav > button:hover {
+  border-color: rgb(var(--color-outline) / 0.34);
+  background-color: rgb(var(--color-surface) / 0.72);
+}
+
+[data-testid="app-sidebar"] > div:first-child {
+  background: linear-gradient(135deg, rgb(245 253 251 / 0.96), rgb(232 247 245 / 0.75));
+}
+
+nav[aria-label="快捷导航"] {
+  border-top-color: rgb(var(--color-outline) / 0.8) !important;
+  box-shadow: 0 -14px 34px -28px rgb(15 66 74 / 0.45) !important;
+}
+
+[data-testid="page-container"] {
+  isolation: isolate;
+  position: relative;
+}
+
+[data-testid="page-container"]::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0 1rem auto;
+  height: 18rem;
+  border-radius: 3rem;
+  background: radial-gradient(circle at 85% 5%, rgb(190 236 229 / 0.28), transparent 55%), radial-gradient(circle at 8% 20%, rgb(191 219 254 / 0.22), transparent 48%);
+  content: "";
+  pointer-events: none;
+}
+
+.page-header-plain {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.page-header-plain .page-header-wash,
+.page-header-plain .page-header-rule {
+  display: none;
+}
+
+.page-header:not(.page-header-plain) {
+  min-height: 8.75rem;
+}
+
+.ui-panel {
+  position: relative;
+  isolation: isolate;
+}
+
+.ui-panel::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.7), transparent 42%);
+  content: "";
+  pointer-events: none;
+}
+
+.ui-panel > header {
+  background: linear-gradient(90deg, rgb(var(--color-surface) / 0.8), rgb(237 248 247 / 0.52));
+  border-bottom-color: rgb(var(--color-outline) / 0.52) !important;
+}
+
+/* Homepage visual contract: a clear focal hero, two working surfaces, then
+   a compact data band and a quiet summary close. The DOM and data order stay
+   unchanged, but each layer now has a distinct material role. */
+.home-hero {
+  border-color: rgb(125 205 193 / 0.58);
+  background:
+    radial-gradient(circle at 18% 0%, rgb(255 255 255 / 0.72), transparent 34%),
+    linear-gradient(115deg, rgb(213 248 239 / 0.96), rgb(224 241 251 / 0.92) 58%, rgb(255 247 219 / 0.88));
+  box-shadow: 0 24px 54px -30px rgb(24 112 109 / 0.42), 0 1px 0 rgb(255 255 255 / 0.8) inset;
+}
+
+.home-plan-panel,
+.home-goal-panel {
+  box-shadow: 0 20px 42px -28px rgb(24 112 109 / 0.28), 0 1px 0 rgb(255 255 255 / 0.7) inset;
+}
+
+.home-plan-panel > header,
+.home-goal-panel > header {
+  min-height: 5.35rem;
+}
+
+.home-plan-panel > div,
+.home-goal-panel > div {
+  min-height: 17rem;
+}
+
+.home-progress-panel {
+  border-color: rgb(111 203 185 / 0.56);
+  background:
+    radial-gradient(circle at 95% 0%, rgb(255 255 255 / 0.62), transparent 28%),
+    linear-gradient(135deg, rgb(239 253 248 / 0.95), rgb(226 244 250 / 0.9));
+}
+
+.home-progress-panel .group {
+  border-color: rgb(135 210 200 / 0.5);
+  box-shadow: 0 10px 22px -20px rgb(24 112 109 / 0.6);
+}
+
+.home-summary-panel {
+  border-color: rgb(139 206 195 / 0.54);
+  background:
+    linear-gradient(120deg, rgb(244 253 250 / 0.95), rgb(234 246 252 / 0.92) 62%, rgb(255 249 229 / 0.86));
+}
+
+.home-summary-panel .group {
+  min-height: 5.5rem;
+  align-items: center;
+  border-color: rgb(var(--color-outline) / 0.44);
+  background: rgb(255 255 255 / 0.66);
+  box-shadow: 0 12px 26px -24px rgb(24 112 109 / 0.56);
+}
+
+@media (max-width: 640px) {
+  .home-hero {
+    min-height: 14rem;
+  }
+
+  .home-plan-panel > div,
+  .home-goal-panel > div {
+    min-height: 15rem;
+  }
+}
+
+.team-graph-panel {
+  background-color: rgb(var(--color-surface)) !important;
+  border-color: rgb(var(--color-outline) / 0.75) !important;
+  box-shadow: var(--shadow-panel);
 }
 
 /*
@@ -632,9 +801,70 @@ main table:not(.fc-scrollgrid) tbody tr:hover {
   box-shadow: 0 16px 34px -28px rgb(15 23 42 / 0.42);
 }
 
+main article.rounded-lg,
+main section.rounded-lg,
+main div.rounded-lg.border,
+main div.rounded-md.border {
+  border-color: rgb(var(--color-outline) / 0.64);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+main article.rounded-lg.bg-white,
+main section.rounded-lg.bg-white,
+main div.rounded-lg.border.bg-white,
+main div.rounded-md.border.bg-white {
+  background-color: rgb(var(--color-surface)) !important;
+}
+
+main label.rounded-md.border,
+main label.rounded-lg.border {
+  border-color: rgb(var(--color-outline) / 0.62);
+  border-radius: var(--radius-control);
+  background-color: rgb(var(--color-surface-soft) / 0.74);
+  transition: border-color var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+main label.rounded-md.border:hover,
+main label.rounded-lg.border:hover {
+  border-color: rgb(20 124 116 / 0.48);
+  background-color: rgb(232 249 245 / 0.86);
+  box-shadow: var(--shadow-hairline);
+}
+
+main .divide-y.divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+main .divide-y.divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(var(--color-outline) / 0.38) !important;
+}
+
+main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+main select,
+main textarea {
+  border-color: rgb(var(--color-outline) / 0.78);
+  background-color: rgb(var(--color-surface));
+  box-shadow: var(--shadow-hairline);
+}
+
+main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):hover,
+main select:hover,
+main textarea:hover {
+  border-color: rgb(var(--color-outline) / 0.96);
+}
+
 .team-graph,
 .react-flow {
   background-color: rgb(236 253 245 / 0.22) !important;
+}
+
+/* The team graph owns its canvas surface; keep React Flow transparent so the
+   semantic canvas token remains visible instead of being masked by the
+   legacy global tint above. */
+.team-graph {
+  background-color: #f1fbfa !important;
+}
+
+.team-graph .react-flow {
+  background-color: transparent !important;
 }
 
 .react-flow__background pattern circle {
@@ -690,10 +920,16 @@ main table:not(.fc-scrollgrid) tbody tr:hover {
     0 2px 8px rgb(25 55 70 / 0.04);
 }
 
+/* The calendar is a working grid, so its outer frame should meet the page
+   with square corners instead of inheriting the rounded panel language. */
+.calendar-workspace .calendar-overview {
+  border-radius: 0;
+}
+
 .calendar-workspace .calendar-grid .fc-scrollgrid {
   overflow: hidden;
   border: 1px solid rgb(var(--color-outline) / 0.82);
-  border-radius: var(--radius-card);
+  border-radius: 0;
   background: rgb(var(--color-surface));
   box-shadow: 0 14px 34px -30px rgb(25 55 70 / 0.42);
 }
@@ -824,4 +1060,278 @@ main table:not(.fc-scrollgrid) tbody tr:hover {
   box-shadow:
     0 28px 72px -34px rgb(16 47 62 / 0.48),
     0 6px 20px rgb(16 47 62 / 0.08);
+}
+
+/* Page-level visual contracts: each workspace gets a distinct rhythm while
+   sharing the same semantic surfaces, radius scale, and interaction states. */
+.finance-page > .ui-panel,
+.income-page > .ui-panel,
+.knowledge-page > .ui-panel,
+.reviews-page > .ui-panel,
+.data-page > .ui-panel,
+.settings-page > .ui-panel {
+  border-color: rgb(var(--color-outline) / 0.7);
+  box-shadow: var(--shadow-panel);
+}
+
+.finance-page > .ui-panel:nth-of-type(1),
+.income-page > .ui-panel:nth-of-type(1),
+.knowledge-page > .ui-panel:nth-of-type(1),
+.data-page > .ui-panel:nth-of-type(1) {
+  background: linear-gradient(135deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-surface-soft) / 0.88));
+}
+
+.finance-page details {
+  border-color: rgb(var(--color-outline) / 0.72);
+  background: linear-gradient(135deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-surface-soft) / 0.82));
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.finance-page details > summary {
+  border-radius: var(--radius-panel);
+}
+
+.finance-page table,
+.knowledge-page table,
+.reviews-page table,
+.data-page table,
+.settings-page table {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-outline) / 0.55);
+  border-radius: var(--radius-card);
+  background: rgb(var(--color-surface) / 0.86);
+}
+
+.finance-page thead,
+.knowledge-page thead,
+.reviews-page thead,
+.data-page thead,
+.settings-page thead {
+  background: linear-gradient(90deg, rgb(var(--color-brand-50) / 0.8), rgb(var(--color-sky-50) / 0.58));
+}
+
+.finance-page tbody tr:hover,
+.knowledge-page tbody tr:hover,
+.reviews-page tbody tr:hover,
+.data-page tbody tr:hover,
+.settings-page tbody tr:hover {
+  background: rgb(var(--color-brand-50) / 0.45);
+}
+
+.income-page > .ui-panel,
+.income-page section {
+  border-radius: var(--radius-panel);
+}
+
+.income-page .ui-panel {
+  box-shadow: var(--shadow-panel);
+}
+
+.income-page [data-testid="income-results"] .ui-panel {
+  background: linear-gradient(145deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-violet-50) / 0.28));
+}
+
+.knowledge-page article {
+  border-color: rgb(var(--color-outline) / 0.7) !important;
+  border-radius: var(--radius-card) !important;
+  background: linear-gradient(145deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-brand-50) / 0.2)) !important;
+  box-shadow: var(--shadow-card);
+}
+
+.knowledge-page article:hover {
+  border-color: rgb(var(--color-brand-300) / 0.8) !important;
+  box-shadow: var(--shadow-card-hover);
+}
+
+.reviews-page .ui-panel {
+  background: linear-gradient(145deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-violet-50) / 0.2));
+}
+
+.data-page ol li {
+  border-radius: var(--radius-card);
+  background-image: linear-gradient(135deg, rgb(var(--color-surface) / 0.96), rgb(var(--color-sky-50) / 0.25));
+}
+
+.data-page label[class*="border-dashed"] {
+  border-radius: var(--radius-card);
+  border-color: rgb(var(--color-brand-300) / 0.68);
+  background: linear-gradient(145deg, rgb(var(--color-brand-50) / 0.44), rgb(var(--color-sky-50) / 0.4));
+}
+
+.settings-page section[class*="border-rose"] {
+  border-radius: var(--radius-panel);
+  box-shadow: 0 14px 32px -26px rgb(190 62 74 / 0.34);
+}
+
+.settings-page .ui-panel,
+.search-page .ui-panel {
+  background: linear-gradient(145deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-sky-50) / 0.2));
+}
+
+.search-page .ui-panel:first-of-type {
+  border-color: rgb(var(--color-brand-200) / 0.7);
+  box-shadow: var(--shadow-panel);
+}
+
+.search-page .search-scope,
+.search-page .search-history-chip,
+.search-page .search-result-group a {
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.search-page .search-scope-active {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.72), var(--shadow-hairline);
+}
+
+.search-page .search-result-group {
+  box-shadow: 0 14px 30px -26px rgb(22 70 82 / 0.36);
+}
+
+/* Admin pages intentionally stay quieter than the user workspaces, while
+   keeping the same surface hierarchy and control language. */
+main:has(.admin-tabs) > [data-testid="page-container"],
+.admin-page {
+  color: rgb(var(--color-ink));
+}
+
+main:has(.admin-tabs) .page-header,
+.admin-page .page-header {
+  border-color: rgb(var(--color-outline) / 0.68);
+  background: linear-gradient(145deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-brand-50) / 0.3));
+  box-shadow: var(--shadow-panel);
+}
+
+main:has(.admin-tabs) .ui-panel,
+.admin-page .ui-panel {
+  border-color: rgb(var(--color-outline) / 0.7);
+  background: linear-gradient(145deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-sky-50) / 0.16));
+  box-shadow: var(--shadow-panel);
+}
+
+main:has(.admin-tabs) div.rounded-md.border,
+.admin-page div.rounded-md.border {
+  border-color: rgb(var(--color-outline) / 0.66);
+  border-radius: var(--radius-card);
+  background: linear-gradient(145deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-brand-50) / 0.18));
+}
+
+/* Authentication is a first-class product surface rather than a detached
+   white form. The layout and fields stay unchanged, only their material role
+   is clarified. */
+.auth-page {
+  background-image:
+    radial-gradient(circle at 8% 18%, rgb(153 225 207 / 0.32), transparent 28rem),
+    radial-gradient(circle at 92% 5%, rgb(170 214 235 / 0.35), transparent 30rem),
+    linear-gradient(180deg, rgb(227 242 246 / 0.72), transparent 32rem);
+}
+
+.auth-story {
+  box-shadow: var(--shadow-float);
+}
+
+.auth-story::after {
+  position: absolute;
+  right: 1.75rem;
+  bottom: 1.6rem;
+  width: 5.5rem;
+  height: 3rem;
+  border: 2px solid rgb(76 169 155 / 0.26);
+  border-top-color: transparent;
+  border-left-color: transparent;
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+  transform: rotate(-10deg);
+}
+
+.auth-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgb(207 236 231 / 0.48), transparent 12rem),
+    rgb(var(--color-surface) / 0.98) !important;
+  box-shadow: var(--shadow-overlay);
+}
+
+.placeholder-page > [class*="min-h"] {
+  background: linear-gradient(145deg, rgb(var(--color-surface) / 0.96), rgb(var(--color-brand-50) / 0.45));
+  box-shadow: var(--shadow-panel);
+}
+
+.goals-page > header,
+.team-page > section:first-of-type,
+.analytics-page > section:first-of-type,
+.worklog-page > .worklog-hero {
+  box-shadow: var(--shadow-float);
+}
+
+.goals-page > .ui-panel,
+.team-page > .ui-panel,
+.analytics-page > .ui-panel,
+.worklog-page > .ui-panel {
+  border-color: rgb(var(--color-outline) / 0.68);
+  box-shadow: var(--shadow-panel);
+}
+
+.goals-page .goal-map,
+.team-page .team-graph-panel > div {
+  border-color: rgb(var(--color-brand-200) / 0.72);
+  background-color: rgb(var(--color-surface-soft) / 0.92);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65), var(--shadow-card);
+}
+
+.analytics-page > [data-testid="analytics-range-toolbar"] {
+  background: linear-gradient(135deg, rgb(var(--color-surface) / 0.96), rgb(var(--color-sky-50) / 0.38));
+  border-color: rgb(var(--color-outline) / 0.66);
+  box-shadow: var(--shadow-card);
+}
+
+.worklog-page .worklog-form-panel,
+.worklog-page .worklog-history-panel {
+  background: linear-gradient(145deg, rgb(var(--color-surface) / 0.96), rgb(var(--color-sky-50) / 0.25));
+}
+
+.worklog-page .worklog-count-card {
+  border-color: rgb(var(--color-outline) / 0.7);
+  box-shadow: var(--shadow-card);
+}
+
+@keyframes toast-drop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -1.25rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.animate-toast-drop-in {
+  animation: toast-drop-in 220ms var(--motion-ease) both;
+}
+
+@media (max-width: 640px) {
+  .finance-page > .ui-panel,
+  .income-page > .ui-panel,
+  .knowledge-page > .ui-panel,
+  .reviews-page > .ui-panel,
+  .data-page > .ui-panel,
+  .settings-page > .ui-panel {
+    border-radius: var(--radius-card);
+  }
+
+  .auth-page main {
+    align-content: center;
+  }
+
+  .auth-story {
+    display: none;
+  }
 }

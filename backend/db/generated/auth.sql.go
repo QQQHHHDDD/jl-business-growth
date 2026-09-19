@@ -347,7 +347,7 @@ SELECT a.id, a.username, a.password_hash, a.role, a.status, a.timezone, a.create
 FROM browser_session_accounts bsa
 JOIN accounts a ON a.id = bsa.account_id
 JOIN browser_sessions bs ON bs.id = bsa.browser_session_id
-WHERE bsa.browser_session_id = $1 AND a.role = 'USER'
+WHERE bsa.browser_session_id = $1
 ORDER BY bsa.authenticated_at ASC
 `
 
@@ -473,7 +473,7 @@ WHERE bs.id = $1
   AND EXISTS (
       SELECT 1 FROM browser_session_accounts bsa
       JOIN accounts a ON a.id = bsa.account_id
-      WHERE bsa.browser_session_id = $1 AND bsa.account_id = $2 AND a.role = 'USER' AND a.status = 'ACTIVE'
+      WHERE bsa.browser_session_id = $1 AND bsa.account_id = $2 AND a.status = 'ACTIVE'
   )
 RETURNING bs.id, bs.token_hash, bs.active_account_id, bs.csrf_token_hash, bs.created_at, bs.last_seen_at, bs.expires_at
 `

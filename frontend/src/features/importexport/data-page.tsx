@@ -46,7 +46,7 @@ export function DataPage({ authResponse }: { authResponse: AuthResponse }) {
     applyType(value);
   };
 
-  return <div className="space-y-6">
+  return <div className="data-page space-y-6">
     <PageHeader eyebrow="数据治理" title="导入 / 导出" description="使用官方模板迁移结构化数据。上传和校验不会修改现有数据，只有最后确认后才会正式写入。" />
     {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
     <ol className="grid gap-2 sm:grid-cols-5" aria-label="导入步骤">{steps.map((label, index) => { const number = index + 1; const active = number === step; const complete = number < step; return <li key={label} aria-current={active ? "step" : undefined} className={`flex items-center gap-3 rounded-card border px-3 py-3 text-sm shadow-hairline ${active ? "border-brand-300 bg-brand-50 text-brand-900" : complete ? "border-brand-200 bg-surface text-brand-700" : "border-outline bg-surface text-ink-faint"}`}><span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${active ? "bg-brand-700 text-white" : complete ? "bg-brand-100 text-brand-800" : "bg-surface-muted"}`}>{complete ? <Check size={14} /> : number}</span><span className="font-semibold">{label}</span></li>; })}</ol>

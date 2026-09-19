@@ -283,7 +283,7 @@ export function updateInvitation(
   );
 }
 
-export function disableInvitation(csrfToken: string, invitationId: string): Promise<void> {
+export function deleteInvitation(csrfToken: string, invitationId: string): Promise<void> {
   return request<void>(
     `/api/admin/invitation-codes/${encodeURIComponent(invitationId)}`,
     withCsrf(csrfToken, undefined, "DELETE"),

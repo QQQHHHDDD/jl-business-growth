@@ -22,10 +22,10 @@ export function SheetContent({
 }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px]" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-slate-950/42 backdrop-blur-[3px]" />
       <DialogPrimitive.Content
         className={cn(
-          "fixed inset-0 z-50 flex min-w-0 flex-col overflow-hidden bg-[rgb(var(--color-surface))] shadow-overlay focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[min(92vw,560px)] sm:border-l sm:border-outline",
+          "fixed inset-0 z-50 flex min-w-0 flex-col overflow-hidden border-outline/90 bg-[rgb(var(--color-surface))] shadow-overlay focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[min(92vw,560px)] sm:border-l sm:border-outline",
           className,
         )}
       >

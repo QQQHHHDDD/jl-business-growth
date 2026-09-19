@@ -94,7 +94,7 @@ describe("CalendarPage", () => {
     expect(calendar).toHaveAttribute("data-timezone", "Asia/Shanghai");
     expect(calendar).toHaveAttribute("data-editable", "true");
     expect(calendar).toHaveAttribute("data-resizable", "true");
-    expect(screen.getAllByText(/09:00–10:00/)[0]).toBeVisible();
+    expect(screen.getAllByText(/09:00 至 10:00/)[0]).toBeVisible();
     fireEvent.mouseEnter(screen.getAllByLabelText(/每周经营复盘；/)[0]);
     expect(await screen.findByRole("tooltip")).toHaveTextContent("会议室");
     expect(screen.queryByText("Asia/Shanghai")).not.toBeInTheDocument();

@@ -152,6 +152,41 @@ func TestAuthenticationAdminAPIIntegration(t *testing.T) {
 	}
 	postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/accounts/"+userOneAuth.Data.Account.Id.String()+"/switch", nil, linkedAccounts.Data.CsrfToken, http.StatusOK)
 	deleteTestJSON(t, userOneClient, server.URL, "/api/auth/accounts/"+userTwoAuth.Data.Account.Id.String(), linkedAccounts.Data.CsrfToken, http.StatusNoContent)
+	deleteTestJSON(t, userOneClient, server.URL, "/api/auth/accounts/"+userTwoAuth.Data.Account.Id.String(), linkedAccounts.Data.CsrfToken, http.StatusNoContent)
+
+	adminLinkedResponse := postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/accounts/add", map[string]string{
+		"username": "test-admin",
+		"password": "test-admin-password",
+	}, linkedAccounts.Data.CsrfToken, http.StatusOK)
+	var adminLinkedAccounts api.AccountsResponse
+	decodeTestJSON(t, adminLinkedResponse, &adminLinkedAccounts)
+	if len(adminLinkedAccounts.Data.Accounts) != 2 || adminLinkedAccounts.Data.Accounts[1].Role != api.SessionAccountRoleADMIN {
+		t.Fatalf("linked administrator response = %+v, want user and administrator accounts", adminLinkedAccounts.Data)
+	}
+
+	superAdminLinkedResponse := postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/accounts/add", map[string]string{
+		"username": applicationConfig.SuperadminUsername,
+		"password": applicationConfig.SuperadminPassword,
+	}, adminLinkedAccounts.Data.CsrfToken, http.StatusOK)
+	var elevatedLinkedAccounts api.AccountsResponse
+	decodeTestJSON(t, superAdminLinkedResponse, &elevatedLinkedAccounts)
+	if len(elevatedLinkedAccounts.Data.Accounts) != 3 || elevatedLinkedAccounts.Data.Accounts[2].Role != api.SessionAccountRoleSUPERADMIN {
+		t.Fatalf("linked super administrator response = %+v, want all account roles", elevatedLinkedAccounts.Data)
+	}
+
+	adminSwitchResponse := postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/accounts/"+ordinaryAdmin.Data.Id.String()+"/switch", nil, elevatedLinkedAccounts.Data.CsrfToken, http.StatusOK)
+	var adminSwitchAuth api.AuthResponse
+	decodeTestJSON(t, adminSwitchResponse, &adminSwitchAuth)
+	if adminSwitchAuth.Data.Account.Role != api.AccountRoleADMIN {
+		t.Fatalf("administrator switch role = %s, want ADMIN", adminSwitchAuth.Data.Account.Role)
+	}
+	superAdminSwitchResponse := postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/accounts/"+superAdminAuth.Data.Account.Id.String()+"/switch", nil, adminSwitchAuth.Data.CsrfToken, http.StatusOK)
+	var superAdminSwitchAuth api.AuthResponse
+	decodeTestJSON(t, superAdminSwitchResponse, &superAdminSwitchAuth)
+	if superAdminSwitchAuth.Data.Account.Role != api.AccountRoleSUPERADMIN {
+		t.Fatalf("super administrator switch role = %s, want SUPER_ADMIN", superAdminSwitchAuth.Data.Account.Role)
+	}
+	postTestJSON(t, userOneClient, server.URL, applicationConfig.PublicBaseURL, "/api/auth/accounts/"+userOneAuth.Data.Account.Id.String()+"/switch", nil, superAdminSwitchAuth.Data.CsrfToken, http.StatusOK)
 
 	getTestJSON(t, superAdminClient, server.URL, "/api/admin/admins", http.StatusOK)
 	ordinaryAdminClient := newTestClient(t)
@@ -176,14 +211,22 @@ func TestAuthenticationAdminAPIIntegration(t *testing.T) {
 		"password":        "expired-invite-password",
 		"invitation_code": expiredInvitation.Data.Code,
 	}, "", http.StatusBadRequest)
-	disabledInvitationResponse := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", map[string]string{"code": "DISABLED-INVITE"}, ordinaryAdminAuth.Data.CsrfToken, http.StatusCreated)
-	var disabledInvitation api.InvitationResponse
-	decodeTestJSON(t, disabledInvitationResponse, &disabledInvitation)
-	deleteTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/invitation-codes/"+disabledInvitation.Data.Id.String(), ordinaryAdminAuth.Data.CsrfToken, http.StatusNoContent)
+	deletedInvitationResponse := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", map[string]string{"code": "DELETED-INVITE"}, ordinaryAdminAuth.Data.CsrfToken, http.StatusCreated)
+	var deletedInvitation api.InvitationResponse
+	decodeTestJSON(t, deletedInvitationResponse, &deletedInvitation)
+	deleteTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/invitation-codes/"+deletedInvitation.Data.Id.String(), ordinaryAdminAuth.Data.CsrfToken, http.StatusNoContent)
+	invitationListResponse := getTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/invitation-codes", http.StatusOK)
+	var remainingInvitations api.InvitationListResponse
+	decodeTestJSON(t, invitationListResponse, &remainingInvitations)
+	for _, item := range remainingInvitations.Data.Items {
+		if item.Id == deletedInvitation.Data.Id {
+			t.Fatalf("deleted invitation %q is still listed", deletedInvitation.Data.Code)
+		}
+	}
 	postTestJSON(t, newTestClient(t), server.URL, applicationConfig.PublicBaseURL, "/api/auth/register", map[string]string{
 		"username":        "disabled-invite-user",
 		"password":        "disabled-invite-password",
-		"invitation_code": disabledInvitation.Data.Code,
+		"invitation_code": deletedInvitation.Data.Code,
 	}, "", http.StatusBadRequest)
 	postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/admins/"+ordinaryAdmin.Data.Id.String()+"/reset-password", map[string]string{"temporary_password": "admin-reset-password"}, "", http.StatusForbidden)
 	postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/admins/"+ordinaryAdmin.Data.Id.String()+"/reset-password", map[string]string{"temporary_password": "admin-reset-password"}, superAdminAuth.Data.CsrfToken, http.StatusOK)

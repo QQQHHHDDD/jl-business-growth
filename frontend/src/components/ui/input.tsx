@@ -21,7 +21,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ i
           id={inputId}
           type={type}
           inputMode={inputMode ?? (type === "number" ? "decimal" : undefined)}
-          className={cn("min-h-10 w-full rounded-control border border-outline bg-surface px-3 py-2 text-sm text-ink outline-none transition-[border-color,box-shadow] duration-[var(--motion-normal)] placeholder:text-ink-faint focus:border-brand-600 focus:ring-2 focus:ring-brand-100 disabled:bg-surface-muted", icon && "pl-10", error && "border-rose-400 focus:border-rose-600 focus:ring-rose-100", className)}
+          className={cn("min-h-10 w-full rounded-control border border-outline/90 bg-surface px-3 py-2 text-sm text-ink shadow-hairline outline-none transition-[border-color,box-shadow,background-color] duration-[var(--motion-normal)] placeholder:text-ink-faint focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:bg-surface-muted", icon && "pl-10", error && "border-rose-400 focus:border-rose-600 focus:ring-rose-100", className)}
           aria-invalid={Boolean(error)}
           aria-describedby={description || error ? `${inputId}-hint` : undefined}
           {...props}

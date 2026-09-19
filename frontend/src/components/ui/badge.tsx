@@ -12,5 +12,5 @@ const tones: Record<BadgeTone, string> = {
 };
 
 export function StatusBadge({ tone = "neutral", className, ...props }: HTMLAttributes<HTMLSpanElement> & { tone?: BadgeTone }) {
-  return <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold leading-4", tones[tone], className)} {...props} />;
+  return <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold leading-4 shadow-hairline", tones[tone], className)} {...props} />;
 }

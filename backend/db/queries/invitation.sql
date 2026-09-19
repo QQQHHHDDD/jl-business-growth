@@ -24,8 +24,8 @@ SET status = COALESCE(sqlc.narg('status'), status),
 WHERE id = sqlc.arg('id')
 RETURNING id, code, status, max_uses, used_count, expires_at, created_by, created_at;
 
--- name: DisableInvitation :one
-UPDATE invitation_codes SET status = 'DISABLED' WHERE id = $1
+-- name: DeleteInvitation :one
+DELETE FROM invitation_codes WHERE id = $1
 RETURNING id;
 
 -- name: ConsumeInvitation :one

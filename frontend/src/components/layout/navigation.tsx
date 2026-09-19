@@ -190,7 +190,7 @@ function NavItem({
               ? "mx-auto h-10 w-10 justify-center"
               : "gap-3 px-3 py-2.5",
           active
-            ? "bg-teal-50 text-brand-800 shadow-hairline ring-1 ring-inset ring-brand-100"
+            ? "bg-brand-50 text-brand-800 shadow-hairline ring-1 ring-inset ring-brand-100"
             : "text-ink-muted hover:bg-surface-muted hover:text-ink",
         )
       }
@@ -225,7 +225,6 @@ function SidebarGroup({
         className={cn(
           "flex min-h-10 w-full items-center gap-3 rounded-control px-3 text-sm font-semibold transition-[background-color,color] duration-[var(--motion-fast)]",
           current ? "text-brand-800" : "text-ink-muted hover:bg-surface-muted hover:text-ink",
-          expanded && "bg-surface-muted",
         )}
         aria-expanded={expanded}
         aria-controls={`nav-group-${group.id}`}
@@ -282,13 +281,10 @@ function UserNavigation({
 }
 
 function CollapsedUserNavigation({
-  pathname,
   onOpenGroup,
 }: {
-  pathname: string;
   onOpenGroup: (groupId: string) => void;
 }) {
-  const activeGroup = currentUserGroup(pathname)?.id;
   return (
     <nav className="space-y-2 px-2" aria-label="用户导航">
       <NavItem item={homeItem} collapsed />
@@ -302,9 +298,7 @@ function CollapsedUserNavigation({
             aria-label={group.label}
             className={cn(
               "mx-auto grid h-10 w-10 place-items-center rounded-control transition-[background-color,color,box-shadow] duration-[var(--motion-fast)]",
-              activeGroup === group.id
-                ? "bg-teal-50 text-brand-800 shadow-hairline ring-1 ring-inset ring-brand-100"
-                : "text-ink-muted hover:bg-surface-muted hover:text-ink",
+              "text-ink-muted hover:bg-surface-muted hover:text-ink",
             )}
             onClick={() => onOpenGroup(group.id)}
           >
@@ -507,64 +501,71 @@ export function AppShell({
       <aside
         data-testid="app-sidebar"
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-outline bg-surface shadow-hairline transition-[width] duration-[var(--motion-slow)] lg:flex",
+          "fixed inset-y-0 left-0 z-30 hidden overflow-hidden border-r border-outline bg-surface shadow-hairline transition-[width] duration-[var(--motion-slow)] lg:block",
           collapsed ? "w-16" : "w-[220px]",
         )}
       >
         <div
+          data-testid="app-sidebar-content"
           className={cn(
-            "flex h-16 items-center border-b border-outline",
-            collapsed ? "justify-center px-2" : "px-4",
+            "flex h-full shrink-0 flex-col",
+            collapsed ? "w-16" : "w-[220px]",
           )}
         >
-          <Brand compact={collapsed} />
-        </div>
-        <div
-          className={cn(
-            "flex-1 overflow-y-auto py-4",
-            collapsed ? "px-0" : "px-3",
-          )}
-        >
-          {admin ? (
-            <AdminNavigation items={adminNavigation} collapsed={collapsed} />
-          ) : collapsed ? (
-            <CollapsedUserNavigation
-              pathname={location.pathname}
-              onOpenGroup={(groupId) => {
-                setExpandedGroups((groups) => groups.includes(groupId) ? groups : [...groups, groupId]);
-                setCollapsed(false);
-              }}
-            />
-          ) : (
-            <UserNavigation
-              pathname={location.pathname}
-              expandedGroups={expandedGroups}
-              onExpandedGroupsChange={setExpandedGroups}
-              onPrefetchRoute={onPrefetchRoute}
-            />
-          )}
-        </div>
-        {!collapsed && !admin && <SidebarBrandNote />}
-        <div className="border-t border-outline p-2">
-          <button
-            type="button"
+          <div
             className={cn(
-              "flex min-h-10 w-full items-center rounded-control text-sm font-semibold text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink",
-              collapsed ? "justify-center" : "gap-3 px-3",
+              "flex h-16 items-center border-b border-outline",
+              collapsed ? "justify-center px-2" : "px-4",
             )}
-            aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
-            title={collapsed ? "展开侧边栏" : undefined}
-            onClick={toggleCollapsed}
           >
-            {collapsed ? (
-              <PanelLeftOpen size={18} />
-            ) : (
-              <>
-                <ChevronLeft size={18} />
-                <span>收起侧边栏</span>
-              </>
+            <Brand compact={collapsed} />
+          </div>
+          <div
+            className={cn(
+              "flex-1 overflow-y-auto py-4",
+              collapsed ? "px-0" : "px-3",
             )}
-          </button>
+          >
+            {admin ? (
+              <AdminNavigation items={adminNavigation} collapsed={collapsed} />
+            ) : collapsed ? (
+              <CollapsedUserNavigation
+                onOpenGroup={(groupId) => {
+                  setExpandedGroups((groups) => groups.includes(groupId) ? groups : [...groups, groupId]);
+                  setCollapsed(false);
+                }}
+              />
+            ) : (
+              <UserNavigation
+                pathname={location.pathname}
+                expandedGroups={expandedGroups}
+                onExpandedGroupsChange={setExpandedGroups}
+                onPrefetchRoute={onPrefetchRoute}
+              />
+            )}
+          </div>
+          {!collapsed && !admin && <SidebarBrandNote />}
+          <div className="border-t border-outline p-2">
+            <button
+              type="button"
+              className={cn(
+                "flex min-h-10 w-full items-center rounded-control text-sm font-semibold text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink",
+                collapsed ? "justify-center" : "gap-3 px-3",
+              )}
+              aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
+              title={collapsed ? "展开侧边栏" : undefined}
+              onClick={toggleCollapsed}
+            >
+              {collapsed ? (
+                <PanelLeftOpen size={18} />
+              ) : (
+                <>
+                  <ChevronLeft size={18} />
+                  <span>收起侧边栏</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </aside>
 

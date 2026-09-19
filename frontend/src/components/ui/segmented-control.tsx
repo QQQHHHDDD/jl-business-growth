@@ -24,7 +24,7 @@ export function SegmentedControl<Value extends string>({
   buttonClassName?: string;
 }) {
   return (
-    <div role="group" aria-label={ariaLabel} className={cn("inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-control bg-surface-muted p-1", className)}>
+    <div role="group" aria-label={ariaLabel} className={cn("inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-control border border-outline/45 bg-surface-muted/65 p-1 shadow-hairline", className)}>
       {items.map((item) => {
         const active = item.value === value;
         return (
@@ -34,7 +34,7 @@ export function SegmentedControl<Value extends string>({
             disabled={item.disabled}
             aria-pressed={active}
             className={cn(
-              "min-h-8 shrink-0 rounded-lg px-3 text-sm font-semibold transition-[background-color,color,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-50",
+              "min-h-9 shrink-0 rounded-lg px-3 text-sm font-semibold transition-[background-color,color,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-50",
               active
                 ? variant === "brand"
                   ? "bg-brand-700 text-white shadow-brand-glow"

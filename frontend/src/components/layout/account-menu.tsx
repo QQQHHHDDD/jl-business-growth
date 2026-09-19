@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   addAccount,
+  ApiError,
   switchAccount,
   unlinkAccount,
   type AuthResponse,
@@ -47,6 +48,7 @@ export function AccountMenu({
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { account, accounts, csrf_token: csrfToken } = authResponse.data;
+  const removeLinkedAccount = (accountId: string) => queryClient.setQueryData<AuthResponse>(["auth", "me"], (current) => current ? { ...current, data: { ...current.data, accounts: current.data.accounts.filter((item) => item.id !== accountId) } } : current);
 
   useEffect(() => {
     if (!open) return;
@@ -75,7 +77,16 @@ export function AccountMenu({
       setOpen(false);
       setError("");
     },
-    onError: (value) => setError(errorMessage(value)),
+    onError: (value, accountId) => {
+      if (value instanceof ApiError && (value.status === 401 || value.status === 403 || value.status === 404)) {
+        removeLinkedAccount(accountId);
+        void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+        setOpen(false);
+        setError("该账号关联已失效，已从浏览器列表移除。");
+        return;
+      }
+      setError(errorMessage(value));
+    },
   });
   const addMutation = useMutation({
     mutationFn: () => addAccount(csrfToken, username, password),
@@ -92,23 +103,22 @@ export function AccountMenu({
   const unlinkMutation = useMutation({
     mutationFn: (accountId: string) => unlinkAccount(csrfToken, accountId),
     onSuccess: (_, accountId) => {
-      queryClient.setQueryData<AuthResponse>(["auth", "me"], (current) =>
-        current
-          ? {
-              ...current,
-              data: {
-                ...current.data,
-                accounts: current.data.accounts.filter(
-                  (item) => item.id !== accountId,
-                ),
-              },
-            }
-          : current,
-      );
+      removeLinkedAccount(accountId);
       setUnlinkId(null);
       setError("");
     },
-    onError: (value) => setError(errorMessage(value)),
+    onError: (value, accountId) => {
+      if (value instanceof ApiError && value.status === 404) {
+        removeLinkedAccount(accountId);
+        setUnlinkId(null);
+        setError("");
+        return;
+      }
+      if (value instanceof ApiError && (value.status === 401 || value.status === 403)) {
+        void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      }
+      setError(errorMessage(value));
+    },
   });
   const unlinkAccountTarget = accounts.find((item) => item.id === unlinkId);
 
@@ -158,7 +168,7 @@ export function AccountMenu({
               </p>
             </div>
             <div className="p-2">
-                <p className="px-2 py-1.5 text-xs font-semibold text-ink-faint">
+              <p className="px-2 py-1.5 text-xs font-semibold text-ink-faint">
                 切换账号
               </p>
               <div className="space-y-1">
@@ -170,6 +180,7 @@ export function AccountMenu({
                     <button
                       type="button"
                       role="menuitem"
+                      aria-label={`切换到${item.username}（${roleLabel(item.role)}）`}
                       className="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-control px-2 text-left text-sm text-ink-muted disabled:cursor-default"
                       disabled={item.active || switchMutation.isPending}
                       onClick={() => switchMutation.mutate(item.id)}
@@ -179,9 +190,21 @@ export function AccountMenu({
                       ) : (
                         <Users size={15} className="shrink-0 text-ink-faint" />
                       )}
-                      <span className="truncate">{item.username}</span>
+                      <span className="min-w-0 flex-1 truncate">{item.username}</span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none",
+                          item.role === "SUPER_ADMIN"
+                            ? "bg-violet-100 text-violet-800"
+                            : item.role === "ADMIN"
+                              ? "bg-sky-100 text-sky-800"
+                              : "bg-surface-muted text-ink-faint",
+                        )}
+                      >
+                        {roleLabel(item.role)}
+                      </span>
                       {item.active && (
-                          <span className="ml-auto text-xs text-brand-700">
+                        <span className="shrink-0 text-xs text-brand-700">
                           当前
                         </span>
                       )}
@@ -199,21 +222,19 @@ export function AccountMenu({
                   </div>
                 ))}
               </div>
-              {account.role === "USER" && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="mt-1 flex min-h-9 w-full items-center gap-2 rounded-control px-2 text-sm font-semibold text-brand-700 hover:bg-brand-50"
-                  onClick={() => {
-                    setError("");
-                    setAddOpen(true);
-                    setOpen(false);
-                  }}
-                >
-                  <Plus size={15} />
-                  添加账号
-                </button>
-              )}
+              <button
+                type="button"
+                role="menuitem"
+                className="mt-1 flex min-h-9 w-full items-center gap-2 rounded-control px-2 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+                onClick={() => {
+                  setError("");
+                  setAddOpen(true);
+                  setOpen(false);
+                }}
+              >
+                <Plus size={15} />
+                添加账号
+              </button>
             </div>
             {error && (
               <p
@@ -261,7 +282,7 @@ export function AccountMenu({
           <DialogHeader>
             <DialogTitle>添加浏览器账号</DialogTitle>
             <DialogDescription>
-              验证普通账号后，它会加入当前浏览器的快捷切换列表。
+              验证账号后，它会加入当前浏览器的快捷切换列表，并保留对应的角色标识。
             </DialogDescription>
           </DialogHeader>
           <form

@@ -56,7 +56,7 @@ export function ReviewsPage({ authResponse }: { authResponse: AuthResponse }) {
   const changeType = (value: ReviewType) => { setType(value); setPeriod(reviewPeriodStart(timezone, value)); setForm(emptyFields); setNotice(""); setError(""); };
   const labels = fieldLabels[type];
 
-  return <div className="space-y-6">
+  return <div className="reviews-page space-y-6">
     <PageHeader eyebrow="复盘与调整" title="复盘" description="查看周期经营摘要，记录判断并明确下一步。" />
     <Tabs value={type} onValueChange={(value) => changeType(value as ReviewType)}><TabsList aria-label="复盘周期"><TabsTrigger value="DAILY">每日</TabsTrigger><TabsTrigger value="WEEKLY">每周</TabsTrigger><TabsTrigger value="MONTHLY">每月</TabsTrigger></TabsList></Tabs>
     {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}

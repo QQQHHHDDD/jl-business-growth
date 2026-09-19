@@ -73,13 +73,13 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 	return i, err
 }
 
-const disableInvitation = `-- name: DisableInvitation :one
-UPDATE invitation_codes SET status = 'DISABLED' WHERE id = $1
+const deleteInvitation = `-- name: DeleteInvitation :one
+DELETE FROM invitation_codes WHERE id = $1
 RETURNING id
 `
 
-func (q *Queries) DisableInvitation(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, disableInvitation, id)
+func (q *Queries) DeleteInvitation(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteInvitation, id)
 	err := row.Scan(&id)
 	return id, err
 }

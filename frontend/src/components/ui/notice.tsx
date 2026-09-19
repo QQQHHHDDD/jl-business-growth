@@ -21,7 +21,7 @@ const toneIcons = {
 export function Notice({ tone = "info", className, children, ...props }: HTMLAttributes<HTMLDivElement> & { tone?: NoticeTone }) {
   const Icon = toneIcons[tone];
   return (
-    <div role={tone === "danger" ? "alert" : "status"} className={cn("flex items-start gap-3 rounded-card border px-4 py-3 text-sm leading-6", toneStyles[tone], className)} {...props}>
+    <div role={tone === "danger" ? "alert" : "status"} className={cn("flex items-start gap-3 rounded-card border px-4 py-3 text-sm leading-6 shadow-card", toneStyles[tone], className)} {...props}>
       <Icon className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
       <div className="min-w-0">{children}</div>
     </div>

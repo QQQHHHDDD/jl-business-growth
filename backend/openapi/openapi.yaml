@@ -165,7 +165,7 @@ paths:
     get:
       operationId: getAuthAccounts
       tags: [auth]
-      summary: List normal accounts linked to this browser session
+      summary: List accounts linked to this browser session
       security: [{ sessionCookie: [] }]
       responses:
         "200":
@@ -180,7 +180,7 @@ paths:
     post:
       operationId: postAuthAccountsAdd
       tags: [auth]
-      summary: Authenticate and add another normal account to this browser session
+      summary: Authenticate and add another account to this browser session
       security: [{ sessionCookie: [] }]
       requestBody:
         required: true
@@ -201,7 +201,7 @@ paths:
     post:
       operationId: postAuthAccountsSwitch
       tags: [auth]
-      summary: Switch the active normal account without re-entering its password
+      summary: Switch the active account without re-entering its password
       security: [{ sessionCookie: [] }]
       parameters:
         - $ref: "#/components/parameters/AccountId"
@@ -218,7 +218,7 @@ paths:
     delete:
       operationId: deleteAuthAccount
       tags: [auth]
-      summary: Remove a linked normal account from this browser session
+      summary: Remove a linked account from this browser session
       security: [{ sessionCookie: [] }]
       parameters:
         - $ref: "#/components/parameters/AccountId"
@@ -376,13 +376,13 @@ paths:
     delete:
       operationId: deleteAdminInvitationCode
       tags: [admin]
-      summary: Disable an invitation code
+      summary: Delete an invitation code
       security: [{ sessionCookie: [] }]
       parameters:
         - $ref: "#/components/parameters/InvitationId"
       responses:
         "204":
-          description: Invitation disabled
+          description: Invitation deleted
         default:
           $ref: "#/components/responses/ErrorResponse"
   /api/admin/admins:

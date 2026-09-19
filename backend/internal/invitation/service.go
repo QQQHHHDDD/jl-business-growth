@@ -136,8 +136,8 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, status *string, maxU
 	return fromGenerated(row), nil
 }
 
-func (s *Service) Disable(ctx context.Context, id uuid.UUID) error {
-	_, err := s.queries.DisableInvitation(ctx, auth.ToPGUUID(id))
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	_, err := s.queries.DeleteInvitation(ctx, auth.ToPGUUID(id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return problem.New("NOT_FOUND", http.StatusNotFound, "invitation code not found")
 	}

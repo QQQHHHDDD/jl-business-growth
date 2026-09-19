@@ -70,7 +70,7 @@ function GoalsHeroArt() {
   );
 }
 
-function GoalsHero({ action }: { action: ReactNode }) {
+function GoalsHero() {
   return (
     <header className="relative isolate min-h-[174px] overflow-hidden rounded-hero border border-brand-100/70 bg-gradient-to-r from-brand-100/70 via-sky-50/80 to-brand-50/70 px-5 py-5 shadow-card sm:px-7 sm:py-6">
       <GoalsHeroArt />
@@ -79,7 +79,6 @@ function GoalsHero({ action }: { action: ReactNode }) {
         <h1 className="mt-1 text-[30px] font-extrabold leading-tight tracking-[-0.02em] text-ink">梦想与目标</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">用层级目标把长期方向拆成可行动的路径。设置量化指标后，目标进度可根据已记录的工作量或营业额自动计算。</p>
       </div>
-      <div className="relative z-10 mt-4 flex sm:absolute sm:right-7 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2">{action}</div>
     </header>
   );
 }
@@ -247,20 +246,23 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
     setDreamFiles(dream.file_ids); setDreamGoals(dream.goal_ids); dreamFormState.reset({ title: dream.title, description: dream.description ?? "" });
   };
 
-  if (goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending) return <div className="space-y-6"><GoalsHero action={<Button disabled><Plus size={16} />正在加载</Button>} /><LoadingState label="正在加载目标工作台" /></div>;
-  if (goalsQuery.isError || dreamsQuery.isError || filesQuery.isError) return <div className="space-y-6"><GoalsHero action={<Button disabled><Plus size={16} />新建目标</Button>} /><ErrorState message="目标数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} /></div>;
+  if (goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending) return <div className="space-y-6"><GoalsHero /><LoadingState label="正在加载目标工作台" /></div>;
+  if (goalsQuery.isError || dreamsQuery.isError || filesQuery.isError) return <div className="space-y-6"><GoalsHero /><ErrorState message="目标数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} /></div>;
 
   const activeAction = view === "dreams"
     ? <Button onClick={openDreamCreate}><Plus size={16} />新增梦想</Button>
     : <Button onClick={() => openGoalSheet({ mode: "create" })}><Plus size={16} />新建目标</Button>;
 
   return (
-    <div className="space-y-6">
-      <GoalsHero action={activeAction} />
+    <div className="goals-page space-y-6">
+      <GoalsHero />
       {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
-      <Tabs value={view} onValueChange={(value) => setView(value as GoalsView)}>
-        <TabsList className="bg-surface-muted/80" aria-label="目标工作台视图"><TabsTrigger value="map" className="min-h-10 px-4">目标地图</TabsTrigger><TabsTrigger value="list" className="min-h-10 px-4">目标列表</TabsTrigger><TabsTrigger value="dreams" className="min-h-10 px-4">梦想板</TabsTrigger></TabsList>
-      </Tabs>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Tabs value={view} onValueChange={(value) => setView(value as GoalsView)}>
+          <TabsList className="bg-surface-muted/80" aria-label="目标工作台视图"><TabsTrigger value="map" className="min-h-10 px-4">目标地图</TabsTrigger><TabsTrigger value="list" className="min-h-10 px-4">目标列表</TabsTrigger><TabsTrigger value="dreams" className="min-h-10 px-4">梦想板</TabsTrigger></TabsList>
+        </Tabs>
+        <div className="flex justify-end">{activeAction}</div>
+      </div>
 
       {view === "map" && <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />}
       {view === "list" && <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />}

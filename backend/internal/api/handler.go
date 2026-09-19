@@ -65,7 +65,7 @@ func (h *Handler) PostAuthRegister(ctx echo.Context) error {
 		return err
 	}
 	h.audit(ctx, "register_success", uuid.Nil, account.ID, uuid.Nil)
-	_, csrfToken, session, err := auth.CreateSession(ctx, h.auth.Pool(), h.config, account.ID, account.Role == auth.RoleUser)
+	_, csrfToken, session, err := auth.CreateSession(ctx, h.auth.Pool(), h.config, account.ID, true)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (h *Handler) PostAuthLogin(ctx echo.Context) error {
 		return err
 	}
 	h.audit(ctx, "login_success", account.ID, account.ID, uuid.Nil)
-	_, csrfToken, session, err := auth.CreateSession(ctx, h.auth.Pool(), h.config, account.ID, account.Role == auth.RoleUser)
+	_, csrfToken, session, err := auth.CreateSession(ctx, h.auth.Pool(), h.config, account.ID, true)
 	if err != nil {
 		return err
 	}
@@ -168,18 +168,12 @@ func (h *Handler) GetAuthAccounts(ctx echo.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := requireUser(*account); err != nil {
-		return err
-	}
 	return h.accountsResponse(ctx, session, *account)
 }
 
 func (h *Handler) PostAuthAccountsAdd(ctx echo.Context) error {
 	session, account, err := auth.SessionFromContext(ctx)
 	if err != nil {
-		return err
-	}
-	if err := requireUser(*account); err != nil {
 		return err
 	}
 	if err := auth.VerifyCSRF(ctx, session); err != nil {
@@ -192,9 +186,6 @@ func (h *Handler) PostAuthAccountsAdd(ctx echo.Context) error {
 	linkedAccount, err := h.auth.Authenticate(ctx.Request().Context(), request.Username, request.Password)
 	if err != nil {
 		return err
-	}
-	if linkedAccount.Role != auth.RoleUser {
-		return problem.New("FORBIDDEN", http.StatusForbidden, "only normal users can be linked")
 	}
 	if err := h.auth.LinkBrowserAccount(ctx.Request().Context(), session.ID, linkedAccount.ID); err != nil {
 		return err
@@ -210,9 +201,6 @@ func (h *Handler) PostAuthAccountsAdd(ctx echo.Context) error {
 func (h *Handler) PostAuthAccountsSwitch(ctx echo.Context, accountID AccountId) error {
 	session, currentAccount, err := auth.SessionFromContext(ctx)
 	if err != nil {
-		return err
-	}
-	if err := requireUser(*currentAccount); err != nil {
 		return err
 	}
 	if err := auth.VerifyCSRF(ctx, session); err != nil {
@@ -240,15 +228,15 @@ func (h *Handler) DeleteAuthAccount(ctx echo.Context, accountID AccountId) error
 	if err := auth.VerifyCSRF(ctx, session); err != nil {
 		return err
 	}
-	if err := requireUser(*account); err != nil {
-		return err
-	}
 	if account.ID == accountID {
 		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "active account cannot be removed")
 	}
 	if _, err := h.auth.Queries().DeleteBrowserSessionAccount(ctx.Request().Context(), generatedDeletePair(session.ID, accountID)); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return problem.New("NOT_FOUND", http.StatusNotFound, "linked account not found")
+			// Password resets and account status changes invalidate linked
+			// accounts from the browser session. Treat a second unlink as an
+			// idempotent success so stale client state can be cleaned up.
+			return ctx.NoContent(http.StatusNoContent)
 		}
 		return err
 	}
@@ -537,10 +525,10 @@ func (h *Handler) DeleteAdminInvitationCode(ctx echo.Context, invitationID Invit
 	if err := requireAdmin(*actor); err != nil {
 		return err
 	}
-	if err := h.invitation.Disable(ctx.Request().Context(), invitationID); err != nil {
+	if err := h.invitation.Delete(ctx.Request().Context(), invitationID); err != nil {
 		return err
 	}
-	h.audit(ctx, "invitation_disabled", actor.ID, uuid.Nil, invitationID)
+	h.audit(ctx, "invitation_deleted", actor.ID, uuid.Nil, invitationID)
 	return ctx.NoContent(http.StatusNoContent)
 }
 

@@ -32,7 +32,7 @@ export function MetricCard({
   valueClassName?: string;
 }) {
   return (
-    <section className={cn("rounded-card border p-5 shadow-card", tones[tone].card, className)}>
+    <section className={cn("rounded-[1.125rem] border p-5 shadow-card transition-[box-shadow,transform] duration-[var(--motion-normal)] hover:-translate-y-px hover:shadow-card-hover", tones[tone].card, className)}>
       <div className="flex items-start gap-3">
         {icon && (
           <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-control", tones[tone].icon, iconClassName)} aria-hidden="true">

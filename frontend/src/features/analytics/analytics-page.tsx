@@ -90,7 +90,7 @@ function AnalyticsHero() {
         </svg>
       </div>
       <PageHeader
-        className="relative z-[1] max-w-2xl border-0 pb-0 sm:min-h-[132px] sm:items-center"
+        className="page-header-plain relative z-[1] max-w-2xl border-0 pb-0 sm:min-h-[132px] sm:items-center"
         eyebrow="经营分析"
         title="数据统计"
         description="按业务领域和时间范围查看当前账号已记录的数据。"
@@ -126,7 +126,7 @@ export function AnalyticsPage({ authResponse }: { authResponse: AuthResponse }) 
     placeholderData: (previousData) => previousData,
   });
 
-  return <div className="space-y-6">
+  return <div className="analytics-page space-y-6">
     <AnalyticsHero />
     <Tabs value={metric} onValueChange={(value) => setMetric(value as Metric)}>
       <TabsList aria-label="统计领域" className="w-fit rounded-card border border-outline/55 bg-surface-muted/80 p-1.5 shadow-hairline">
