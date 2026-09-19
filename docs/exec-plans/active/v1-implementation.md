@@ -1,8 +1,8 @@
 # V1 Implementation Plan
 
-- Status: V1 closeout P0-01-P0-11 complete; waiting for product-owner acceptance before Phase 7
-- Updated: 2026-09-15
-- Source: `docs/00-文档索引.md`, `docs/11-开发实现差异与V1收口清单-V1.0.md`, and `docs/12-Codex-V1收口修复Prompt-V1.0.md`
+- Status: Phase 0-7 complete; final UAT and pull-request review in progress
+- Updated: 2026-09-19
+- Source: `docs/00-文档索引.md`, `docs/11-开发实现差异与V1收口清单-V1.0.md`, and repository `AGENTS.md`
 
 ## Environment Detection
 
