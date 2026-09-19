@@ -1,6 +1,6 @@
 # JL团队生意成长管理系统
 
-JL 团队内部使用的个人生意成长与经营管理系统。正式产品和技术规则在 [docs/00-文档索引.md](docs/00-文档索引.md)。当前仓库已完成 Phase 0-6 主体开发和 V1 收口修复，已具备进入第 7 阶段综合测试的条件；本仓库不在本次收口任务中执行第 7 阶段或生产部署。
+JL 团队内部使用的个人生意成长与经营管理系统。Phase 0-6 主体开发、V1 收口、Phase 7 综合测试、最终 UAT 和 PR review 均已完成；当前 `master` 是 V1 正式发布基线。本仓库的 Release 收口不包含生产部署。
 
 ## Technology
 
@@ -15,7 +15,7 @@ JL 团队内部使用的个人生意成长与经营管理系统。正式产品�
 - Node.js 20 or newer with npm
 - PostgreSQL with separate development and test databases
 
-Do not use a production database or production credentials in this workspace.
+Do not use a production database, production credentials, or production files in this workspace.
 
 ## Local setup
 
@@ -49,9 +49,10 @@ make check
 
 Health endpoints: `GET /api/health/live` and `GET /api/health/ready`.
 
-The current schema is migration version 8. V1 business money fields use decimal
+The current schema is migration version 10, ending at
+`00010_team_member_node_color.sql`. V1 business money fields use decimal
 strings in JSON and integer cents inside the Go money boundary; PostgreSQL
 continues to use exact `numeric(14,2)` columns. `make test-integration` covers
-Phase 1-6 API acceptance only.
+V1 API acceptance.
 
 `SUPERADMIN_INITIAL_PASSWORD` is used only when the fixed super administrator is first created. If the development or test database already contains that account and the configured password needs to be recovered, update the local environment file and run `make reset-superadmin-password`. This command refuses production and invalidates the super administrator's existing sessions.

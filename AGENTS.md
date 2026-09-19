@@ -6,14 +6,8 @@ JL团队生意成长管理系统是 JL 团队内部使用的个人生意成长�
 
 ## Source of truth
 
-正式产品与技术规则在 `docs/`。开始任务前先读：
-
-- `docs/00-文档索引.md`
-- 当前阶段对应设计文档
-- `docs/06-收入模拟器公式映射-V1.0.md`（涉及收入计算时）
-- `docs/07-Codex开发与云端发布工作流-V1.2.md`
-
-不要根据常识擅自修改已确定业务规则。
+当前产品行为以冻结的 V1 实现、`backend/openapi/openapi.yaml`、append-only
+migrations、自动化测试和 Git 历史为准。未经产品负责人明确批准，不得擅自修改已确定业务规则。
 
 ## Stack
 
@@ -73,9 +67,7 @@ If a command is missing, add it rather than documenting many ad-hoc alternatives
 
 ## Current execution plan
 
-Use `docs/exec-plans/active/v1-implementation.md`. Keep it updated as implementation progresses.
-
-Phase 0-6, the V1 P0-01-P0-11 closeout, and Phase 7 comprehensive testing are
-complete. Current work is final UAT and PR review on `v1-final-uat-closure`.
-Do not perform production deployment or create the production release unless
-explicitly approved by the product owner.
+Phase 0-6, the V1 P0-01-P0-11 closeout, Phase 7 comprehensive testing, final
+UAT, and PR review are complete. `master` is the formal V1 release baseline.
+Do not perform production deployment or create a future production release
+unless explicitly approved by the product owner.
