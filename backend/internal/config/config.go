@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	development = "development"
-	test        = "test"
-	production  = "production"
+	development                  = "development"
+	test                         = "test"
+	production                   = "production"
+	productionReleaseRuntimeRoot = "/var/lib/jl-business-growth/release-updater"
 )
 
 type Config struct {
@@ -127,6 +128,9 @@ func (c Config) Validate() error {
 	}
 	if c.ReleaseRepository != "QQQHHHDDD/jl-business-growth" {
 		return errors.New("RELEASE_REPOSITORY must be QQQHHHDDD/jl-business-growth")
+	}
+	if c.AppEnv == production && c.ReleaseRuntimeRoot != productionReleaseRuntimeRoot {
+		return fmt.Errorf("RELEASE_RUNTIME_ROOT must be %s in production", productionReleaseRuntimeRoot)
 	}
 	return nil
 }

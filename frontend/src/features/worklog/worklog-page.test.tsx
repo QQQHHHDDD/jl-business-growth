@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, Worklog } from "@/api/client";
 import { listWorklogs, saveWorklog } from "@/api/client";
-import { businessDate } from "@/lib/date";
+import { businessDate, businessDateDaysAgo } from "@/lib/date";
 import { WorklogPage } from "./worklog-page";
 
 vi.mock("@/api/client", async (importOriginal) => {
@@ -116,9 +116,7 @@ describe("WorklogPage", () => {
   it("keeps save semantics and limits recent records to seven", async () => {
     const today = businessDate(account.timezone);
     const items = Array.from({ length: 8 }, (_, index) => {
-      const date = new Date(Date.now() - index * 86_400_000)
-        .toISOString()
-        .slice(0, 10);
+      const date = businessDateDaysAgo(account.timezone, index);
       return worklog(date, index + 1);
     });
     vi.mocked(listWorklogs).mockResolvedValue({

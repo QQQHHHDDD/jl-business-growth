@@ -69,6 +69,6 @@ If a command is missing, add it rather than documenting many ad-hoc alternatives
 
 Phase 0-6, the V1 P0-01-P0-11 closeout, Phase 7 comprehensive testing, final
 UAT, and PR review are complete. `master` is the formal V1 release baseline.
-Release management development happens on `feat/release-center`. Do not perform
-production deployment or create a future production release unless explicitly
-approved by the product owner.
+Release management is maintained as part of the formal product codebase. Do not
+perform production deployment or create a future production release unless
+explicitly approved by the product owner.

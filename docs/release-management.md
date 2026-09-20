@@ -72,6 +72,8 @@ RELEASE_UPDATE_ENABLED=false
 stable semver、固定 repository、正式 Release 和并发锁验证后，只向
 `/var/lib/jl-business-growth/release-updater/` 写入固定结构的 request/status。
 `jl-business-updater.path` 触发独立 oneshot service 执行更新。
+生产环境的 `RELEASE_RUNTIME_ROOT` 被强制固定为该目录，以避免 API 写入路径与
+systemd 监听路径不一致。
 
 请求只包含 action、from/target version、固定 repository、request ID 和
 时间，不接受 URL、文件路径、asset URL 或 shell command。updater 自行构造

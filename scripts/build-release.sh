@@ -13,6 +13,10 @@ if [[ ! "${version}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "VERSION must match vX.Y.Z" >&2
     exit 1
 fi
+if [[ -n "$(git -C "${repo_root}" status --porcelain)" ]]; then
+    echo "formal release builds require a clean git worktree" >&2
+    exit 1
+fi
 if [[ -e "${artifact_root}" || -e "${archive_path}" ]]; then
     echo "release already exists for ${version}" >&2
     exit 1

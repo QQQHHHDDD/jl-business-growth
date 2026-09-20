@@ -44,6 +44,9 @@ jobs:
       - name: Run repository checks
         run: make check
 
+      - name: Ensure generated source is clean
+        run: git diff --exit-code
+
       - name: Build immutable release artifacts
         run: make release VERSION="${GITHUB_REF_NAME}"
 

@@ -37,6 +37,9 @@ Online update remains disabled until an operator explicitly sets
    `root:jl-business` with mode `0770`.
 3. Install `deploy/systemd/jl-business-updater.service` and
    `deploy/systemd/jl-business-updater.path`.
+   Production `RELEASE_RUNTIME_ROOT` must remain exactly
+   `/var/lib/jl-business-growth/release-updater`, matching the path unit's
+   `PathExists` trigger.
 4. Ensure `curl`, `flock`, `jq`, `sha256sum`, `tar`, `pg_dump`, `psql`, and
    `goose` are available to the updater service.
 5. Configure the production environment file without exposing it to the web

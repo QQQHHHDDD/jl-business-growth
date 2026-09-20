@@ -1471,6 +1471,9 @@ func (h *Handler) auditDetails(ctx echo.Context, action string, actor, target, t
 	if len(userAgent) > 256 {
 		userAgent = userAgent[:256]
 	}
+	if details == nil {
+		details = map[string]string{}
+	}
 	detailJSON, err := json.Marshal(details)
 	if err != nil {
 		detailJSON = []byte("{}")

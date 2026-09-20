@@ -48,3 +48,10 @@ func TestNonProductionRejectsSecureCookie(t *testing.T) {
 		}
 	}
 }
+
+func TestProductionReleaseRuntimeRootMatchesSystemdPath(t *testing.T) {
+	config := Config{AppEnv: production, DatabaseURL: "postgres://example", MailMode: "file", CookieSecure: true, SessionSecret: "secret", ReleaseRepository: "QQQHHHDDD/jl-business-growth", ReleaseRuntimeRoot: "/tmp/release-updater"}
+	if err := config.Validate(); err == nil {
+		t.Fatal("Validate() accepted a production runtime root not watched by systemd")
+	}
+}

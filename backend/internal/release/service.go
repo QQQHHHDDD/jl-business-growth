@@ -203,18 +203,20 @@ func (s *Service) Queue(ctx context.Context, action, target string) (State, stri
 	now := s.now().UTC()
 	request := updateRequest{RequestID: requestID, Action: action, FromVersion: current, TargetVersion: target, Repository: s.cfg.ReleaseRepository, RequestedAt: now}
 	status := UpdateStatus{RequestID: requestID, Action: action, FromVersion: current, TargetVersion: target, State: "queued", StartedAt: now, SafeMessage: "版本任务已进入队列"}
+	if err := writeJSONAtomic(filepath.Join(s.cfg.ReleaseRuntimeRoot, "status.json"), status); err != nil {
+		_ = os.Remove(lockPath)
+		return State{}, "", problem.New("UPDATER_UNAVAILABLE", http.StatusServiceUnavailable, "无法保存版本任务状态")
+	}
+	// request.json is the sole systemd PathExists trigger. Keep it as the final
+	// commit point: after this rename the API performs no network or blocking
+	// work that could race the updater.
 	if err := writeJSONAtomic(filepath.Join(s.cfg.ReleaseRuntimeRoot, "request.json"), request); err != nil {
 		_ = os.Remove(lockPath)
 		return State{}, "", problem.New("UPDATER_UNAVAILABLE", http.StatusServiceUnavailable, "无法保存版本任务")
 	}
-	if err := writeJSONAtomic(filepath.Join(s.cfg.ReleaseRuntimeRoot, "status.json"), status); err != nil {
-		_ = os.Remove(filepath.Join(s.cfg.ReleaseRuntimeRoot, "request.json"))
-		_ = os.Remove(lockPath)
-		return State{}, "", problem.New("UPDATER_UNAVAILABLE", http.StatusServiceUnavailable, "无法保存版本任务状态")
-	}
 
-	state := s.State(ctx, false)
-	state.UpdateStatus = &status
+	state := State{Build: buildinfo.Current(), UpdateEnabled: s.cfg.ReleaseUpdateEnabled,
+		InstalledVersions: s.installedVersions(currentSchema), UpdateStatus: &status}
 	return state, requestID, nil
 }
 
