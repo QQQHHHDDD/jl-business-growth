@@ -197,6 +197,25 @@ request() {
   write_request '11111111-1111-4111-8111-111111111111' 'update' 'v1.0.0' "$1" 'QQQHHHDDD/jl-business-growth'
 }
 
+rollback_request() {
+  write_request '22222222-2222-4222-8222-222222222222' 'rollback' 'v1.0.1' 'v1.0.0' 'QQQHHHDDD/jl-business-growth'
+}
+
+reset_rollback_case() {
+  reset_case
+  rm -rf "${backend_releases}/v1.0.1" "${web_releases}/v1.0.1"
+  mkdir -p "${backend_releases}/v1.0.1" "${web_releases}/v1.0.1"
+  cp -a "${root}/v1.0.1/." "${backend_releases}/v1.0.1/"
+  cp "${root}/v1.0.1/web/index.html" "${web_releases}/v1.0.1/index.html"
+  find "${backend_releases}" -type d -exec chmod 0755 {} +
+  find "${backend_releases}" -type f -exec chmod 0644 {} +
+  chmod 0755 "${backend_releases}/v1.0.0"/jl-business-* "${backend_releases}/v1.0.0/scripts/backup-db.sh" \
+    "${backend_releases}/v1.0.1"/jl-business-* "${backend_releases}/v1.0.1/scripts/backup-db.sh"
+  rm -f "${root}/backend-current" "${root}/web-current"
+  ln -s "${backend_releases}/v1.0.1" "${root}/backend-current"
+  ln -s "${web_releases}/v1.0.1" "${root}/web-current"
+}
+
 assert_failed_cleanup() {
   local expected_message="$1"
   jq -e --arg message "${expected_message}" '.state == "failed" and .safe_message == $message' "${state}/status.json" >/dev/null
@@ -253,6 +272,25 @@ assert_target_permissions() {
   local bad_permissions
   bad_permissions="$(find "${backend_releases}/v1.0.1" "${web_releases}/v1.0.1" -perm /022 -print -quit)"
   [[ -z "${bad_permissions}" ]]
+}
+
+assert_successful_rollback() {
+  jq -e '.state == "succeeded"' "${state}/status.json" >/dev/null
+  [[ -e "${root}/backup.called" ]] && [[ -e "${root}/backup-service.started" ]]
+  [[ ! -e "${root}/migration.called" ]] && [[ ! -e "${root}/binary-executed" ]] && [[ ! -e "${root}/direct-backup.called" ]]
+  [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.0" ]]
+  [[ "$(readlink -f "${root}/web-current")" == "${web_releases}/v1.0.0" ]]
+  [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
+}
+
+assert_rejected_rollback() {
+  local expected_message="$1"
+  jq -e --arg message "${expected_message}" '.state == "failed" and .safe_message == $message' "${state}/status.json" >/dev/null
+  [[ ! -e "${root}/backup-service.started" ]] && [[ ! -e "${root}/migration.called" ]]
+  [[ "$(cat "${root}/schema")" == 10 ]]
+  [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.1" ]]
+  [[ "$(readlink -f "${root}/web-current")" == "${web_releases}/v1.0.1" ]]
+  [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 }
 
 pass_case() {
@@ -338,6 +376,26 @@ assert_not_restored
 pass_case 'backup service failure leaves symlinks unchanged'
 
 unset RELEASE_BACKUP_SERVICE_FAIL
+
+reset_rollback_case
+rollback_request
+if ! run_case; then echo 'rollback request unexpectedly failed' >&2; exit 1; fi
+assert_successful_rollback
+pass_case 'rollback action validates installed backend/web, backs up, and switches without migration'
+
+reset_rollback_case
+rm -rf "${backend_releases}/v1.0.0/migrations"
+rollback_request
+if run_case; then echo 'rollback missing migrations unexpectedly succeeded' >&2; exit 1; fi
+assert_rejected_rollback '已安装 rollback backend release 校验失败'
+pass_case 'rollback missing migrations is rejected before backup'
+
+reset_rollback_case
+rm -f "${web_releases}/v1.0.0/index.html"
+rollback_request
+if run_case; then echo 'rollback missing web index unexpectedly succeeded' >&2; exit 1; fi
+assert_rejected_rollback '已安装 rollback web release 校验失败'
+pass_case 'rollback missing web index is rejected before backup'
 
 reset_case
 request v1.0.1

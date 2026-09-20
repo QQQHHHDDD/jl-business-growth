@@ -320,12 +320,18 @@ verify_extracted_artifact() {
 
 verify_installed_backend() {
     local root="$1"
-    for required in jl-business-api jl-business-jobs migrations scripts/backup-db.sh release.json; do
+    for required in jl-business-api jl-business-jobs scripts/backup-db.sh release.json; do
         [[ -f "${root}/${required}" && ! -L "${root}/${required}" ]] || { echo "installed release is missing or unsafe ${required}" >&2; return 1; }
     done
-    test -x "${root}/jl-business-api" && test -x "${root}/jl-business-jobs"
-    [[ -d "${root}/migrations" && ! -L "${root}/migrations" ]]
-    test -x "${root}/scripts/backup-db.sh"
+    [[ -x "${root}/jl-business-api" && -x "${root}/jl-business-jobs" && -x "${root}/scripts/backup-db.sh" ]] || return 1
+    [[ -r "${root}/release.json" ]] || return 1
+    [[ -d "${root}/migrations" && ! -L "${root}/migrations" && -r "${root}/migrations" && -x "${root}/migrations" ]] || return 1
+}
+
+verify_installed_web() {
+    local root="$1"
+    [[ -d "${root}" && ! -L "${root}" && -x "${root}" ]] || return 1
+    [[ -f "${root}/index.html" && ! -L "${root}/index.html" && -r "${root}/index.html" ]] || return 1
 }
 
 validate_existing_release_permissions() {
@@ -624,9 +630,13 @@ else
     if ! validate_existing_release_permissions "${target_backend}" "${backend_releases}" || ! validate_existing_release_permissions "${target_web}" "${web_releases}"; then
         fail_task "${failure_message}"
     fi
-    [[ -d "${target_web}" && ! -L "${target_web}" ]]
+    if ! verify_installed_backend "${target_backend}"; then
+        fail_task "已安装 rollback backend release 校验失败"
+    fi
+    if ! verify_installed_web "${target_web}"; then
+        fail_task "已安装 rollback web release 校验失败"
+    fi
     test "$(jq -er '.version' "${target_backend}/release.json")" = "${target_version}"
-    verify_installed_backend "${target_backend}"
     current_schema_before="$(schema_version_from_db)"
     [[ "${current_schema_before}" =~ ^[0-9]+$ ]]
     compatible_min="$(jq -er '.compatible_schema_min' "${target_backend}/release.json")"
