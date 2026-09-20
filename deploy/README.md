@@ -3,6 +3,10 @@
 Production deployment uses Nginx and systemd, not Docker. Templates and release
 scripts must never embed production credentials.
 
+The database must be PostgreSQL 13 or newer with the `pg_trgm` extension
+available. The application does not require `pgcrypto`, and PostgreSQL does not
+need to be built with `--with-ssl=openssl` for application migrations.
+
 Build an immutable Linux release artifact with:
 
 ```bash

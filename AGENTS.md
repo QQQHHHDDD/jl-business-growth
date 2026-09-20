@@ -62,7 +62,12 @@ If a command is missing, add it rather than documenting many ad-hoc alternatives
 - Add tests for business-rule changes.
 - Income simulator changes require Golden Tests.
 - V1 money fields use decimal strings at API boundaries and integer cents for final Go business values.
-- Current schema migrations end at `00011_security_audit_details.sql`; migrations are append-only.
+- Current schema migrations end at `00012_remove_unused_pgcrypto.sql`.
+- Migrations remain append-only. The sole approved historical compatibility
+  exception is removing the unused `pgcrypto` create/drop statements from
+  `00001_extensions.sql`, so fresh PostgreSQL 13+ databases do not require
+  pgcrypto or OpenSSL. The immutable v1.1.3 tag remains unchanged; this
+  exception must not be used to modify any other published migration.
 - Do not commit secrets, `.env`, `.local`, database dumps, or user files.
 
 ## Current execution plan
