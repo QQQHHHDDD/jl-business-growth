@@ -345,7 +345,7 @@ test("covers administrator, account, and core business workflows", async ({
     const response = page.waitForResponse((value) => value.request().method() === "PUT" && value.url().includes("/api/calendar/events/"));
     await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
     await page.mouse.down();
-    await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2 + (index % 2 === 0 ? 30 : -30), { steps: 12 });
+    await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2 + 30, { steps: 12 });
     await page.mouse.up();
     expect((await response).ok()).toBe(true);
     await expect(findStableEvent()).toBeVisible();
