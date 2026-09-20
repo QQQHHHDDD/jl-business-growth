@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jl-business-growth/backend/db/generated"
+	"jl-business-growth/backend/internal/buildinfo"
 	"jl-business-growth/backend/internal/config"
 	"jl-business-growth/backend/internal/database"
 	"jl-business-growth/backend/internal/importexport"
@@ -18,6 +20,12 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--version" {
+		if err := json.NewEncoder(os.Stdout).Encode(buildinfo.Current()); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	job := "cleanup"
 	if len(os.Args) > 1 {
 		job = os.Args[1]

@@ -124,5 +124,5 @@ WHERE account_id = $1
 DELETE FROM browser_sessions WHERE expires_at <= now() OR last_seen_at <= now() - interval '30 days';
 
 -- name: CreateAuditLog :exec
-INSERT INTO security_audit_logs (id, actor_account_id, action, target_account_id, target_id, ip_address, user_agent_summary, request_id)
-VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::inet, NULLIF($7, ''), NULLIF($8, ''));
+INSERT INTO security_audit_logs (id, actor_account_id, action, target_account_id, target_id, ip_address, user_agent_summary, request_id, details)
+VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::inet, NULLIF($7, ''), NULLIF($8, ''), $9::jsonb);

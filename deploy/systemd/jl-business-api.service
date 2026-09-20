@@ -16,7 +16,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp
+ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp /var/lib/jl-business-growth/release-updater
 
 [Install]
 WantedBy=multi-user.target

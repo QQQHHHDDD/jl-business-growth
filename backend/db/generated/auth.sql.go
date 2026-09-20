@@ -87,8 +87,8 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 }
 
 const createAuditLog = `-- name: CreateAuditLog :exec
-INSERT INTO security_audit_logs (id, actor_account_id, action, target_account_id, target_id, ip_address, user_agent_summary, request_id)
-VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::inet, NULLIF($7, ''), NULLIF($8, ''))
+INSERT INTO security_audit_logs (id, actor_account_id, action, target_account_id, target_id, ip_address, user_agent_summary, request_id, details)
+VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::inet, NULLIF($7, ''), NULLIF($8, ''), $9::jsonb)
 `
 
 type CreateAuditLogParams struct {
@@ -100,6 +100,7 @@ type CreateAuditLogParams struct {
 	Column6         interface{}
 	Column7         interface{}
 	Column8         interface{}
+	Column9         []byte
 }
 
 func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) error {
@@ -112,6 +113,7 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 		arg.Column6,
 		arg.Column7,
 		arg.Column8,
+		arg.Column9,
 	)
 	return err
 }

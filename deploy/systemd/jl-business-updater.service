@@ -1,0 +1,21 @@
+[Unit]
+Description=Apply a verified JL Business Growth release request
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=jl-business
+UMask=0077
+EnvironmentFile=/etc/jl-business-growth/jl-business-growth.env
+ExecStart=/usr/local/libexec/jl-business-release-updater
+TimeoutStartSec=30min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/jl-business-growth /var/www/jl-business-growth /var/lib/jl-business-growth/release-updater /var/backups/jl-business-growth
+
+[Install]
+WantedBy=multi-user.target

@@ -20,6 +20,16 @@ func TestLoadUsesProcessEnvironment(t *testing.T) {
 	if config.DatabaseURL != "postgres://127.0.0.1:5432/jl_business_test?sslmode=disable" {
 		t.Fatalf("DatabaseURL = %q", config.DatabaseURL)
 	}
+	if config.ReleaseRepository != "QQQHHHDDD/jl-business-growth" || config.ReleaseUpdateEnabled {
+		t.Fatalf("release defaults = repository %q enabled %t", config.ReleaseRepository, config.ReleaseUpdateEnabled)
+	}
+}
+
+func TestReleaseRepositoryIsFixed(t *testing.T) {
+	config := Config{AppEnv: test, DatabaseURL: "postgres://example", MailMode: "file", ReleaseRepository: "attacker/example"}
+	if err := config.Validate(); err == nil {
+		t.Fatal("Validate() accepted an arbitrary release repository")
+	}
 }
 
 func TestProductionRequiresSecureCookieAndSessionSecret(t *testing.T) {
@@ -36,5 +46,12 @@ func TestNonProductionRejectsSecureCookie(t *testing.T) {
 		if err := config.Validate(); err == nil {
 			t.Fatalf("Validate() accepted COOKIE_SECURE=true for %s", environment)
 		}
+	}
+}
+
+func TestProductionReleaseRuntimeRootMatchesSystemdPath(t *testing.T) {
+	config := Config{AppEnv: production, DatabaseURL: "postgres://example", MailMode: "file", CookieSecure: true, SessionSecret: "secret", ReleaseRepository: "QQQHHHDDD/jl-business-growth", ReleaseRuntimeRoot: "/tmp/release-updater"}
+	if err := config.Validate(); err == nil {
+		t.Fatal("Validate() accepted a production runtime root not watched by systemd")
 	}
 }

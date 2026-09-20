@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate stable version tag
+        shell: bash
+        run: |
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release tags must match vX.Y.Z" >&2
+            exit 1
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.x"
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Run repository checks
+        run: make check
+
+      - name: Ensure generated source is clean
+        run: git diff --exit-code
+
+      - name: Build immutable release artifacts
+        run: make release VERSION="${GITHUB_REF_NAME}"
+
+      - name: Verify checksum and manifest
+        shell: bash
+        run: |
+          cd .local/release
+          sha256sum --check SHA256SUMS
+          grep -Fq "\"version\": \"${GITHUB_REF_NAME}\"" "${GITHUB_REF_NAME}/release.json"
+          grep -Fq "\"git_sha\": \"${GITHUB_SHA}\"" "${GITHUB_REF_NAME}/release.json"
+          tar -tzf "jl-business-growth_${GITHUB_REF_NAME}_linux_amd64.tar.gz" | grep -Fq './release.json'
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            ".local/release/jl-business-growth_${GITHUB_REF_NAME}_linux_amd64.tar.gz" \
+            ".local/release/SHA256SUMS" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "JL团队生意成长管理系统 ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --verify-tag

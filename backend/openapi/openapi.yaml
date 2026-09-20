@@ -478,6 +478,78 @@ paths:
                 $ref: "#/components/schemas/ResetPasswordResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /api/admin/system/release:
+    get:
+      operationId: getAdminSystemRelease
+      tags: [admin]
+      summary: Return build and release status for the super administrator
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Current release state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/system/release/check:
+    post:
+      operationId: postAdminSystemReleaseCheck
+      tags: [admin]
+      summary: Refresh the latest stable GitHub Release
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Refreshed release state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/system/release/update:
+    post:
+      operationId: postAdminSystemReleaseUpdate
+      tags: [admin]
+      summary: Queue an application update for the independent updater
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReleaseActionRequest"
+      responses:
+        "202":
+          description: Update request queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /api/admin/system/release/rollback:
+    post:
+      operationId: postAdminSystemReleaseRollback
+      tags: [admin]
+      summary: Queue an application-only rollback for the independent updater
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReleaseActionRequest"
+      responses:
+        "202":
+          description: Rollback request queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
   /api/dashboard:
     get:
       operationId: getDashboard
@@ -2396,6 +2468,76 @@ components:
           type: boolean
           default: false
           description: Clear expires_at and make the code non-expiring.
+    ReleaseActionRequest:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: string
+          pattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          maxLength: 32
+    LatestRelease:
+      type: object
+      required: [version, name, published_at, html_url]
+      properties:
+        version: { type: string }
+        name: { type: string }
+        published_at: { type: string, format: date-time }
+        html_url: { type: string, format: uri }
+    InstalledRelease:
+      type: object
+      required: [version, current, rollback_allowed]
+      properties:
+        version: { type: string }
+        current: { type: boolean }
+        rollback_allowed: { type: boolean }
+        installed_at: { type: string, format: date-time, nullable: true }
+        rollback_blocked_reason: { type: string, nullable: true }
+    ReleaseUpdateStatus:
+      type: object
+      required: [request_id, action, from_version, target_version, state, started_at, safe_message]
+      properties:
+        request_id: { type: string, format: uuid }
+        action:
+          type: string
+          enum: [update, rollback]
+        from_version: { type: string }
+        target_version: { type: string }
+        state:
+          type: string
+          enum: [queued, downloading, verifying, backing_up, migrating, switching, restarting, health_check, succeeded, failed]
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time, nullable: true }
+        safe_message: { type: string }
+    ReleaseData:
+      type: object
+      required: [current_version, current_commit, build_time, update_available, update_enabled, installed_versions]
+      properties:
+        current_version: { type: string }
+        current_commit: { type: string }
+        build_time: { type: string }
+        latest_release:
+          allOf:
+            - $ref: "#/components/schemas/LatestRelease"
+          nullable: true
+        update_available: { type: boolean }
+        update_enabled: { type: boolean }
+        installed_versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/InstalledRelease"
+        update_status:
+          allOf:
+            - $ref: "#/components/schemas/ReleaseUpdateStatus"
+          nullable: true
+        check_error: { type: string, nullable: true }
+    ReleaseResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          $ref: "#/components/schemas/ReleaseData"
+        request_id: { type: string }
     AuthData:
       type: object
       required: [account, csrf_token, accounts]

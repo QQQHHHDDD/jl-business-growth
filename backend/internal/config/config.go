@@ -11,30 +11,37 @@ import (
 )
 
 const (
-	development = "development"
-	test        = "test"
-	production  = "production"
+	development                  = "development"
+	test                         = "test"
+	production                   = "production"
+	productionReleaseRuntimeRoot = "/var/lib/jl-business-growth/release-updater"
 )
 
 type Config struct {
-	AppEnv              string
-	DatabaseURL         string
-	PublicBaseURL       string
-	SessionSecret       string
-	CookieSecure        bool
-	SuperadminUsername  string
-	SuperadminPassword  string
-	MailMode            string
-	SMTPHost            string
-	SMTPPort            string
-	SMTPUsername        string
-	SMTPPassword        string
-	SMTPFrom            string
-	FileRoot            string
-	MailOutboxRoot      string
-	MaxDocumentUploadMB int
-	MaxImageUploadMB    int
-	ListenAddr          string
+	AppEnv               string
+	DatabaseURL          string
+	PublicBaseURL        string
+	SessionSecret        string
+	CookieSecure         bool
+	SuperadminUsername   string
+	SuperadminPassword   string
+	MailMode             string
+	SMTPHost             string
+	SMTPPort             string
+	SMTPUsername         string
+	SMTPPassword         string
+	SMTPFrom             string
+	FileRoot             string
+	MailOutboxRoot       string
+	MaxDocumentUploadMB  int
+	MaxImageUploadMB     int
+	ListenAddr           string
+	ReleaseRepository    string
+	ReleaseUpdateEnabled bool
+	GitHubToken          string
+	ReleaseRuntimeRoot   string
+	ReleaseBackendRoot   string
+	ReleaseWebRoot       string
 }
 
 func Load() (Config, error) {
@@ -59,26 +66,36 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("MAX_IMAGE_UPLOAD_MB: %w", err)
 	}
+	releaseUpdateEnabled, err := strconv.ParseBool(value(fileValues, "RELEASE_UPDATE_ENABLED", "false"))
+	if err != nil {
+		return Config{}, fmt.Errorf("RELEASE_UPDATE_ENABLED: must be true or false")
+	}
 
 	config := Config{
-		AppEnv:              env,
-		DatabaseURL:         value(fileValues, "DATABASE_URL", "postgres://127.0.0.1:5432/jl_business_dev?sslmode=disable"),
-		PublicBaseURL:       value(fileValues, "PUBLIC_BASE_URL", "http://127.0.0.1:5173"),
-		SessionSecret:       value(fileValues, "SESSION_SECRET", ""),
-		CookieSecure:        value(fileValues, "COOKIE_SECURE", "false") == "true",
-		SuperadminUsername:  value(fileValues, "SUPERADMIN_USERNAME", ""),
-		SuperadminPassword:  value(fileValues, "SUPERADMIN_INITIAL_PASSWORD", ""),
-		MailMode:            value(fileValues, "MAIL_MODE", "file"),
-		SMTPHost:            value(fileValues, "SMTP_HOST", ""),
-		SMTPPort:            value(fileValues, "SMTP_PORT", "587"),
-		SMTPUsername:        value(fileValues, "SMTP_USERNAME", ""),
-		SMTPPassword:        value(fileValues, "SMTP_PASSWORD", ""),
-		SMTPFrom:            value(fileValues, "SMTP_FROM", ""),
-		FileRoot:            fileRoot,
-		MailOutboxRoot:      mailOutboxRoot,
-		MaxDocumentUploadMB: documentLimit,
-		MaxImageUploadMB:    imageLimit,
-		ListenAddr:          value(fileValues, "LISTEN_ADDR", "127.0.0.1:8080"),
+		AppEnv:               env,
+		DatabaseURL:          value(fileValues, "DATABASE_URL", "postgres://127.0.0.1:5432/jl_business_dev?sslmode=disable"),
+		PublicBaseURL:        value(fileValues, "PUBLIC_BASE_URL", "http://127.0.0.1:5173"),
+		SessionSecret:        value(fileValues, "SESSION_SECRET", ""),
+		CookieSecure:         value(fileValues, "COOKIE_SECURE", "false") == "true",
+		SuperadminUsername:   value(fileValues, "SUPERADMIN_USERNAME", ""),
+		SuperadminPassword:   value(fileValues, "SUPERADMIN_INITIAL_PASSWORD", ""),
+		MailMode:             value(fileValues, "MAIL_MODE", "file"),
+		SMTPHost:             value(fileValues, "SMTP_HOST", ""),
+		SMTPPort:             value(fileValues, "SMTP_PORT", "587"),
+		SMTPUsername:         value(fileValues, "SMTP_USERNAME", ""),
+		SMTPPassword:         value(fileValues, "SMTP_PASSWORD", ""),
+		SMTPFrom:             value(fileValues, "SMTP_FROM", ""),
+		FileRoot:             fileRoot,
+		MailOutboxRoot:       mailOutboxRoot,
+		MaxDocumentUploadMB:  documentLimit,
+		MaxImageUploadMB:     imageLimit,
+		ListenAddr:           value(fileValues, "LISTEN_ADDR", "127.0.0.1:8080"),
+		ReleaseRepository:    value(fileValues, "RELEASE_REPOSITORY", "QQQHHHDDD/jl-business-growth"),
+		ReleaseUpdateEnabled: releaseUpdateEnabled,
+		GitHubToken:          value(fileValues, "GITHUB_TOKEN", ""),
+		ReleaseRuntimeRoot:   resolvePath(root, value(fileValues, "RELEASE_RUNTIME_ROOT", "/var/lib/jl-business-growth/release-updater")),
+		ReleaseBackendRoot:   resolvePath(root, value(fileValues, "RELEASE_BACKEND_ROOT", "/opt/jl-business-growth/releases")),
+		ReleaseWebRoot:       resolvePath(root, value(fileValues, "RELEASE_WEB_ROOT", "/var/www/jl-business-growth/releases")),
 	}
 
 	if err := config.Validate(); err != nil {
@@ -109,6 +126,12 @@ func (c Config) Validate() error {
 			return errors.New("SESSION_SECRET is required in production")
 		}
 	}
+	if c.ReleaseRepository != "QQQHHHDDD/jl-business-growth" {
+		return errors.New("RELEASE_REPOSITORY must be QQQHHHDDD/jl-business-growth")
+	}
+	if c.AppEnv == production && c.ReleaseRuntimeRoot != productionReleaseRuntimeRoot {
+		return fmt.Errorf("RELEASE_RUNTIME_ROOT must be %s in production", productionReleaseRuntimeRoot)
+	}
 	return nil
 }
 
@@ -119,6 +142,11 @@ func (c Config) EnsureDirectories() error {
 	if c.MailMode == "file" {
 		if err := os.MkdirAll(c.MailOutboxRoot, 0o700); err != nil {
 			return fmt.Errorf("create mail outbox: %w", err)
+		}
+	}
+	if c.ReleaseUpdateEnabled {
+		if err := os.MkdirAll(c.ReleaseRuntimeRoot, 0o700); err != nil {
+			return fmt.Errorf("create release updater runtime root: %w", err)
 		}
 	}
 	return nil

@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
@@ -12,14 +14,22 @@ import (
 	"jl-business-growth/backend/internal/admin"
 	"jl-business-growth/backend/internal/api"
 	"jl-business-growth/backend/internal/auth"
+	"jl-business-growth/backend/internal/buildinfo"
 	"jl-business-growth/backend/internal/config"
 	"jl-business-growth/backend/internal/database"
 	"jl-business-growth/backend/internal/health"
 	"jl-business-growth/backend/internal/invitation"
 	"jl-business-growth/backend/internal/problem"
+	releases "jl-business-growth/backend/internal/release"
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--version" {
+		if err := json.NewEncoder(os.Stdout).Encode(buildinfo.Current()); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	applicationConfig, err := config.Load()
 	if err != nil {
 		log.Fatalf("load configuration: %v", err)
@@ -50,6 +60,10 @@ func main() {
 }
 
 func newServer(databasePool *pgxpool.Pool, applicationConfig config.Config, authService *auth.Service) *echo.Echo {
+	return newServerWithReleaseService(databasePool, applicationConfig, authService, nil)
+}
+
+func newServerWithReleaseService(databasePool *pgxpool.Pool, applicationConfig config.Config, authService *auth.Service, releaseService *releases.Service) *echo.Echo {
 	adminService := admin.NewService(databasePool)
 	invitations := invitation.NewService(databasePool)
 
@@ -67,7 +81,7 @@ func newServer(databasePool *pgxpool.Pool, applicationConfig config.Config, auth
 	server.Use(auth.AuthenticationRateLimitMiddleware())
 	server.Use(auth.SessionMiddleware(databasePool, applicationConfig))
 	api.RegisterHandlers(server, &serverHandler{
-		Handler: api.NewHandler(authService, adminService, invitations, applicationConfig),
+		Handler: api.NewHandler(authService, adminService, invitations, applicationConfig, releaseService),
 		health:  health.New(databasePool, applicationConfig),
 	})
 	return server

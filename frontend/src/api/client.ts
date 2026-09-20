@@ -49,6 +49,8 @@ export type ImportJob = components["schemas"]["ImportJob"];
 export type ImportType = components["schemas"]["ImportType"];
 export type ExportType = components["parameters"]["ExportType"];
 export type ExportFormat = components["parameters"]["ExportFormat"];
+export type ReleaseResponse = components["schemas"]["ReleaseResponse"];
+export type ReleaseData = components["schemas"]["ReleaseData"];
 
 export class ApiError extends Error {
   status: number;
@@ -288,6 +290,22 @@ export function deleteInvitation(csrfToken: string, invitationId: string): Promi
     `/api/admin/invitation-codes/${encodeURIComponent(invitationId)}`,
     withCsrf(csrfToken, undefined, "DELETE"),
   );
+}
+
+export function getSystemRelease(): Promise<ReleaseResponse> {
+  return request<ReleaseResponse>("/api/admin/system/release");
+}
+
+export function checkSystemRelease(csrfToken: string): Promise<ReleaseResponse> {
+  return request<ReleaseResponse>("/api/admin/system/release/check", withCsrf(csrfToken));
+}
+
+export function updateSystemRelease(csrfToken: string, version: string): Promise<ReleaseResponse> {
+  return request<ReleaseResponse>("/api/admin/system/release/update", withCsrf(csrfToken, { version }));
+}
+
+export function rollbackSystemRelease(csrfToken: string, version: string): Promise<ReleaseResponse> {
+  return request<ReleaseResponse>("/api/admin/system/release/rollback", withCsrf(csrfToken, { version }));
 }
 
 function dateParam(value: string | undefined): string {

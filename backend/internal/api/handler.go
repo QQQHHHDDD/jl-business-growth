@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -27,6 +29,7 @@ import (
 	"jl-business-growth/backend/internal/mail"
 	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
+	releases "jl-business-growth/backend/internal/release"
 	"jl-business-growth/backend/internal/reviews"
 	"jl-business-growth/backend/internal/search"
 	"jl-business-growth/backend/internal/team"
@@ -46,12 +49,22 @@ type Handler struct {
 	search     *search.Service
 	finance    *finance.Service
 	imports    *importexport.Service
+	releases   *releases.Service
 	config     config.Config
 }
 
-func NewHandler(authService *auth.Service, adminService *admin.Service, invitationService *invitation.Service, cfg config.Config) *Handler {
+func NewHandler(authService *auth.Service, adminService *admin.Service, invitationService *invitation.Service, cfg config.Config, releaseServices ...*releases.Service) *Handler {
 	pool := authService.Pool()
-	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(pool), calendar: calendar.NewService(pool, mail.NewSender(cfg)), reviews: reviews.NewService(pool), analytics: analytics.NewService(pool), team: team.NewService(pool), knowledge: knowledge.NewService(pool), files: fileassets.NewService(pool, cfg), search: search.NewService(pool), finance: finance.NewService(pool), imports: importexport.NewService(pool, cfg), config: cfg}
+	schemaVersion := func(ctx context.Context) (int64, error) {
+		var version int64
+		err := pool.QueryRow(ctx, `SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version WHERE is_applied`).Scan(&version)
+		return version, err
+	}
+	releaseService := releases.NewService(cfg, schemaVersion)
+	if len(releaseServices) > 0 && releaseServices[0] != nil {
+		releaseService = releaseServices[0]
+	}
+	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(pool), calendar: calendar.NewService(pool, mail.NewSender(cfg)), reviews: reviews.NewService(pool), analytics: analytics.NewService(pool), team: team.NewService(pool), knowledge: knowledge.NewService(pool), files: fileassets.NewService(pool, cfg), search: search.NewService(pool), finance: finance.NewService(pool), imports: importexport.NewService(pool, cfg), releases: releaseService, config: cfg}
 }
 
 func (h *Handler) PostAuthRegister(ctx echo.Context) error {
@@ -1450,9 +1463,20 @@ func generatedDeletePair(sessionID, accountID uuid.UUID) generated.DeleteBrowser
 func requestID(ctx echo.Context) string { return ctx.Response().Header().Get(echo.HeaderXRequestID) }
 
 func (h *Handler) audit(ctx echo.Context, action string, actor, target, targetID uuid.UUID) {
+	h.auditDetails(ctx, action, actor, target, targetID, nil)
+}
+
+func (h *Handler) auditDetails(ctx echo.Context, action string, actor, target, targetID uuid.UUID, details map[string]string) {
 	userAgent := strings.TrimSpace(ctx.Request().UserAgent())
 	if len(userAgent) > 256 {
 		userAgent = userAgent[:256]
+	}
+	if details == nil {
+		details = map[string]string{}
+	}
+	detailJSON, err := json.Marshal(details)
+	if err != nil {
+		detailJSON = []byte("{}")
 	}
 	_ = h.auth.Queries().CreateAuditLog(ctx.Request().Context(), generated.CreateAuditLogParams{
 		ID:              auth.ToPGUUID(uuid.New()),
@@ -1463,6 +1487,7 @@ func (h *Handler) audit(ctx echo.Context, action string, actor, target, targetID
 		Column6:         ctx.RealIP(),
 		Column7:         userAgent,
 		Column8:         requestID(ctx),
+		Column9:         detailJSON,
 	})
 }
 

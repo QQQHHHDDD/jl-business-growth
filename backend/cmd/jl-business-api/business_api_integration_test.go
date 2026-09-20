@@ -25,7 +25,9 @@ import (
 
 	"jl-business-growth/backend/internal/api"
 	"jl-business-growth/backend/internal/auth"
+	"jl-business-growth/backend/internal/buildinfo"
 	"jl-business-growth/backend/internal/config"
+	releases "jl-business-growth/backend/internal/release"
 )
 
 func TestAuthenticationAdminAPIIntegration(t *testing.T) {
@@ -64,22 +66,46 @@ func TestAuthenticationAdminAPIIntegration(t *testing.T) {
 
 	fileRoot := t.TempDir()
 	applicationConfig := config.Config{
-		AppEnv:             "test",
-		DatabaseURL:        databaseURL,
-		PublicBaseURL:      "http://127.0.0.1:5173",
-		CookieSecure:       false,
-		SuperadminUsername: "test-superadmin",
-		SuperadminPassword: "test-superadmin-password",
-		MailMode:           "file",
-		FileRoot:           fileRoot,
-		MailOutboxRoot:     fileRoot,
+		AppEnv:               "test",
+		DatabaseURL:          databaseURL,
+		PublicBaseURL:        "http://127.0.0.1:5173",
+		CookieSecure:         false,
+		SuperadminUsername:   "test-superadmin",
+		SuperadminPassword:   "test-superadmin-password",
+		MailMode:             "file",
+		FileRoot:             fileRoot,
+		MailOutboxRoot:       fileRoot,
+		ReleaseRepository:    "QQQHHHDDD/jl-business-growth",
+		ReleaseUpdateEnabled: true,
+		ReleaseRuntimeRoot:   filepath.Join(fileRoot, "release-updater"),
+		ReleaseBackendRoot:   filepath.Join(fileRoot, "releases"),
+		ReleaseWebRoot:       filepath.Join(fileRoot, "web-releases"),
 	}
 	authService := auth.NewService(pool, applicationConfig)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
 	}
 
-	server := httptest.NewServer(newServer(pool, applicationConfig, authService))
+	githubServer := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`[{"tag_name":"v1.0.1","name":"JL团队生意成长管理系统 v1.0.1","html_url":"https://example.invalid/v1.0.1","published_at":"2026-09-19T00:00:00Z","draft":false,"prerelease":false}]`))
+	}))
+	defer githubServer.Close()
+	previousBuild := buildinfo.Current()
+	buildinfo.Version = "v1.0.0"
+	buildinfo.Commit = "integration-test"
+	buildinfo.BuildTime = "2026-09-19T00:00:00Z"
+	defer func() {
+		buildinfo.Version = previousBuild.Version
+		buildinfo.Commit = previousBuild.Commit
+		buildinfo.BuildTime = previousBuild.BuildTime
+	}()
+	releaseService := releases.NewServiceWithClient(applicationConfig, func(ctx context.Context) (int64, error) {
+		var version int64
+		err := pool.QueryRow(ctx, `SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version WHERE is_applied`).Scan(&version)
+		return version, err
+	}, githubServer.Client(), githubServer.URL)
+	server := httptest.NewServer(newServerWithReleaseService(pool, applicationConfig, authService, releaseService))
 	defer server.Close()
 
 	superAdminClient := newTestClient(t)
@@ -229,6 +255,25 @@ func TestAuthenticationAdminAPIIntegration(t *testing.T) {
 	decodeTestJSON(t, ordinaryAdminLogin, &ordinaryAdminAuth)
 	getTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/users", http.StatusOK)
 	getTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/admins", http.StatusForbidden)
+	getTestJSON(t, userOneClient, server.URL, "/api/admin/system/release", http.StatusForbidden)
+	getTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/system/release", http.StatusForbidden)
+	getTestJSON(t, superAdminClient, server.URL, "/api/admin/system/release", http.StatusOK)
+	postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/system/release/check", map[string]string{}, superAdminAuth.Data.CsrfToken, http.StatusOK)
+	var releaseAuditVersion string
+	if err := pool.QueryRow(ctx, `SELECT details->>'current_version' FROM security_audit_logs WHERE action = 'SYSTEM_RELEASE_CHECK' ORDER BY created_at DESC LIMIT 1`).Scan(&releaseAuditVersion); err != nil {
+		t.Fatalf("read release audit entry: %v", err)
+	}
+	if releaseAuditVersion == "" {
+		t.Fatal("release audit entry did not record current_version")
+	}
+	postTestJSON(t, superAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/system/release/update", map[string]string{"version": "v1.0.1"}, superAdminAuth.Data.CsrfToken, http.StatusAccepted)
+	var releaseTargetVersion, updaterRequestID string
+	if err := pool.QueryRow(ctx, `SELECT details->>'target_version', details->>'request_id' FROM security_audit_logs WHERE action = 'SYSTEM_RELEASE_UPDATE_REQUEST' ORDER BY created_at DESC LIMIT 1`).Scan(&releaseTargetVersion, &updaterRequestID); err != nil {
+		t.Fatalf("read release update audit entry: %v", err)
+	}
+	if releaseTargetVersion != "v1.0.1" || updaterRequestID == "" {
+		t.Fatalf("release update audit details = version %q request %q", releaseTargetVersion, updaterRequestID)
+	}
 	deleteTestJSON(t, ordinaryAdminClient, server.URL, "/api/admin/admins/"+ordinaryAdmin.Data.Id.String(), ordinaryAdminAuth.Data.CsrfToken, http.StatusForbidden)
 	postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", map[string]string{}, ordinaryAdminAuth.Data.CsrfToken, http.StatusCreated)
 	expiredInvitationResponse := postTestJSON(t, ordinaryAdminClient, server.URL, applicationConfig.PublicBaseURL, "/api/admin/invitation-codes", map[string]interface{}{

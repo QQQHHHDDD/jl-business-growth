@@ -321,6 +321,26 @@ const (
 	LearningSessionRequestSourceITEM             LearningSessionRequestSource = "ITEM"
 )
 
+// Defines values for ReleaseUpdateStatusAction.
+const (
+	Rollback ReleaseUpdateStatusAction = "rollback"
+	Update   ReleaseUpdateStatusAction = "update"
+)
+
+// Defines values for ReleaseUpdateStatusState.
+const (
+	BackingUp   ReleaseUpdateStatusState = "backing_up"
+	Downloading ReleaseUpdateStatusState = "downloading"
+	Failed      ReleaseUpdateStatusState = "failed"
+	HealthCheck ReleaseUpdateStatusState = "health_check"
+	Migrating   ReleaseUpdateStatusState = "migrating"
+	Queued      ReleaseUpdateStatusState = "queued"
+	Restarting  ReleaseUpdateStatusState = "restarting"
+	Succeeded   ReleaseUpdateStatusState = "succeeded"
+	Switching   ReleaseUpdateStatusState = "switching"
+	Verifying   ReleaseUpdateStatusState = "verifying"
+)
+
 // Defines values for ReviewType.
 const (
 	ReviewTypeDAILY   ReviewType = "DAILY"
@@ -1238,6 +1258,15 @@ type IncomeSimulationResult struct {
 	RubyBonus                 string `json:"ruby_bonus"`
 }
 
+// InstalledRelease defines model for InstalledRelease.
+type InstalledRelease struct {
+	Current               bool       `json:"current"`
+	InstalledAt           *time.Time `json:"installed_at"`
+	RollbackAllowed       bool       `json:"rollback_allowed"`
+	RollbackBlockedReason *string    `json:"rollback_blocked_reason"`
+	Version               string     `json:"version"`
+}
+
 // Invitation defines model for Invitation.
 type Invitation struct {
 	Code      string             `json:"code"`
@@ -1331,6 +1360,14 @@ type KnowledgeItemResponse struct {
 	RequestId string        `json:"request_id"`
 }
 
+// LatestRelease defines model for LatestRelease.
+type LatestRelease struct {
+	HtmlUrl     string    `json:"html_url"`
+	Name        string    `json:"name"`
+	PublishedAt time.Time `json:"published_at"`
+	Version     string    `json:"version"`
+}
+
 // LearningSession defines model for LearningSession.
 type LearningSession struct {
 	ActivityDate    openapi_types.Date          `json:"activity_date"`
@@ -1399,6 +1436,48 @@ type RegisterRequest struct {
 	Password       string `json:"password"`
 	Username       string `json:"username"`
 }
+
+// ReleaseActionRequest defines model for ReleaseActionRequest.
+type ReleaseActionRequest struct {
+	Version string `json:"version"`
+}
+
+// ReleaseData defines model for ReleaseData.
+type ReleaseData struct {
+	BuildTime         string               `json:"build_time"`
+	CheckError        *string              `json:"check_error"`
+	CurrentCommit     string               `json:"current_commit"`
+	CurrentVersion    string               `json:"current_version"`
+	InstalledVersions []InstalledRelease   `json:"installed_versions"`
+	LatestRelease     *LatestRelease       `json:"latest_release"`
+	UpdateAvailable   bool                 `json:"update_available"`
+	UpdateEnabled     bool                 `json:"update_enabled"`
+	UpdateStatus      *ReleaseUpdateStatus `json:"update_status"`
+}
+
+// ReleaseResponse defines model for ReleaseResponse.
+type ReleaseResponse struct {
+	Data      ReleaseData `json:"data"`
+	RequestId string      `json:"request_id"`
+}
+
+// ReleaseUpdateStatus defines model for ReleaseUpdateStatus.
+type ReleaseUpdateStatus struct {
+	Action        ReleaseUpdateStatusAction `json:"action"`
+	FinishedAt    *time.Time                `json:"finished_at"`
+	FromVersion   string                    `json:"from_version"`
+	RequestId     openapi_types.UUID        `json:"request_id"`
+	SafeMessage   string                    `json:"safe_message"`
+	StartedAt     time.Time                 `json:"started_at"`
+	State         ReleaseUpdateStatusState  `json:"state"`
+	TargetVersion string                    `json:"target_version"`
+}
+
+// ReleaseUpdateStatusAction defines model for ReleaseUpdateStatus.Action.
+type ReleaseUpdateStatusAction string
+
+// ReleaseUpdateStatusState defines model for ReleaseUpdateStatus.State.
+type ReleaseUpdateStatusState string
 
 // ResetPasswordData defines model for ResetPasswordData.
 type ResetPasswordData struct {
@@ -2002,6 +2081,12 @@ type PostAdminInvitationCodeJSONRequestBody = CreateInvitationRequest
 // PatchAdminInvitationCodeJSONRequestBody defines body for PatchAdminInvitationCode for application/json ContentType.
 type PatchAdminInvitationCodeJSONRequestBody = UpdateInvitationRequest
 
+// PostAdminSystemReleaseRollbackJSONRequestBody defines body for PostAdminSystemReleaseRollback for application/json ContentType.
+type PostAdminSystemReleaseRollbackJSONRequestBody = ReleaseActionRequest
+
+// PostAdminSystemReleaseUpdateJSONRequestBody defines body for PostAdminSystemReleaseUpdate for application/json ContentType.
+type PostAdminSystemReleaseUpdateJSONRequestBody = ReleaseActionRequest
+
 // PostAdminUserResetPasswordJSONRequestBody defines body for PostAdminUserResetPassword for application/json ContentType.
 type PostAdminUserResetPasswordJSONRequestBody = ResetPasswordRequest
 
@@ -2142,6 +2227,18 @@ type ServerInterface interface {
 	// Update invitation status or limits
 	// (PATCH /api/admin/invitation-codes/{invitation_id})
 	PatchAdminInvitationCode(ctx echo.Context, invitationId InvitationId) error
+	// Return build and release status for the super administrator
+	// (GET /api/admin/system/release)
+	GetAdminSystemRelease(ctx echo.Context) error
+	// Refresh the latest stable GitHub Release
+	// (POST /api/admin/system/release/check)
+	PostAdminSystemReleaseCheck(ctx echo.Context) error
+	// Queue an application-only rollback for the independent updater
+	// (POST /api/admin/system/release/rollback)
+	PostAdminSystemReleaseRollback(ctx echo.Context) error
+	// Queue an application update for the independent updater
+	// (POST /api/admin/system/release/update)
+	PostAdminSystemReleaseUpdate(ctx echo.Context) error
 	// List normal users without business data
 	// (GET /api/admin/users)
 	GetAdminUsers(ctx echo.Context, params GetAdminUsersParams) error
@@ -2589,6 +2686,50 @@ func (w *ServerInterfaceWrapper) PatchAdminInvitationCode(ctx echo.Context) erro
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PatchAdminInvitationCode(ctx, invitationId)
+	return err
+}
+
+// GetAdminSystemRelease converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAdminSystemRelease(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetAdminSystemRelease(ctx)
+	return err
+}
+
+// PostAdminSystemReleaseCheck converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAdminSystemReleaseCheck(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAdminSystemReleaseCheck(ctx)
+	return err
+}
+
+// PostAdminSystemReleaseRollback converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAdminSystemReleaseRollback(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAdminSystemReleaseRollback(ctx)
+	return err
+}
+
+// PostAdminSystemReleaseUpdate converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAdminSystemReleaseUpdate(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostAdminSystemReleaseUpdate(ctx)
 	return err
 }
 
@@ -4392,6 +4533,10 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/api/admin/invitation-codes", wrapper.PostAdminInvitationCode)
 	router.DELETE(baseURL+"/api/admin/invitation-codes/:invitation_id", wrapper.DeleteAdminInvitationCode)
 	router.PATCH(baseURL+"/api/admin/invitation-codes/:invitation_id", wrapper.PatchAdminInvitationCode)
+	router.GET(baseURL+"/api/admin/system/release", wrapper.GetAdminSystemRelease)
+	router.POST(baseURL+"/api/admin/system/release/check", wrapper.PostAdminSystemReleaseCheck)
+	router.POST(baseURL+"/api/admin/system/release/rollback", wrapper.PostAdminSystemReleaseRollback)
+	router.POST(baseURL+"/api/admin/system/release/update", wrapper.PostAdminSystemReleaseUpdate)
 	router.GET(baseURL+"/api/admin/users", wrapper.GetAdminUsers)
 	router.DELETE(baseURL+"/api/admin/users/:account_id", wrapper.DeleteAdminUser)
 	router.POST(baseURL+"/api/admin/users/:account_id/reset-password", wrapper.PostAdminUserResetPassword)
