@@ -21,7 +21,10 @@ mkdir -p "${bin}" "${runtime}" "${backend_releases}" "${web_releases}" "${fixtur
 
 # The API remains startable when online update is disabled and the optional
 # requests directory has not been provisioned yet.
-grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp -/var/lib/jl-business-growth/release-updater/requests' "${repo_root}/deploy/systemd/jl-business-api.service"
+grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp /var/lib/jl-business-growth/mail-outbox -/var/lib/jl-business-growth/release-updater/requests' "${repo_root}/deploy/systemd/jl-business-api.service"
+grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp /var/lib/jl-business-growth/mail-outbox' "${repo_root}/deploy/systemd/jl-business-jobs.service"
+grep -Fq 'ProtectSystem=strict' "${repo_root}/deploy/systemd/jl-business-api.service"
+grep -Fq 'ProtectSystem=strict' "${repo_root}/deploy/systemd/jl-business-jobs.service"
 grep -Fq 'ReadWritePaths=/opt/jl-business-growth /var/www/jl-business-growth' "${repo_root}/deploy/systemd/jl-business-updater.service"
 grep -Fq 'EnvironmentFile=-/etc/jl-business-growth/jl-business-growth-cli.env' "${repo_root}/deploy/systemd/jl-business-updater.service"
 grep -Fq 'EnvironmentFile=-/etc/jl-business-growth/jl-business-growth-cli.env' "${repo_root}/deploy/systemd/jl-business-backup.service"

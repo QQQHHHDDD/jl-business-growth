@@ -169,10 +169,20 @@ specific secrets in this repository.
    ```
 
 2. Provision the runtime directories with the ownership and modes shown above.
-   Reject any existing symlink before running `install -d`. Provision
-   `/var/lib/jl-business-growth/files` and `tmp` for the API as real
-   `jl-business:jl-business` directories, and keep release roots and `current`
-   symlinks `root:root` and immutable to the application account.
+   Reject any existing symlink before running `install -d`. Provision these
+   three API/jobs directories as real, non-symlink `jl-business:jl-business`
+   directories with mode `0700` (or stricter):
+
+   ```bash
+   for directory in files tmp mail-outbox; do
+     test ! -L "/var/lib/jl-business-growth/${directory}"
+     sudo install -d -o jl-business -g jl-business -m 0700 \
+       "/var/lib/jl-business-growth/${directory}"
+   done
+   ```
+
+   Keep release roots and `current` symlinks `root:root` and immutable to the
+   application account.
 
 3. Provision `/etc/jl-business-growth/jl-business-growth.env` as a real,
    non-symlink, root-owned file with mode `0640` or stricter; its parent must
