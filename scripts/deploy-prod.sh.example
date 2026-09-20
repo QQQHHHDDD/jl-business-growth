@@ -15,12 +15,13 @@ test -d "${ARTIFACT}"
 ssh "${remote}" "test ! -e '${remote_root}' && test ! -e '${web_root}' && mkdir -p '${remote_staging}'"
 rsync -a --delete "${ARTIFACT}/" "${remote}:${remote_staging}/"
 
-ssh "${remote}" bash -s -- "${remote_root}" "${web_root}" "${remote_staging}" <<'REMOTE'
+ssh "${remote}" bash -s -- "${remote_root}" "${web_root}" "${remote_staging}" "${RELEASE_VERSION}" <<'REMOTE'
 set -euo pipefail
 
 backend_root="$1"
 web_root="$2"
 staging_root="$3"
+version="$4"
 
 sudo install -d -o root -g root -m 0755 "$backend_root" "$web_root"
 sudo rsync -a --delete --chown=root:root --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$staging_root/" "$backend_root/"
@@ -43,7 +44,7 @@ if [[ "$(sudo systemctl show jl-business-backup.service -p ExecMainStatus --valu
   echo 'production database backup unit did not succeed' >&2
   exit 1
 fi
-sudo /usr/local/libexec/jl-business-migrate-release "$RELEASE_VERSION"
+sudo /usr/local/libexec/jl-business-migrate-release "$version"
 sudo ln -sfnT "$backend_root" /opt/jl-business-growth/current
 sudo ln -sfnT "$web_root" /var/www/jl-business-growth/current
 sudo systemctl restart jl-business-api.service
