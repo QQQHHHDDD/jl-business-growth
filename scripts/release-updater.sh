@@ -36,13 +36,6 @@ readonly api_health="${RELEASE_API_HEALTH:-http://127.0.0.1:8080/api/health}"
 readonly release_download_base="${RELEASE_DOWNLOAD_BASE:-https://github.com/${repository}/releases/download}"
 readonly health_attempts="${RELEASE_HEALTH_ATTEMPTS:-30}"
 readonly health_retry_delay="${RELEASE_HEALTH_RETRY_DELAY:-2}"
-trusted_backup_helper="/usr/local/libexec/jl-business-backup-db"
-if [[ "${runtime_root}" != "/var/lib/jl-business-growth/release-updater" ]]; then
-    # Test harnesses may use an isolated runtime root; production is always the
-    # fixed root-provisioned helper above and never accepts a command override.
-    trusted_backup_helper="${runtime_root}/trusted-backup-db"
-fi
-readonly trusted_backup_helper
 
 request_id=""
 action=""
@@ -297,16 +290,6 @@ manifest_compatible() {
     (( schema >= minimum && schema <= maximum ))
 }
 
-verify_binary_metadata() {
-    local binary="$1"
-    local manifest_path="$2"
-    local output
-    output="$("${binary}" --version)"
-    [[ "$(jq -er '.version' "${manifest_path}")" == "$(jq -er '.version' <<<"${output}")" ]]
-    [[ "$(jq -er '.git_sha' "${manifest_path}")" == "$(jq -er '.commit' <<<"${output}")" ]]
-    [[ "$(jq -er '.built_at' "${manifest_path}")" == "$(jq -er '.built_at' <<<"${output}")" ]]
-}
-
 verify_extracted_artifact() {
     local root="$1"
     local symlink
@@ -333,20 +316,45 @@ verify_extracted_artifact() {
     jq -e '.git_sha | strings and length > 0' "${root}/release.json" >/dev/null
     jq -e '.built_at | strings and length > 0' "${root}/release.json" >/dev/null
     jq -e '.platform == "linux-amd64" and (.schema_version | numbers) and (.compatible_schema_min | numbers) and (.compatible_schema_max | numbers) and (.compatible_schema_max >= .compatible_schema_min)' "${root}/release.json" >/dev/null
-    verify_binary_metadata "${root}/jl-business-api" "${root}/release.json"
-    verify_binary_metadata "${root}/jl-business-jobs" "${root}/release.json"
 }
 
 verify_installed_backend() {
     local root="$1"
     for required in jl-business-api jl-business-jobs migrations scripts/backup-db.sh release.json; do
-        test -e "${root}/${required}" || { echo "installed release is missing ${required}" >&2; return 1; }
+        [[ -f "${root}/${required}" && ! -L "${root}/${required}" ]] || { echo "installed release is missing or unsafe ${required}" >&2; return 1; }
     done
     test -x "${root}/jl-business-api" && test -x "${root}/jl-business-jobs"
-    test -d "${root}/migrations"
+    [[ -d "${root}/migrations" && ! -L "${root}/migrations" ]]
     test -x "${root}/scripts/backup-db.sh"
-    verify_binary_metadata "${root}/jl-business-api" "${root}/release.json"
-    verify_binary_metadata "${root}/jl-business-jobs" "${root}/release.json"
+}
+
+validate_existing_release_permissions() {
+    local root="$1"
+    local releases_root="$2"
+    local bad
+    case "${root}" in
+        "${releases_root}"/*) ;;
+        *)
+            failure_message="已安装 release 不在固定 releases 根目录，拒绝执行版本任务"
+            return 1
+            ;;
+    esac
+    if [[ ! -d "${root}" || -L "${root}" ]]; then
+        failure_message="已安装 release 必须是真实目录，拒绝执行版本任务"
+        return 1
+    fi
+    bad="$(find "${root}" -xdev -perm /022 -print -quit)"
+    if [[ -n "${bad}" ]]; then
+        failure_message="已安装 release 存在 group/other writable entry"
+        return 1
+    fi
+    if [[ "${production_runtime}" == "true" ]]; then
+        bad="$(find "${root}" -xdev \( ! -user root -o ! -group root \) -print -quit)"
+        if [[ -n "${bad}" ]]; then
+            failure_message="已安装 release 必须由 root:root 拥有"
+            return 1
+        fi
+    fi
 }
 
 normalize_target_permissions() {
@@ -613,7 +621,10 @@ if [[ "${action}" == "update" ]]; then
         fail_task "目标 Release schema 低于当前数据库 schema"
     fi
 else
-    test -d "${target_backend}" && test -d "${target_web}"
+    if ! validate_existing_release_permissions "${target_backend}" "${backend_releases}" || ! validate_existing_release_permissions "${target_web}" "${web_releases}"; then
+        fail_task "${failure_message}"
+    fi
+    [[ -d "${target_web}" && ! -L "${target_web}" ]]
     test "$(jq -er '.version' "${target_backend}/release.json")" = "${target_version}"
     verify_installed_backend "${target_backend}"
     current_schema_before="$(schema_version_from_db)"
@@ -629,8 +640,8 @@ if ! validate_current_backend; then
 fi
 
 write_status "backing_up" "正在备份数据库"
-if ! "${trusted_backup_helper}"; then
-    fail_task "固定 trusted backup helper 执行失败，需要人工处理"
+if ! systemctl start jl-business-backup.service; then
+    fail_task "数据库备份失败，需要人工处理"
 fi
 
 if [[ "${action}" == "update" ]]; then

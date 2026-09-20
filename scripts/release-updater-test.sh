@@ -22,6 +22,13 @@ mkdir -p "${bin}" "${runtime}" "${backend_releases}" "${web_releases}" "${fixtur
 # requests directory has not been provisioned yet.
 grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp -/var/lib/jl-business-growth/release-updater/requests' "${repo_root}/deploy/systemd/jl-business-api.service"
 grep -Fq 'ReadWritePaths=/opt/jl-business-growth /var/www/jl-business-growth' "${repo_root}/deploy/systemd/jl-business-updater.service"
+! grep -Fq 'ReadWritePaths=/var/backups/jl-business-growth' "${repo_root}/deploy/systemd/jl-business-updater.service"
+grep -Fq 'User=jl-business' "${repo_root}/deploy/systemd/jl-business-backup.service"
+grep -Fq 'Group=jl-business' "${repo_root}/deploy/systemd/jl-business-backup.service"
+! grep -Fq 'verify_binary_metadata' "${updater}"
+! grep -Fq -- ' --version' "${updater}"
+! grep -Fq 'trusted_backup_helper' "${updater}"
+! grep -Fq '/usr/local/libexec/jl-business-backup-db' "${updater}"
 grep -Fq 'validate_production_application_roots' "${updater}"
 grep -Fq 'backend_app_root="/opt/jl-business-growth"' "${updater}"
 grep -Fq 'web_app_root="/var/www/jl-business-growth"' "${updater}"
@@ -34,6 +41,8 @@ cat "${SCHEMA_FILE}"
 EOF
 cat >"${bin}/goose" <<'EOF'
 #!/usr/bin/env bash
+if [[ -n "${BACKUP_MARKER:-}" && ! -e "${BACKUP_MARKER}" ]]; then exit 1; fi
+if [[ -n "${MIGRATION_MARKER:-}" ]]; then : >"${MIGRATION_MARKER}"; fi
 if [[ -n "${GOOSE_SCHEMA:-}" ]]; then printf '%s\n' "${GOOSE_SCHEMA}" >"${SCHEMA_FILE}"; fi
 EOF
 cat >"${bin}/pg_dump" <<'EOF'
@@ -45,6 +54,12 @@ cat >"${bin}/systemctl" <<'EOF'
 if [[ "${RELEASE_SYSTEMCTL_FAIL:-false}" == true ]]; then exit 1; fi
 current="$(readlink -f "${RELEASE_BACKEND_CURRENT}")"
 service="${*: -1}"
+if [[ "${1:-}" == start && "${service}" == jl-business-backup.service ]]; then
+  : >"${BACKUP_SERVICE_START_MARKER}"
+  if [[ "${RELEASE_BACKUP_SERVICE_FAIL:-false}" == true ]]; then exit 1; fi
+  : >"${BACKUP_MARKER}"
+  exit 0
+fi
 if [[ "${current}" == *"/v1.0.0" && "${service}" == jl-business-api.service && "${RELEASE_RESTORE_API_SYSTEMCTL_FAIL:-false}" == true ]]; then exit 1; fi
 if [[ "${current}" == *"/v1.0.0" && "${service}" == jl-business-jobs.timer && "${RELEASE_RESTORE_JOBS_SYSTEMCTL_FAIL:-false}" == true ]]; then exit 1; fi
 if [[ "${RELEASE_SYSTEMCTL_SLEEP:-false}" == true ]]; then
@@ -91,6 +106,7 @@ make_release() {
   for binary in jl-business-api jl-business-jobs; do
     cat >"${root_dir}/${binary}" <<EOF
 #!/usr/bin/env bash
+if [[ -n "\${BINARY_EXECUTED_MARKER:-}" ]]; then : >"\${BINARY_EXECUTED_MARKER}"; fi
 printf '%s\n' '{"version":"${version}","commit":"${commit}","built_at":"2026-09-19T00:00:00Z"}'
 EOF
     chmod +x "${root_dir}/${binary}"
@@ -118,14 +134,14 @@ repack_release() {
 reset_case() {
   rm -rf "${runtime}" "${backend_releases}" "${web_releases}"
   rm -f "${root}/backend-current" "${root}/web-current"
-  rm -f "${root}/backup.called"
+  rm -f "${root}/backup.called" "${root}/backup-service.started" "${root}/migration.called" "${root}/binary-executed" "${root}/direct-backup.called"
   mkdir -p "${requests}" "${state}" "${work}" "${backend_releases}" "${web_releases}"
   chmod 0750 "${runtime}"
   chmod 0770 "${requests}"; chmod 0750 "${state}"; chmod 0700 "${work}"
   cat >"${runtime}/trusted-backup-db" <<'EOF'
 #!/usr/bin/env bash
-if [[ "${RELEASE_BACKUP_HELPER_FAIL:-false}" == true ]]; then exit 1; fi
-: >"${BACKUP_MARKER}"
+if [[ -n "${DIRECT_BACKUP_MARKER:-}" ]]; then : >"${DIRECT_BACKUP_MARKER}"; fi
+exit 99
 EOF
   chmod 0755 "${runtime}/trusted-backup-db"
   printf '10\n' >"${root}/schema"
@@ -156,7 +172,9 @@ run_updater() {
     RELEASE_BACKEND_CURRENT="${root}/backend-current" RELEASE_WEB_CURRENT="${root}/web-current" \
     RELEASE_DOWNLOAD_BASE="file://${fixture}" RELEASE_API_HEALTH="http://test/api/health" \
     RELEASE_HEALTH_ATTEMPTS=1 RELEASE_HEALTH_RETRY_DELAY=0 DATABASE_URL=test \
-    SCHEMA_FILE="${root}/schema" FIXTURE_ROOT="${fixture}" BACKUP_MARKER="${root}/backup.called" "$updater"
+    SCHEMA_FILE="${root}/schema" FIXTURE_ROOT="${fixture}" BACKUP_MARKER="${root}/backup.called" \
+    BACKUP_SERVICE_START_MARKER="${root}/backup-service.started" MIGRATION_MARKER="${root}/migration.called" \
+    BINARY_EXECUTED_MARKER="${root}/binary-executed" DIRECT_BACKUP_MARKER="${root}/direct-backup.called" "$updater"
 }
 
 run_case() {
@@ -210,6 +228,10 @@ assert_rejected_request() {
 assert_successful_update() {
   jq -e '.state == "succeeded"' "${state}/status.json" >/dev/null
   [[ -e "${root}/backup.called" ]]
+  [[ -e "${root}/backup-service.started" ]]
+  [[ -e "${root}/migration.called" ]]
+  [[ ! -e "${root}/direct-backup.called" ]]
+  [[ ! -e "${root}/binary-executed" ]]
   [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.1" ]]
   [[ "$(readlink -f "${root}/web-current")" == "${web_releases}/v1.0.1" ]]
   [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
@@ -297,6 +319,25 @@ if ! run_case; then echo 'normal claimed request unexpectedly failed' >&2; exit 
 assert_successful_update
 assert_target_permissions
 pass_case 'application request is safely claimed, processed, and target permissions normalized under umask 077'
+
+reset_case
+request v1.0.1
+if RELEASE_BACKUP_SERVICE_FAIL=true run_case; then echo 'backup service failure unexpectedly succeeded' >&2; exit 1; fi
+assert_failed_cleanup '数据库备份失败，需要人工处理'
+[[ -e "${root}/backup-service.started" ]] && [[ ! -e "${root}/migration.called" ]] && [[ ! -e "${root}/direct-backup.called" ]]
+assert_no_migration_or_switch
+pass_case 'backup service start failure blocks migration'
+
+reset_case
+request v1.0.1
+if RELEASE_BACKUP_SERVICE_FAIL=true run_case; then echo 'backup failure unexpectedly switched symlinks' >&2; exit 1; fi
+assert_not_restored
+[[ -e "${root}/backup-service.started" ]] && [[ ! -e "${root}/migration.called" ]]
+[[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.0" ]]
+[[ "$(readlink -f "${root}/web-current")" == "${web_releases}/v1.0.0" ]]
+pass_case 'backup service failure leaves symlinks unchanged'
+
+unset RELEASE_BACKUP_SERVICE_FAIL
 
 reset_case
 request v1.0.1
