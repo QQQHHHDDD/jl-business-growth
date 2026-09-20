@@ -205,59 +205,99 @@ specific secrets in this repository.
    `pg_dump --version` checks as `jl-business`. The fixed `/usr/bin/goose` and
    root-only helper paths remain unchanged.
 
-5. Install the API, jobs, backup, updater, and path units as root, run
-   `systemctl daemon-reload`, and enable the API, jobs timer, and backup timer.
-   `After=postgresql.service` is only an ordering hint; these units do not
-   require PostgreSQL to be managed by systemd. Keep the updater path disabled
-   until the rehearsal gates below pass.
+5. Install the trusted root-only helpers under `/usr/local/libexec/` before any
+   backup, migration, or updater rehearsal. Verify each helper is a real,
+   non-symlink regular file owned by `root:root`, mode `0755`, and not writable
+   by the application account:
 
-6. Migrate the JL API from the old process manager only after the systemd API
-   is healthy and listening on `127.0.0.1:8081`: stop and disable only the JL
-   panel/Supervisor entry, then verify the unrelated service on `127.0.0.1:8080`
-   is unchanged. Do not grant the updater any Supervisor command capability.
+   ```text
+   /usr/local/libexec/jl-business-release-updater
+   /usr/local/libexec/jl-business-backup-db
+   /usr/local/libexec/jl-business-migrate-release
+   ```
 
-7. Configure Nginx to use the example topology: static root
+6. Install the API, jobs, backup, updater, timer, and path units as root and run
+   `systemctl daemon-reload`. Perform static and startup preflight checks for
+   unit contents, executable paths, EnvironmentFiles, directory ownership,
+   CLI availability, and port configuration. Do not start the systemd API yet;
+   do not enable either timer or `jl-business-updater.path` yet, and keep
+   `RELEASE_UPDATE_ENABLED=false`. `After=postgresql.service` is only an
+   ordering hint; these units do not require PostgreSQL to be managed by
+   systemd.
+
+7. Configure and validate Nginx with the example topology: static root
    `/var/www/jl-business-growth/current` and API proxy `127.0.0.1:8081`.
    `current` must remain a root-owned symlink; Nginx is read-only and the
    updater changes only that symlink. Configure
    `/.well-known/acme-challenge/` using a separate production-managed
    location/alias outside the application release directory; ACME must not
-   depend on a release's `web/` contents.
+   depend on a release's `web/` contents. Run the Nginx configuration test
+   before reload and preserve the current known-good configuration for rapid
+   rollback.
 
-8. Perform a real backup rehearsal with `systemctl start
-   jl-business-backup.service`, verify the oneshot exit status is zero, and
-   verify both database and file backup artifacts. Do not treat a stale unit
-   status as proof of the current start.
+8. Prepare the short-downtime API cutover. Record the configuration and exact
+   start/stop procedure for only the existing JL Supervisor project so it can
+   be restored quickly. Capture the pre-cutover public health result and verify
+   the unrelated service on `127.0.0.1:8080` is healthy. Do not stop, restart,
+   reconfigure, or otherwise operate that 8080 service.
 
-9. Validate the root-only migration helper, fixed `/usr/bin/goose`, trusted
-   release migration directory, and `goose validate` output. Migration
-   rehearsal must use an approved isolated non-production database; never use
-   a production database for a test. Production migration remains
-   forward-only.
+9. Stop only the old `jl-business-api` Supervisor project, confirm
+   `127.0.0.1:8081` has been released, and reconfirm the 8080 service is still
+   running. Immediately start `jl-business-api.service`, then check all of:
 
-10. Rehearse updater and rollback with a disposable release fixture: backup
-    must complete before migration, API/jobs restart must use systemd, health
-    checks must use `RELEASE_API_HEALTH`, and failed health/switch conditions
-    must restore only when every restore check succeeds. Confirm request,
-    lock, status, ownership, and immutable release boundaries.
+   - `systemctl status jl-business-api.service`;
+   - `http://127.0.0.1:8081/api/health/live`;
+   - `http://127.0.0.1:8081/api/health/ready`;
+   - the public API health endpoint through Nginx.
 
-11. After rehearsal, install the trusted root-only helpers under
-    `/usr/local/libexec/`, run `systemctl daemon-reload`, enable
-    `jl-business-updater.path`, and verify its request trigger and oneshot
-    service without changing `RELEASE_UPDATE_ENABLED` yet.
+   If systemd startup or any health check fails, stop
+   `jl-business-api.service`, restart the recorded JL Supervisor project, and
+   verify both 8081 and public health again. Disable or remove the JL
+   Supervisor auto-start entry only after the systemd API passes every check.
+   Never operate the unrelated 8080 service during this cutover.
 
-12. Before enabling online updates, confirm the independent `127.0.0.1:8080`
+10. With both timers still disabled, perform a real backup rehearsal using
+    `systemctl start jl-business-backup.service`, verify the oneshot exit
+    status is zero, and verify both database and file backup artifacts. Do not
+    treat a stale unit status as proof of the current start.
+
+11. Validate the already-installed root-only migration helper, fixed
+    `/usr/bin/goose`, trusted release migration directory, and `goose validate`
+    output. Migration rehearsal must use an approved isolated non-production
+    database; never use a production database for a test. Production migration
+    remains forward-only.
+
+12. Manually start and validate `jl-business-jobs.service`. Only after both the
+    manual jobs check and the backup rehearsal succeed, enable
+    `jl-business-jobs.timer` and `jl-business-backup.timer`. Keep
+    `jl-business-updater.path` disabled and `RELEASE_UPDATE_ENABLED=false`.
+
+13. Rehearse updater and rollback with the already-installed helpers and a
+    disposable release fixture in an isolated non-production rehearsal
+    environment: backup must complete before migration, API/jobs restart must
+    use systemd, health checks must use `RELEASE_API_HEALTH`, and failed
+    health/switch conditions must restore only when every restore check
+    succeeds. Confirm request, lock, status, ownership, and immutable release
+    boundaries. Production `RELEASE_UPDATE_ENABLED` remains false throughout
+    this rehearsal.
+
+14. After every updater and rollback rehearsal gate passes, enable
+    `jl-business-updater.path` and verify the path unit is active and watches
+    the fixed request path. Do not submit a production update request and do
+    not change `RELEASE_UPDATE_ENABLED` yet.
+
+15. Before enabling online updates, confirm the independent `127.0.0.1:8080`
     service is healthy and unaffected, the API is healthy on `127.0.0.1:8081`,
     Nginx serves `current`, backup and migration checks passed, and rollback
     rehearsal evidence is recorded.
 
-13. Only as the final change, set `RELEASE_UPDATE_ENABLED=true` in the trusted
+16. Only as the final change, set `RELEASE_UPDATE_ENABLED=true` in the trusted
     environment file and restart the systemd API. Confirm Version Center can
     check releases, submit one controlled request, and observe the authoritative
     updater status and health checks. Never enable this setting in a release
     artifact or API request.
 
-14. Emergency disable procedure: set `RELEASE_UPDATE_ENABLED=false`, restart
+17. Emergency disable procedure: set `RELEASE_UPDATE_ENABLED=false`, restart
     `jl-business-api.service`, disable `jl-business-updater.path`, and stop a
     currently running updater only after checking its status and backup/migration
     state. Preserve the immutable release and status files for investigation.
