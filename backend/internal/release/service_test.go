@@ -93,6 +93,57 @@ func TestQueueUsesPersistentLockToRejectSecondTask(t *testing.T) {
 	assertProblemCode(t, err, "UPDATE_ALREADY_RUNNING")
 }
 
+func TestQueueUsesRequestBoundaryAndQueuedFallback(t *testing.T) {
+	server := releaseServer(t, `[{"tag_name":"v1.0.1","name":"release","html_url":"https://example.invalid/v1.0.1","published_at":"2026-09-04T00:00:00Z","draft":false,"prerelease":false}]`)
+	defer server.Close()
+	setBuildVersion(t, "v1.0.0")
+	service := testService(t, server.URL, true)
+
+	_, requestID, err := service.Queue(context.Background(), "update", "v1.0.1")
+	if err != nil {
+		t.Fatalf("Queue() error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(service.cfg.ReleaseRuntimeRoot, "status.json")); !os.IsNotExist(err) {
+		t.Fatalf("legacy runtime status exists or returned unexpected error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(service.cfg.ReleaseRuntimeRoot, "requests", "request.json")); err != nil {
+		t.Fatalf("request.json was not written under requests: %v", err)
+	}
+	state := service.State(context.Background(), false)
+	if state.UpdateStatus == nil || state.UpdateStatus.RequestID != requestID || state.UpdateStatus.State != "queued" {
+		t.Fatalf("queued fallback state = %+v", state.UpdateStatus)
+	}
+}
+
+func TestStatePrefersRootAuthoritativeStatus(t *testing.T) {
+	server := releaseServer(t, `[]`)
+	defer server.Close()
+	setBuildVersion(t, "v1.0.0")
+	service := testService(t, server.URL, true)
+	stateRoot := filepath.Join(service.cfg.ReleaseRuntimeRoot, "state")
+	requestRoot := filepath.Join(service.cfg.ReleaseRuntimeRoot, "requests")
+	if err := os.MkdirAll(stateRoot, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(requestRoot, 0o770); err != nil {
+		t.Fatal(err)
+	}
+	queued := UpdateStatus{RequestID: "11111111-1111-4111-8111-111111111111", Action: "update", FromVersion: "v1.0.0", TargetVersion: "v1.0.1", State: "queued", StartedAt: time.Now().UTC(), SafeMessage: "queued"}
+	succeeded := queued
+	succeeded.State = "succeeded"
+	succeeded.SafeMessage = "authoritative"
+	if err := writeJSONAtomic(filepath.Join(requestRoot, "queued-status.json"), queued); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeJSONAtomic(filepath.Join(stateRoot, "status.json"), succeeded); err != nil {
+		t.Fatal(err)
+	}
+	state := service.State(context.Background(), false)
+	if state.UpdateStatus == nil || state.UpdateStatus.State != "succeeded" || state.UpdateStatus.SafeMessage != "authoritative" {
+		t.Fatalf("authoritative state = %+v", state.UpdateStatus)
+	}
+}
+
 func TestRollbackRejectsIncompatibleSchema(t *testing.T) {
 	server := releaseServer(t, `[{
       "tag_name":"v1.0.0","name":"release","html_url":"https://example.invalid/v1.0.0",

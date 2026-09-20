@@ -10,6 +10,9 @@ root="$(mktemp -d)"
 trap 'if [[ "${KEEP_TMP:-false}" != true ]]; then rm -rf "${root}"; else printf "retaining harness temp root: %s\n" "${root}" >&2; fi' EXIT
 bin="${root}/bin"
 runtime="${root}/runtime"
+requests="${runtime}/requests"
+state="${runtime}/state"
+work="${runtime}/work"
 backend_releases="${root}/backend-releases"
 web_releases="${root}/web-releases"
 fixture="${root}/fixture"
@@ -105,7 +108,15 @@ repack_release() {
 reset_case() {
   rm -rf "${runtime}" "${backend_releases}" "${web_releases}"
   rm -f "${root}/backend-current" "${root}/web-current"
-  mkdir -p "${runtime}" "${backend_releases}" "${web_releases}"
+  rm -f "${root}/backup.called"
+  mkdir -p "${requests}" "${state}" "${work}" "${backend_releases}" "${web_releases}"
+  chmod 0770 "${requests}"; chmod 0750 "${state}"; chmod 0700 "${work}"
+  cat >"${runtime}/trusted-backup-db" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${RELEASE_BACKUP_HELPER_FAIL:-false}" == true ]]; then exit 1; fi
+: >"${BACKUP_MARKER}"
+EOF
+  chmod 0755 "${runtime}/trusted-backup-db"
   printf '10\n' >"${root}/schema"
   mkdir -p "${backend_releases}/v1.0.0/scripts" "${web_releases}/v1.0.0"
   cp "${root}/v1.0.0/release.json" "${backend_releases}/v1.0.0/release.json"
@@ -113,7 +124,9 @@ reset_case() {
   cp "${root}/v1.0.0/jl-business-jobs" "${backend_releases}/v1.0.0/jl-business-jobs"
   cp -R "${root}/v1.0.0/migrations" "${backend_releases}/v1.0.0/"
   cp "${root}/v1.0.0/scripts/backup-db.sh" "${backend_releases}/v1.0.0/scripts/"
-  chmod +x "${backend_releases}/v1.0.0"/jl-business-* "${backend_releases}/v1.0.0/scripts/backup-db.sh"
+  find "${backend_releases}" -type d -exec chmod 0755 {} +
+  find "${backend_releases}" -type f -exec chmod 0644 {} +
+  chmod 0755 "${backend_releases}/v1.0.0"/jl-business-* "${backend_releases}/v1.0.0/scripts/backup-db.sh"
   printf '<html></html>\n' >"${web_releases}/v1.0.0/index.html"
   ln -s "${backend_releases}/v1.0.0" "${root}/backend-current"
   ln -s "${web_releases}/v1.0.0" "${root}/web-current"
@@ -126,7 +139,7 @@ run_updater() {
   RELEASE_BACKEND_CURRENT="${root}/backend-current" RELEASE_WEB_CURRENT="${root}/web-current" \
   RELEASE_DOWNLOAD_BASE="file://${fixture}" RELEASE_API_HEALTH="http://test/api/health" \
   RELEASE_HEALTH_ATTEMPTS=1 RELEASE_HEALTH_RETRY_DELAY=0 DATABASE_URL=test \
-  SCHEMA_FILE="${root}/schema" FIXTURE_ROOT="${fixture}" "$updater"
+  SCHEMA_FILE="${root}/schema" FIXTURE_ROOT="${fixture}" BACKUP_MARKER="${root}/backup.called" "$updater"
 }
 
 run_case() {
@@ -139,10 +152,10 @@ run_case() {
 
 write_request() {
   local request_id="$1" action="$2" from_version="$3" target_version="$4" requested_repository="$5"
-  cat >"${runtime}/request.json" <<EOF
+  cat >"${requests}/request.json" <<EOF
 {"request_id":"${request_id}","action":"${action}","from_version":"${from_version}","target_version":"${target_version}","repository":"${requested_repository}"}
 EOF
-  printf '%s\n' "${request_id}" >"${runtime}/update.lock"
+  printf '%s\n' "${request_id}" >"${requests}/update.lock"
 }
 
 request() {
@@ -151,8 +164,8 @@ request() {
 
 assert_failed_cleanup() {
   local expected_message="$1"
-  jq -e --arg message "${expected_message}" '.state == "failed" and .safe_message == $message' "${runtime}/status.json" >/dev/null
-  [[ ! -e "${runtime}/request.json" ]] && [[ ! -e "${runtime}/update.lock" ]]
+  jq -e --arg message "${expected_message}" '.state == "failed" and .safe_message == $message' "${state}/status.json" >/dev/null
+  [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 }
 
 assert_no_migration_or_switch() {
@@ -163,10 +176,26 @@ assert_no_migration_or_switch() {
 }
 
 assert_not_restored() {
-  [[ -f "${runtime}/status.json" ]]
-  jq -e '.state == "failed"' "${runtime}/status.json" >/dev/null
-  ! grep -Fq '应用版本已恢复' "${runtime}/status.json"
-  [[ ! -e "${runtime}/request.json" ]] && [[ ! -e "${runtime}/update.lock" ]]
+  [[ -f "${state}/status.json" ]]
+  jq -e '.state == "failed"' "${state}/status.json" >/dev/null
+  ! grep -Fq '应用版本已恢复' "${state}/status.json"
+  [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
+}
+
+assert_rejected_request() {
+  local expected_message="$1"
+  jq -e --arg message "${expected_message}" '.state == "failed" and .safe_message == $message' "${state}/status.json" >/dev/null
+  [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
+  [[ ! -e "${root}/backup.called" ]]
+  assert_no_migration_or_switch
+}
+
+assert_successful_update() {
+  jq -e '.state == "succeeded"' "${state}/status.json" >/dev/null
+  [[ -e "${root}/backup.called" ]]
+  [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.1" ]]
+  [[ "$(readlink -f "${root}/web-current")" == "${web_releases}/v1.0.1" ]]
+  [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 }
 
 pass_case() {
@@ -229,26 +258,83 @@ pass_case 'missing required command cleanup'
 
 reset_case
 request v1.0.1
+if ! run_case; then echo 'normal claimed request unexpectedly failed' >&2; exit 1; fi
+assert_successful_update
+pass_case 'application request is safely claimed and processed'
+
+reset_case
+request v1.0.1
+mv "${requests}/request.json" "${requests}/request-target.json"
+ln -s "${requests}/request-target.json" "${requests}/request.json"
+if run_case; then echo 'symlink request unexpectedly succeeded' >&2; exit 1; fi
+assert_rejected_request '版本任务请求必须是 regular file，拒绝执行'
+pass_case 'symlink request is rejected without following it'
+
+reset_case
+request v1.0.1
+rm -f "${requests}/request.json"
+mkdir "${requests}/request.json"
+if run_case; then echo 'directory request unexpectedly succeeded' >&2; exit 1; fi
+assert_rejected_request '版本任务请求必须是 regular file，拒绝执行'
+pass_case 'directory request is rejected'
+
+reset_case
+request v1.0.1
+rm -f "${requests}/request.json"
+mkfifo "${requests}/request.json"
+if run_case; then echo 'FIFO request unexpectedly succeeded' >&2; exit 1; fi
+assert_rejected_request '版本任务请求必须是 regular file，拒绝执行'
+pass_case 'FIFO request is rejected without blocking'
+
+reset_case
+chmod 0550 "${state}"
+if (printf 'forged\n' >"${state}/status.json") 2>/dev/null; then echo 'application wrote authoritative status' >&2; exit 1; fi
+chmod 0750 "${state}"
+pass_case 'application cannot overwrite authoritative status directory'
+
+reset_case
+chmod 0500 "${work}"
+if (printf 'forged\n' >"${work}/runner.lock") 2>/dev/null; then echo 'application created runner lock' >&2; exit 1; fi
+chmod 0700 "${work}"
+pass_case 'application cannot create or replace root runner lock'
+
+reset_case
+write_request '11111111-1111-4111-8111-111111111111' 'update' 'v1.0.0' 'v1.0.1' 'QQQHHHDDD/jl-business-growth'
+jq '. + {backup_command:"/tmp/attacker-backup", backup_path:"/tmp/attacker-backup"}' "${requests}/request.json" >"${requests}/request.json.tmp"
+mv "${requests}/request.json.tmp" "${requests}/request.json"
+if ! run_case; then echo 'request backup override unexpectedly failed' >&2; exit 1; fi
+assert_successful_update
+pass_case 'request cannot select backup command or path'
+
+reset_case
+chmod 0775 "${backend_releases}/v1.0.0"
+request v1.0.1
+if run_case; then echo 'writable current release unexpectedly succeeded' >&2; exit 1; fi
+assert_rejected_request '当前 backend release 权限不安全，拒绝执行版本任务'
+pass_case 'writable current release fails before helper or migration'
+
+reset_case
+request v1.0.1
 printf '11\n' >"${root}/schema"
 if run_case; then echo 'schema gate unexpectedly succeeded' >&2; exit 1; fi
-[[ "$(cat "${root}/schema")" == 11 ]] && [[ ! -e "${backend_releases}/v1.0.1" ]] && [[ ! -e "${runtime}/request.json" ]] && [[ ! -e "${runtime}/update.lock" ]]
+[[ "$(cat "${root}/schema")" == 11 ]] && [[ ! -e "${backend_releases}/v1.0.1" ]] && [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 
 make_release v1.0.1 12 12 12 target-commit
 reset_case
 request v1.0.1
 GOOSE_SCHEMA=11; export GOOSE_SCHEMA
 if run_case; then echo 'post-migration compatibility unexpectedly succeeded' >&2; exit 1; fi
-[[ "$(cat "${root}/schema")" == 11 ]] && [[ ! -e "${backend_releases}/v1.0.1" ]] && [[ ! -e "${runtime}/request.json" ]] && [[ ! -e "${runtime}/update.lock" ]]
+[[ "$(cat "${root}/schema")" == 11 ]] && [[ ! -e "${backend_releases}/v1.0.1" ]] && [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 
 make_release v1.0.1 11 11 11 target-commit
 reset_case
 request v1.0.1
 export GOOSE_SCHEMA=11 RELEASE_HEALTH_FAIL_TARGET=true
 if run_case; then echo 'health failure unexpectedly succeeded' >&2; exit 1; fi
-grep -Fq '应用版本已恢复' "${runtime}/status.json"
+grep -Fq '应用版本已恢复' "${state}/status.json"
 [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.0" ]]
 [[ "$(readlink -f "${root}/web-current")" == "${web_releases}/v1.0.0" ]]
-[[ ! -e "${runtime}/request.json" ]] && [[ ! -e "${runtime}/update.lock" ]]
+[[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 pass_case 'all restore conditions succeed and status says application restored'
 
 make_release v1.0.1 11 11 11 target-commit
@@ -258,7 +344,7 @@ make_release v1.0.0 10 10 10 old-commit
 cp "${root}/v1.0.0/release.json" "${backend_releases}/v1.0.0/release.json"
 export GOOSE_SCHEMA=11 RELEASE_HEALTH_FAIL_TARGET=true
 if run_case; then echo 'incompatible restore unexpectedly succeeded' >&2; exit 1; fi
-grep -Fq '旧版本不兼容' "${runtime}/status.json"
+grep -Fq '旧版本不兼容' "${state}/status.json"
 [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.1" ]]
 pass_case 'incompatible restore does not claim restored'
 
@@ -310,7 +396,7 @@ printf '%064d  %s\n' 0 'jl-business-growth_v1.0.1_linux_amd64.tar.gz' >"${fixtur
 reset_case
 request v1.0.1
 if run_case; then echo 'checksum failure unexpectedly succeeded' >&2; exit 1; fi
-[[ "$(cat "${root}/schema")" == 10 ]] && [[ ! -e "${backend_releases}/v1.0.1" ]] && [[ ! -e "${runtime}/request.json" ]] && [[ ! -e "${runtime}/update.lock" ]]
+[[ "$(cat "${root}/schema")" == 10 ]] && [[ ! -e "${backend_releases}/v1.0.1" ]] && [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 
 # A missing required artifact must also fail before migration.
 make_release v1.0.1 11 11 11 target-commit
@@ -319,7 +405,7 @@ repack_release v1.0.1
 reset_case
 request v1.0.1
 if run_case; then echo 'missing artifact unexpectedly succeeded' >&2; exit 1; fi
-[[ "$(cat "${root}/schema")" == 10 ]] && [[ ! -e "${backend_releases}/v1.0.1" ]] && [[ ! -e "${runtime}/request.json" ]] && [[ ! -e "${runtime}/update.lock" ]]
+[[ "$(cat "${root}/schema")" == 10 ]] && [[ ! -e "${backend_releases}/v1.0.1" ]] && [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 
 # A duplicate runner must not clean up a request owned by the active runner.
 make_release v1.0.1 11 11 11 target-commit
@@ -335,18 +421,18 @@ for _ in $(seq 1 100); do
 done
 [[ -e "${root}/systemctl.started" ]]
 if run_case; then echo 'duplicate runner unexpectedly succeeded' >&2; exit 1; fi
-[[ -e "${runtime}/request.json" ]] && [[ -e "${runtime}/update.lock" ]]
+[[ -e "${requests}/request.json" ]] && [[ -e "${requests}/update.lock" ]]
 touch "${root}/systemctl.release"
 wait "${first_runner_pid}"
-[[ ! -e "${runtime}/request.json" ]] && [[ ! -e "${runtime}/update.lock" ]]
+[[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 
 unset RELEASE_SYSTEMCTL_SLEEP GOOSE_SCHEMA SYSTEMCTL_MARKER SYSTEMCTL_RELEASE_MARKER
 
 reset_case
-printf '{malformed' >"${runtime}/request.json"
-printf 'stale-lock\n' >"${runtime}/update.lock"
+printf '{malformed' >"${requests}/request.json"
+printf 'stale-lock\n' >"${requests}/update.lock"
 if run_case; then echo 'malformed request unexpectedly succeeded' >&2; exit 1; fi
-[[ ! -e "${runtime}/request.json" ]] && [[ ! -e "${runtime}/update.lock" ]]
+[[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 run_case
 
 printf 'release updater execution harness: PASS\n'

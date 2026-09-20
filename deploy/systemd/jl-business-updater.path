@@ -2,7 +2,7 @@
 Description=Watch for JL Business Growth release requests
 
 [Path]
-PathExists=/var/lib/jl-business-growth/release-updater/request.json
+PathExists=/var/lib/jl-business-growth/release-updater/requests/request.json
 Unit=jl-business-updater.service
 
 [Install]

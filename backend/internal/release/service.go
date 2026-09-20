@@ -106,6 +106,20 @@ type Service struct {
 	cachedAt time.Time
 }
 
+func requestRoot(cfg config.Config) string {
+	if cfg.ReleaseRequestRoot != "" {
+		return cfg.ReleaseRequestRoot
+	}
+	return filepath.Join(cfg.ReleaseRuntimeRoot, "requests")
+}
+
+func stateRoot(cfg config.Config) string {
+	if cfg.ReleaseStateRoot != "" {
+		return cfg.ReleaseStateRoot
+	}
+	return filepath.Join(cfg.ReleaseRuntimeRoot, "state")
+}
+
 func NewService(cfg config.Config, schemaVersion func(context.Context) (int64, error)) *Service {
 	return NewServiceWithClient(cfg, schemaVersion, &http.Client{Timeout: 5 * time.Second}, githubAPIBase)
 }
@@ -178,11 +192,13 @@ func (s *Service) Queue(ctx context.Context, action, target string) (State, stri
 		}
 	}
 
-	if err := os.MkdirAll(s.cfg.ReleaseRuntimeRoot, 0o700); err != nil {
+	requestsRoot := requestRoot(s.cfg)
+	if err := os.MkdirAll(requestsRoot, 0o770); err != nil {
 		return State{}, "", problem.New("UPDATER_UNAVAILABLE", http.StatusServiceUnavailable, "版本更新服务暂不可用")
 	}
 	requestID := uuid.NewString()
-	lockPath := filepath.Join(s.cfg.ReleaseRuntimeRoot, "update.lock")
+	lockPath := filepath.Join(requestsRoot, "update.lock")
+	queuedStatusPath := filepath.Join(requestsRoot, "queued-status.json")
 	lock, err := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if errors.Is(err, os.ErrExist) {
 		return State{}, "", problem.New("UPDATE_ALREADY_RUNNING", http.StatusConflict, "已有版本任务正在执行")
@@ -203,15 +219,16 @@ func (s *Service) Queue(ctx context.Context, action, target string) (State, stri
 	now := s.now().UTC()
 	request := updateRequest{RequestID: requestID, Action: action, FromVersion: current, TargetVersion: target, Repository: s.cfg.ReleaseRepository, RequestedAt: now}
 	status := UpdateStatus{RequestID: requestID, Action: action, FromVersion: current, TargetVersion: target, State: "queued", StartedAt: now, SafeMessage: "版本任务已进入队列"}
-	if err := writeJSONAtomic(filepath.Join(s.cfg.ReleaseRuntimeRoot, "status.json"), status); err != nil {
+	if err := writeJSONAtomic(queuedStatusPath, status); err != nil {
 		_ = os.Remove(lockPath)
 		return State{}, "", problem.New("UPDATER_UNAVAILABLE", http.StatusServiceUnavailable, "无法保存版本任务状态")
 	}
 	// request.json is the sole systemd PathExists trigger. Keep it as the final
 	// commit point: after this rename the API performs no network or blocking
 	// work that could race the updater.
-	if err := writeJSONAtomic(filepath.Join(s.cfg.ReleaseRuntimeRoot, "request.json"), request); err != nil {
+	if err := writeJSONAtomic(filepath.Join(requestsRoot, "request.json"), request); err != nil {
 		_ = os.Remove(lockPath)
+		_ = os.Remove(queuedStatusPath)
 		return State{}, "", problem.New("UPDATER_UNAVAILABLE", http.StatusServiceUnavailable, "无法保存版本任务")
 	}
 
@@ -348,10 +365,26 @@ func (s *Service) installedVersions(currentSchema int64) []InstalledRelease {
 }
 
 func (s *Service) readStatus() *UpdateStatus {
-	body, err := os.ReadFile(filepath.Join(s.cfg.ReleaseRuntimeRoot, "status.json"))
-	if err != nil {
+	statusPath := filepath.Join(stateRoot(s.cfg), "status.json")
+	body, err := os.ReadFile(statusPath)
+	if err == nil {
+		return parseStatus(body)
+	}
+	if !errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
+	queuedBody, queuedErr := os.ReadFile(filepath.Join(requestRoot(s.cfg), "queued-status.json"))
+	if queuedErr != nil {
+		return nil
+	}
+	status := parseStatus(queuedBody)
+	if status == nil || status.State != "queued" {
+		return nil
+	}
+	return status
+}
+
+func parseStatus(body []byte) *UpdateStatus {
 	var status UpdateStatus
 	if json.Unmarshal(body, &status) != nil || status.RequestID == "" || !IsStableVersion(status.TargetVersion) {
 		return nil

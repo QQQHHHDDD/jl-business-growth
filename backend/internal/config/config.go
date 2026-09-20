@@ -15,6 +15,10 @@ const (
 	test                         = "test"
 	production                   = "production"
 	productionReleaseRuntimeRoot = "/var/lib/jl-business-growth/release-updater"
+	productionReleaseRequestRoot = "/var/lib/jl-business-growth/release-updater/requests"
+	productionReleaseStateRoot   = "/var/lib/jl-business-growth/release-updater/state"
+	productionReleaseBackendRoot = "/opt/jl-business-growth/releases"
+	productionReleaseWebRoot     = "/var/www/jl-business-growth/releases"
 )
 
 type Config struct {
@@ -40,6 +44,8 @@ type Config struct {
 	ReleaseUpdateEnabled bool
 	GitHubToken          string
 	ReleaseRuntimeRoot   string
+	ReleaseRequestRoot   string
+	ReleaseStateRoot     string
 	ReleaseBackendRoot   string
 	ReleaseWebRoot       string
 }
@@ -71,6 +77,10 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("RELEASE_UPDATE_ENABLED: must be true or false")
 	}
 
+	releaseRuntimeRoot := resolvePath(root, value(fileValues, "RELEASE_RUNTIME_ROOT", "/var/lib/jl-business-growth/release-updater"))
+	releaseRequestRoot := resolvePath(root, value(fileValues, "RELEASE_REQUEST_ROOT", filepath.Join(releaseRuntimeRoot, "requests")))
+	releaseStateRoot := resolvePath(root, value(fileValues, "RELEASE_STATE_ROOT", filepath.Join(releaseRuntimeRoot, "state")))
+
 	config := Config{
 		AppEnv:               env,
 		DatabaseURL:          value(fileValues, "DATABASE_URL", "postgres://127.0.0.1:5432/jl_business_dev?sslmode=disable"),
@@ -93,7 +103,9 @@ func Load() (Config, error) {
 		ReleaseRepository:    value(fileValues, "RELEASE_REPOSITORY", "QQQHHHDDD/jl-business-growth"),
 		ReleaseUpdateEnabled: releaseUpdateEnabled,
 		GitHubToken:          value(fileValues, "GITHUB_TOKEN", ""),
-		ReleaseRuntimeRoot:   resolvePath(root, value(fileValues, "RELEASE_RUNTIME_ROOT", "/var/lib/jl-business-growth/release-updater")),
+		ReleaseRuntimeRoot:   releaseRuntimeRoot,
+		ReleaseRequestRoot:   releaseRequestRoot,
+		ReleaseStateRoot:     releaseStateRoot,
 		ReleaseBackendRoot:   resolvePath(root, value(fileValues, "RELEASE_BACKEND_ROOT", "/opt/jl-business-growth/releases")),
 		ReleaseWebRoot:       resolvePath(root, value(fileValues, "RELEASE_WEB_ROOT", "/var/www/jl-business-growth/releases")),
 	}
@@ -132,6 +144,34 @@ func (c Config) Validate() error {
 	if c.AppEnv == production && c.ReleaseRuntimeRoot != productionReleaseRuntimeRoot {
 		return fmt.Errorf("RELEASE_RUNTIME_ROOT must be %s in production", productionReleaseRuntimeRoot)
 	}
+	releaseRequestRoot := c.ReleaseRequestRoot
+	if releaseRequestRoot == "" {
+		releaseRequestRoot = filepath.Join(c.ReleaseRuntimeRoot, "requests")
+	}
+	releaseStateRoot := c.ReleaseStateRoot
+	if releaseStateRoot == "" {
+		releaseStateRoot = filepath.Join(c.ReleaseRuntimeRoot, "state")
+	}
+	releaseBackendRoot := c.ReleaseBackendRoot
+	if releaseBackendRoot == "" {
+		releaseBackendRoot = productionReleaseBackendRoot
+	}
+	releaseWebRoot := c.ReleaseWebRoot
+	if releaseWebRoot == "" {
+		releaseWebRoot = productionReleaseWebRoot
+	}
+	if c.AppEnv == production && releaseRequestRoot != productionReleaseRequestRoot {
+		return fmt.Errorf("RELEASE_REQUEST_ROOT must be %s in production", productionReleaseRequestRoot)
+	}
+	if c.AppEnv == production && releaseStateRoot != productionReleaseStateRoot {
+		return fmt.Errorf("RELEASE_STATE_ROOT must be %s in production", productionReleaseStateRoot)
+	}
+	if c.AppEnv == production && releaseBackendRoot != productionReleaseBackendRoot {
+		return fmt.Errorf("RELEASE_BACKEND_ROOT must be %s in production", productionReleaseBackendRoot)
+	}
+	if c.AppEnv == production && releaseWebRoot != productionReleaseWebRoot {
+		return fmt.Errorf("RELEASE_WEB_ROOT must be %s in production", productionReleaseWebRoot)
+	}
 	return nil
 }
 
@@ -145,8 +185,12 @@ func (c Config) EnsureDirectories() error {
 		}
 	}
 	if c.ReleaseUpdateEnabled {
-		if err := os.MkdirAll(c.ReleaseRuntimeRoot, 0o700); err != nil {
-			return fmt.Errorf("create release updater runtime root: %w", err)
+		requestRoot := c.ReleaseRequestRoot
+		if requestRoot == "" {
+			requestRoot = filepath.Join(c.ReleaseRuntimeRoot, "requests")
+		}
+		if err := os.MkdirAll(requestRoot, 0o770); err != nil {
+			return fmt.Errorf("create release updater request root: %w", err)
 		}
 	}
 	return nil

@@ -25,6 +25,14 @@ The installed release layout remains:
 /var/www/jl-business-growth/current
 ```
 
+Installed application releases and the `current` symlinks are provisioned as
+`root:root`. The application user `jl-business` may read and execute backend
+releases and read web releases, but must not write release directories or
+replace either `current` symlink. Deployment first uploads to a staging
+directory, then uses root/sudo to copy the immutable release, set ownership and
+permissions, verify that no file or directory is writable by `jl-business`, and
+switch the symlinks.
+
 ## Optional online updater
 
 Online update remains disabled until an operator explicitly sets
@@ -33,18 +41,45 @@ Online update remains disabled until an operator explicitly sets
 1. Install `scripts/release-updater.sh` as
    `/usr/local/libexec/jl-business-release-updater`, owned by root and not
    writable by the application account.
-2. Create `/var/lib/jl-business-growth/release-updater` owned by
-   `root:jl-business` with mode `0770`.
+2. Provision the permission-separated runtime layout:
+
+```text
+/var/lib/jl-business-growth/release-updater          root:jl-business 0750
+/var/lib/jl-business-growth/release-updater/requests root:jl-business 0770
+/var/lib/jl-business-growth/release-updater/state    root:jl-business 0750
+/var/lib/jl-business-growth/release-updater/work     root:root         0700
+```
+
+The API can write only `requests/` (including the final atomic
+`requests/request.json` trigger and its enqueue lock). The root updater writes
+authoritative `state/status.json` and keeps its runner lock, claims, and
+temporary work under `work/`.
 3. Install `deploy/systemd/jl-business-updater.service` and
    `deploy/systemd/jl-business-updater.path`.
    Production `RELEASE_RUNTIME_ROOT` must remain exactly
    `/var/lib/jl-business-growth/release-updater`, matching the path unit's
-   `PathExists` trigger.
-4. Ensure `curl`, `flock`, `jq`, `sha256sum`, `tar`, `pg_dump`, `psql`, and
-   `goose` are available to the updater service.
-5. Configure the production environment file without exposing it to the web
+   `PathExists` trigger at `requests/request.json`.
+4. Install the trusted root-only helpers during a trusted deployment:
+
+```bash
+sudo install -o root -g root -m 0755 \
+  scripts/release-updater.sh \
+  /usr/local/libexec/jl-business-release-updater
+
+sudo install -o root -g root -m 0755 \
+  scripts/backup-db.sh \
+  /usr/local/libexec/jl-business-backup-db
+```
+
+   These `/usr/local/libexec` files are not automatically updated by the
+   application account. Updater/helper security updates require explicit root
+   provisioning during a trusted deployment. The updater never executes a
+   backup script from an application-controlled release directory.
+5. Ensure `curl`, `flock`, `jq`, `sha256sum`, `tar`, `pg_dump`, `psql`, `goose`,
+   and `stat` are available to the updater service.
+6. Configure the production environment file without exposing it to the web
    process or release artifacts.
-6. Enable the path unit only after backup and restore rehearsal:
+7. Enable the path unit only after backup and restore rehearsal:
 
 ```bash
 sudo systemctl enable --now jl-business-updater.path

@@ -8,13 +8,44 @@ set -euo pipefail
 
 remote_root="/opt/jl-business-growth/releases/${RELEASE_VERSION}"
 web_root="/var/www/jl-business-growth/releases/${RELEASE_VERSION}"
+remote_staging="/var/tmp/jl-business-growth/${RELEASE_VERSION}"
 remote="${DEPLOY_USER}@${DEPLOY_HOST}"
 
-ssh "${remote}" "test ! -e '${remote_root}' && test ! -e '${web_root}'"
-rsync -a --delete "${ARTIFACT}/" "${remote}:${remote_root}/"
-ssh "${remote}" "sudo /opt/jl-business-growth/current/scripts/backup-db.sh"
-ssh "${remote}" "cd '${remote_root}' && /usr/bin/goose -dir migrations postgres \"\$DATABASE_URL\" up"
-ssh "${remote}" "mkdir -p /var/www/jl-business-growth/releases/${RELEASE_VERSION} && rsync -a --delete '${remote_root}/web/' '${web_root}/'"
-ssh "${remote}" "ln -sfn '${remote_root}' /opt/jl-business-growth/current && ln -sfn '${web_root}' /var/www/jl-business-growth/current"
-ssh "${remote}" "sudo systemctl restart jl-business-api.service && sudo systemctl restart jl-business-jobs.timer && curl --fail --silent --show-error http://127.0.0.1:8080/api/health/live >/dev/null"
+test -d "${ARTIFACT}"
+ssh "${remote}" "test ! -e '${remote_root}' && test ! -e '${web_root}' && mkdir -p '${remote_staging}'"
+rsync -a --delete "${ARTIFACT}/" "${remote}:${remote_staging}/"
+
+ssh "${remote}" bash -s -- "${remote_root}" "${web_root}" "${remote_staging}" <<'REMOTE'
+set -euo pipefail
+
+backend_root="$1"
+web_root="$2"
+staging_root="$3"
+
+sudo install -d -o root -g root -m 0755 "$backend_root" "$web_root"
+sudo rsync -a --delete --chown=root:root --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$staging_root/" "$backend_root/"
+sudo rsync -a --delete --chown=root:root --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$staging_root/web/" "$web_root/"
+sudo chmod 0755 "$backend_root/jl-business-api" "$backend_root/jl-business-jobs" "$backend_root/scripts/backup-db.sh"
+
+for release_root in "$backend_root" "$web_root"; do
+  bad="$(mktemp "/tmp/jl-business-growth-permissions.XXXXXX")"
+  sudo find "$release_root" -xdev \( ! -user root -o ! -group root -o -perm /022 \) -print -quit >"$bad"
+  if [[ -s "$bad" ]]; then
+    cat "$bad" >&2
+    rm -f "$bad"
+    exit 1
+  fi
+  rm -f "$bad"
+done
+
+sudo /usr/local/libexec/jl-business-backup-db
+sudo /usr/bin/goose -dir "$backend_root/migrations" postgres "$DATABASE_URL" up
+sudo ln -sfnT "$backend_root" /opt/jl-business-growth/current
+sudo ln -sfnT "$web_root" /var/www/jl-business-growth/current
+sudo systemctl restart jl-business-api.service
+sudo systemctl restart jl-business-jobs.timer
+curl --fail --silent --show-error http://127.0.0.1:8080/api/health/live >/dev/null
+curl --fail --silent --show-error http://127.0.0.1:8080/api/health/ready >/dev/null
+rm -rf "$staging_root"
+REMOTE
 printf 'release %s deployed to %s\n' "${RELEASE_VERSION}" "${DEPLOY_HOST}"
