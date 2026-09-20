@@ -55,3 +55,10 @@ func TestProductionReleaseRuntimeRootMatchesSystemdPath(t *testing.T) {
 		t.Fatal("Validate() accepted a production runtime root not watched by systemd")
 	}
 }
+
+func TestProductionReleasePermissionRootsMatchSystemdLayout(t *testing.T) {
+	config := Config{AppEnv: production, DatabaseURL: "postgres://example", MailMode: "file", CookieSecure: true, SessionSecret: "secret", ReleaseRepository: "QQQHHHDDD/jl-business-growth", ReleaseRuntimeRoot: "/var/lib/jl-business-growth/release-updater", ReleaseRequestRoot: "/tmp/requests", ReleaseStateRoot: "/var/lib/jl-business-growth/release-updater/state"}
+	if err := config.Validate(); err == nil {
+		t.Fatal("Validate() accepted a production request root outside the systemd layout")
+	}
+}

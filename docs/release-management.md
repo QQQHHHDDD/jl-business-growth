@@ -70,10 +70,23 @@ RELEASE_UPDATE_ENABLED=false
 
 运行中的 API 不替换自身，也不直接调用 `systemctl`。API 完成角色、CSRF、
 stable semver、固定 repository、正式 Release 和并发锁验证后，只向
-`/var/lib/jl-business-growth/release-updater/` 写入固定结构的 request/status。
-`jl-business-updater.path` 触发独立 oneshot service 执行更新。
+`/var/lib/jl-business-growth/release-updater/requests/` 写入 request、enqueue
+lock 和可选 queued metadata。最后原子写入 `requests/request.json` 作为唯一
+trigger commit point；`state/status.json` 由 root updater 独占写入，API 只读。
+`jl-business-updater.path` 监听 `requests/request.json` 并触发独立 oneshot
+service 执行更新。
 生产环境的 `RELEASE_RUNTIME_ROOT` 被强制固定为该目录，以避免 API 写入路径与
 systemd 监听路径不一致。
+
+runtime 权限域固定为：runtime 根目录 `root:jl-business 0750`，`requests/`
+为 API 可写输入区，`state/` 为 `root:jl-business 0750` 的 authoritative
+状态区，`work/` 为 `root:root 0700` 的 runner lock、claim 和临时工作区。
+API 的 systemd `ReadWritePaths` 只允许 requests 区域。
+
+updater 启动后先取得 `work/runner.lock`，再把 `requests/request.json` 原子
+claim 到 root-only work 区域，并在 claim 后重新验证 regular file、非 symlink、
+JSON schema、request ID、action、版本和固定 repository。directory、FIFO、
+device、symlink 或 malformed request 都会被拒绝，不会被跟随或执行 root 操作。
 
 请求只包含 action、from/target version、固定 repository、request ID 和
 时间，不接受 URL、文件路径、asset URL 或 shell command。updater 自行构造
@@ -91,7 +104,7 @@ systemd 监听路径不一致。
 8. 原子切换 backend 和 web `current` symlink。
 9. 重启 API 与 jobs timer。
 10. 检查 `/api/health/live` 和 `/api/health/ready`。
-11. 将安全状态写回 `/var/lib`，供 React Query 轮询。
+11. 将安全状态写回 `state/status.json`，供 React Query 轮询。
 
 状态包括 queued、downloading、verifying、backing_up、migrating、switching、
 restarting、health_check、succeeded 和 failed，不伪造百分比。
@@ -109,10 +122,17 @@ symlink 并重启服务，但不会回滚已执行的数据库 migration。状�
 
 ## Backup 与 migration
 
-更新前调用现有 `scripts/backup-db.sh`。数据库凭据只来自服务器
-EnvironmentFile，不进入请求、status、前端、Release archive 或 audit
-details。生产 migration 只有显式启用 updater 并确认正式 Release 后才会由
-独立 updater 执行。
+更新前由 systemd `jl-business-backup.service` 调用 root-provisioned
+`/usr/local/libexec/jl-business-backup-db`，不执行 release directory 内的
+`scripts/backup-db.sh`。部署模板随后调用 root-provisioned
+`/usr/local/libexec/jl-business-migrate-release vX.Y.Z`；该 helper 只接受严格
+版本号，从固定的 `/etc/jl-business-growth/jl-business-growth.env` 读取
+`DATABASE_URL`，并只对固定 release migrations 目录执行 `goose up`。数据库凭据
+不进入 SSH deploy 用户环境、请求、status、前端、Release archive 或 audit
+details，也不存在 down migration 路径。
+
+updater 和 backup helper 的安全更新需要在受信任的部署流程中由 root 显式
+provision；application account 不得自动更新 `/usr/local/libexec` 中的 helper。
 
 ## Audit Log
 
@@ -130,7 +150,7 @@ token、数据库 URL、命令、文件系统秘密路径或 stack trace。实�
 
 - GitHub 不可用：当前版本仍会显示，稍后手动重新检查。
 - updater disabled：确认这是默认安全状态，仅在完成运维准备后启用。
-- update lock 存在：先检查 `status.json` 和 updater journal，不要直接并发重试。
+- update lock 存在：先检查 `state/status.json` 和 updater journal，不要直接并发重试。
 - checksum 或 manifest 失败：Release 不会安装，检查 GitHub assets 是否由同一
   tag workflow 生成。
 - health check 失败：检查 status 是否显示 application 已恢复，并人工确认已执行

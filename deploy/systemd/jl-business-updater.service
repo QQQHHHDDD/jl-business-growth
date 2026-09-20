@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=root
-Group=jl-business
+Group=root
 UMask=0077
 EnvironmentFile=/etc/jl-business-growth/jl-business-growth.env
 ExecStart=/usr/local/libexec/jl-business-release-updater
@@ -15,7 +15,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/opt/jl-business-growth /var/www/jl-business-growth /var/lib/jl-business-growth/release-updater /var/backups/jl-business-growth
+ReadWritePaths=/opt/jl-business-growth /var/www/jl-business-growth /var/lib/jl-business-growth/release-updater/requests /var/lib/jl-business-growth/release-updater/state /var/lib/jl-business-growth/release-updater/work
 
 [Install]
 WantedBy=multi-user.target
