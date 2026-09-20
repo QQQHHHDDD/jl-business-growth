@@ -43,6 +43,25 @@ Online update remains disabled until an operator explicitly sets
    writable by the application account.
 2. Provision the permission-separated runtime layout:
 
+```bash
+sudo install -d -o root -g jl-business -m 0750 \
+  /var/lib/jl-business-growth/release-updater
+test ! -L /var/lib/jl-business-growth/release-updater
+for directory in requests state work; do
+  test ! -L "/var/lib/jl-business-growth/release-updater/${directory}"
+done
+sudo install -d -o root -g jl-business -m 0770 \
+  /var/lib/jl-business-growth/release-updater/requests
+sudo install -d -o root -g jl-business -m 0750 \
+  /var/lib/jl-business-growth/release-updater/state
+sudo install -d -o root -g root -m 0700 \
+  /var/lib/jl-business-growth/release-updater/work
+```
+
+The runtime root and all four directories must be real directories, never
+symlinks. The updater validates their owner, group, and exact mode at startup
+and fails closed; production startup does not chmod or chown these paths.
+
 ```text
 /var/lib/jl-business-growth/release-updater          root:jl-business 0750
 /var/lib/jl-business-growth/release-updater/requests root:jl-business 0770
@@ -69,16 +88,25 @@ sudo install -o root -g root -m 0755 \
 sudo install -o root -g root -m 0755 \
   scripts/backup-db.sh \
   /usr/local/libexec/jl-business-backup-db
+
+sudo install -o root -g root -m 0755 \
+  scripts/jl-business-migrate-release \
+  /usr/local/libexec/jl-business-migrate-release
 ```
 
    These `/usr/local/libexec` files are not automatically updated by the
    application account. Updater/helper security updates require explicit root
    provisioning during a trusted deployment. The updater never executes a
    backup script from an application-controlled release directory.
-5. Ensure `curl`, `flock`, `jq`, `sha256sum`, `tar`, `pg_dump`, `psql`, `goose`,
-   and `stat` are available to the updater service.
-6. Configure the production environment file without exposing it to the web
-   process or release artifacts.
+5. Configure `/etc/jl-business-growth/jl-business-growth.env` as a root-owned
+   `EnvironmentFile` for the API, updater, backup service, and migration
+   helper. Deployment operators must not export `DATABASE_URL` in the SSH
+   session. The deployment template starts `jl-business-backup.service` and
+   invokes the root-provisioned migration helper with only a strict `vX.Y.Z`
+   argument; the helper reads the fixed environment file and runs only
+   `goose up` against `/opt/jl-business-growth/releases/<version>/migrations`.
+6. Ensure `curl`, `flock`, `jq`, `sha256sum`, `tar`, `pg_dump`, `psql`, `goose`,
+   `stat`, and `readlink` are available to the updater service.
 7. Enable the path unit only after backup and restore rehearsal:
 
 ```bash

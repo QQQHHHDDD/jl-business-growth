@@ -38,8 +38,12 @@ for release_root in "$backend_root" "$web_root"; do
   rm -f "$bad"
 done
 
-sudo /usr/local/libexec/jl-business-backup-db
-sudo /usr/bin/goose -dir "$backend_root/migrations" postgres "$DATABASE_URL" up
+sudo systemctl start jl-business-backup.service
+if [[ "$(sudo systemctl show jl-business-backup.service -p ExecMainStatus --value)" != "0" ]]; then
+  echo 'production database backup unit did not succeed' >&2
+  exit 1
+fi
+sudo /usr/local/libexec/jl-business-migrate-release "$RELEASE_VERSION"
 sudo ln -sfnT "$backend_root" /opt/jl-business-growth/current
 sudo ln -sfnT "$web_root" /var/www/jl-business-growth/current
 sudo systemctl restart jl-business-api.service

@@ -110,6 +110,7 @@ reset_case() {
   rm -f "${root}/backend-current" "${root}/web-current"
   rm -f "${root}/backup.called"
   mkdir -p "${requests}" "${state}" "${work}" "${backend_releases}" "${web_releases}"
+  chmod 0750 "${runtime}"
   chmod 0770 "${requests}"; chmod 0750 "${state}"; chmod 0700 "${work}"
   cat >"${runtime}/trusted-backup-db" <<'EOF'
 #!/usr/bin/env bash
@@ -389,6 +390,65 @@ assert_not_restored
 pass_case 'restored ready health failure does not claim restored'
 
 unset RELEASE_HEALTH_FAIL_TARGET RELEASE_RESTORE_BACKEND_LINK_FAIL RELEASE_RESTORE_WEB_LINK_FAIL RELEASE_RESTORE_API_SYSTEMCTL_FAIL RELEASE_RESTORE_JOBS_SYSTEMCTL_FAIL RELEASE_HEALTH_FAIL_RESTORED_READY GOOSE_SCHEMA
+
+# Archive members must not be symlinks because the updater verifies binaries as
+# root before installing them.
+for symlink_case in binary release-json web-index; do
+  make_release v1.0.1 11 11 11 target-commit
+  case "${symlink_case}" in
+    binary)
+      mv "${root}/v1.0.1/jl-business-api" "${root}/v1.0.1/jl-business-api.real"
+      ln -s jl-business-api.real "${root}/v1.0.1/jl-business-api"
+      ;;
+    release-json)
+      mv "${root}/v1.0.1/release.json" "${root}/v1.0.1/release.json.real"
+      ln -s release.json.real "${root}/v1.0.1/release.json"
+      ;;
+    web-index)
+      mv "${root}/v1.0.1/web/index.html" "${root}/v1.0.1/web/index.real"
+      ln -s index.real "${root}/v1.0.1/web/index.html"
+      ;;
+  esac
+  repack_release v1.0.1
+  reset_case
+  request v1.0.1
+  if run_case; then echo "${symlink_case} archive unexpectedly succeeded" >&2; exit 1; fi
+  assert_rejected_request 'Release archive 包含 symlink 或文件类型不安全'
+  pass_case "release archive ${symlink_case} symlink is rejected before migration"
+done
+
+# Existing runtime symlinks must never be followed or chmodded by bootstrap.
+reset_case
+request v1.0.1
+state_target="${root}/state-target"
+mv "${state}" "${state_target}"
+ln -s "${state_target}" "${state}"
+if run_case; then echo 'state runtime symlink unexpectedly succeeded' >&2; exit 1; fi
+[[ ! -e "${root}/backup.called" ]] && [[ -e "${state_target}" ]]
+pass_case 'state runtime symlink is rejected without following it'
+
+reset_case
+request v1.0.1
+work_target="${root}/work-target"
+mv "${work}" "${work_target}"
+ln -s "${work_target}" "${work}"
+if run_case; then echo 'work runtime symlink unexpectedly succeeded' >&2; exit 1; fi
+[[ ! -e "${root}/backup.called" ]] && [[ -e "${work_target}" ]]
+pass_case 'work runtime symlink is rejected without following it'
+
+for permission_case in runtime requests state work; do
+  reset_case
+  request v1.0.1
+  case "${permission_case}" in
+    runtime) chmod 0755 "${runtime}" ;;
+    requests) chmod 0755 "${requests}" ;;
+    state) chmod 0755 "${state}" ;;
+    work) chmod 0750 "${work}" ;;
+  esac
+  if run_case; then echo "${permission_case} runtime permission unexpectedly succeeded" >&2; exit 1; fi
+  [[ -e "${requests}/request.json" ]] && [[ ! -e "${root}/backup.called" ]]
+  pass_case "${permission_case} runtime permission mismatch is rejected"
+done
 
 # A checksum mismatch must be rejected before the database migration starts.
 make_release v1.0.1 11 11 11 target-commit

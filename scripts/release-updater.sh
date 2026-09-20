@@ -3,7 +3,9 @@ set -euo pipefail
 
 readonly repository="QQQHHHDDD/jl-business-growth"
 readonly runtime_root="${RELEASE_RUNTIME_ROOT:-/var/lib/jl-business-growth/release-updater}"
+production_runtime=false
 if [[ "${runtime_root}" == "/var/lib/jl-business-growth/release-updater" ]]; then
+    production_runtime=true
     request_root="/var/lib/jl-business-growth/release-updater/requests"
     state_root="/var/lib/jl-business-growth/release-updater/state"
     work_root="/var/lib/jl-business-growth/release-updater/work"
@@ -20,7 +22,7 @@ else
     backend_current="${RELEASE_BACKEND_CURRENT:-/opt/jl-business-growth/current}"
     web_current="${RELEASE_WEB_CURRENT:-/var/www/jl-business-growth/current}"
 fi
-readonly request_root state_root work_root backend_releases web_releases backend_current web_current
+readonly production_runtime request_root state_root work_root backend_releases web_releases backend_current web_current
 readonly request_path="${request_root}/request.json"
 readonly queued_status_path="${request_root}/queued-status.json"
 readonly status_path="${state_root}/status.json"
@@ -122,9 +124,60 @@ health_check() {
 }
 
 ensure_private_roots() {
+    if [[ "${production_runtime}" == "true" ]]; then
+        validate_runtime_directory "${runtime_root}" root jl-business 750 || return 1
+        validate_runtime_directory "${request_root}" root jl-business 770 || return 1
+        validate_runtime_directory "${state_root}" root jl-business 750 || return 1
+        validate_runtime_directory "${work_root}" root root 700 || return 1
+        return 0
+    fi
+    for directory in "${runtime_root}" "${request_root}" "${state_root}" "${work_root}"; do
+        if [[ -L "${directory}" ]]; then
+            failure_message="版本 updater runtime 路径不能是 symlink"
+            return 1
+        fi
+    done
+    validate_test_runtime_directory "${runtime_root}" 750 || return 1
+    validate_test_runtime_directory "${request_root}" 770 || return 1
+    validate_test_runtime_directory "${state_root}" 750 || return 1
+    validate_test_runtime_directory "${work_root}" 700 || return 1
+    if [[ ! -e "${runtime_root}" ]]; then
+        mkdir -p "${runtime_root}"
+        chmod 0750 "${runtime_root}"
+    fi
     mkdir -p "${state_root}" "${work_root}"
     chmod 0750 "${state_root}"
     chmod 0700 "${work_root}"
+}
+
+validate_test_runtime_directory() {
+    local directory="$1"
+    local expected_mode="$2"
+    if [[ -e "${directory}" ]]; then
+        if [[ ! -d "${directory}" || "$(stat -c '%a' "${directory}")" != "${expected_mode}" ]]; then
+            failure_message="版本 updater runtime 权限布局不安全"
+            return 1
+        fi
+    fi
+}
+
+validate_runtime_directory() {
+    local directory="$1"
+    local expected_owner="$2"
+    local expected_group="$3"
+    local expected_mode="$4"
+    local owner group mode
+    if [[ -L "${directory}" || ! -d "${directory}" ]]; then
+        failure_message="版本 updater runtime 路径不是受信任目录"
+        return 1
+    fi
+    owner="$(stat -c '%U' "${directory}")"
+    group="$(stat -c '%G' "${directory}")"
+    mode="$(stat -c '%a' "${directory}")"
+    if [[ "${owner}" != "${expected_owner}" || "${group}" != "${expected_group}" || "${mode}" != "${expected_mode}" ]]; then
+        failure_message="版本 updater runtime 权限布局不安全"
+        return 1
+    fi
 }
 
 claim_request() {
@@ -163,6 +216,17 @@ validate_current_backend() {
             return 1
             ;;
     esac
+    local backend_parent
+    backend_parent="$(dirname -- "${backend_current}")"
+    if [[ -L "${backend_parent}" || ! -d "${backend_parent}" ]] || ! permissions_are_not_group_or_other_writable "${backend_parent}" || [[ "${backend_releases}" == "/opt/jl-business-growth/releases" && "$(stat -c '%u' "${backend_parent}")" != "0" ]]; then
+        failure_message="当前 backend release 父目录权限不安全，拒绝执行版本任务"
+        return 1
+    fi
+    if [[ "${backend_releases}" == "/opt/jl-business-growth/releases" && "$(stat -c '%u' "${backend_current}")" != "0" ]]; then
+        # GNU stat without -L reports the symlink itself, not its target.
+        failure_message="当前 backend symlink 必须由 root 拥有，拒绝执行版本任务"
+        return 1
+    fi
     if [[ ! -d "${backend_releases}" ]] || ! permissions_are_not_group_or_other_writable "${backend_releases}" || [[ ! -d "${resolved_backend}" ]] || ! permissions_are_not_group_or_other_writable "${resolved_backend}"; then
         failure_message="当前 backend release 权限不安全，拒绝执行版本任务"
         return 1
@@ -211,16 +275,26 @@ verify_binary_metadata() {
 
 verify_extracted_artifact() {
     local root="$1"
+    local symlink
+    if ! symlink="$(find "${root}" -type l -print -quit)"; then
+        echo "无法检查 release artifact 中的 symlink" >&2
+        return 1
+    fi
+    if [[ -n "${symlink}" ]]; then
+        echo "release artifact 禁止包含 symlink: ${symlink}" >&2
+        return 1
+    fi
     local required
     for required in jl-business-api jl-business-jobs web/index.html migrations scripts/backup-db.sh release.json; do
         test -e "${root}/${required}" || { echo "release artifact is missing ${required}" >&2; return 1; }
     done
-    test -f "${root}/jl-business-api" && test -x "${root}/jl-business-api"
-    test -f "${root}/jl-business-jobs" && test -x "${root}/jl-business-jobs"
-    test -f "${root}/web/index.html"
-    test -d "${root}/migrations"
-    test -f "${root}/scripts/backup-db.sh" && test -x "${root}/scripts/backup-db.sh"
-    test -f "${root}/release.json"
+    [[ -f "${root}/jl-business-api" && ! -L "${root}/jl-business-api" && -x "${root}/jl-business-api" ]]
+    [[ -f "${root}/jl-business-jobs" && ! -L "${root}/jl-business-jobs" && -x "${root}/jl-business-jobs" ]]
+    [[ -d "${root}/web" && ! -L "${root}/web" ]]
+    [[ -f "${root}/web/index.html" && ! -L "${root}/web/index.html" ]]
+    [[ -d "${root}/migrations" && ! -L "${root}/migrations" ]]
+    [[ -f "${root}/scripts/backup-db.sh" && ! -L "${root}/scripts/backup-db.sh" && -x "${root}/scripts/backup-db.sh" ]]
+    [[ -f "${root}/release.json" && ! -L "${root}/release.json" ]]
     jq -e '.version | strings and test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")' "${root}/release.json" >/dev/null
     jq -e '.git_sha | strings and length > 0' "${root}/release.json" >/dev/null
     jq -e '.built_at | strings and length > 0' "${root}/release.json" >/dev/null
@@ -352,7 +426,10 @@ load_request_context() {
 
 # Install the trap before request claim or dependency checks. A failed request
 # is removed only after this runner has acquired the exclusive root-only lock.
-ensure_private_roots
+if ! ensure_private_roots; then
+    echo "${failure_message:-版本 updater runtime 权限布局不安全}" >&2
+    exit 1
+fi
 exec 9>"${runner_lock_path}"
 chmod 0600 "${runner_lock_path}"
 if ! flock -n 9; then
@@ -432,7 +509,9 @@ if [[ "${action}" == "update" ]]; then
     done < <(tar -tzf "${temp_root}/${archive_name}")
     mkdir "${temp_root}/extract"
     tar -xzf "${temp_root}/${archive_name}" -C "${temp_root}/extract" --no-same-owner --no-same-permissions
-    verify_extracted_artifact "${temp_root}/extract"
+    if ! verify_extracted_artifact "${temp_root}/extract"; then
+        fail_task "Release archive 包含 symlink 或文件类型不安全"
+    fi
     test "$(jq -er '.version' "${temp_root}/extract/release.json")" = "${target_version}"
     test "$(jq -er '.platform' "${temp_root}/extract/release.json")" = "linux-amd64"
     manifest_schema="$(jq -er '.schema_version' "${temp_root}/extract/release.json")"

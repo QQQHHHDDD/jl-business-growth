@@ -122,11 +122,14 @@ symlink 并重启服务，但不会回滚已执行的数据库 migration。状�
 
 ## Backup 与 migration
 
-更新前调用 root-provisioned `/usr/local/libexec/jl-business-backup-db`，不执行
-release directory 内的 `scripts/backup-db.sh`。数据库凭据只来自服务器
-EnvironmentFile，不进入请求、status、前端、Release archive 或 audit
-details。生产 migration 只有显式启用 updater 并确认正式 Release 后才会由
-独立 updater 执行。
+更新前由 systemd `jl-business-backup.service` 调用 root-provisioned
+`/usr/local/libexec/jl-business-backup-db`，不执行 release directory 内的
+`scripts/backup-db.sh`。部署模板随后调用 root-provisioned
+`/usr/local/libexec/jl-business-migrate-release vX.Y.Z`；该 helper 只接受严格
+版本号，从固定的 `/etc/jl-business-growth/jl-business-growth.env` 读取
+`DATABASE_URL`，并只对固定 release migrations 目录执行 `goose up`。数据库凭据
+不进入 SSH deploy 用户环境、请求、status、前端、Release archive 或 audit
+details，也不存在 down migration 路径。
 
 updater 和 backup helper 的安全更新需要在受信任的部署流程中由 root 显式
 provision；application account 不得自动更新 `/usr/local/libexec` 中的 helper。

@@ -366,27 +366,40 @@ func (s *Service) installedVersions(currentSchema int64) []InstalledRelease {
 
 func (s *Service) readStatus() *UpdateStatus {
 	statusPath := filepath.Join(stateRoot(s.cfg), "status.json")
-	body, err := os.ReadFile(statusPath)
-	if err == nil {
-		return parseStatus(body)
-	}
-	if !errors.Is(err, os.ErrNotExist) {
+	requestRootPath := requestRoot(s.cfg)
+
+	var authoritative *UpdateStatus
+	if body, err := os.ReadFile(statusPath); err == nil {
+		authoritative = parseStatus(body)
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
-	queuedBody, queuedErr := os.ReadFile(filepath.Join(requestRoot(s.cfg), "queued-status.json"))
+
+	queuedBody, queuedErr := os.ReadFile(filepath.Join(requestRootPath, "queued-status.json"))
 	if queuedErr != nil {
+		if authoritative != nil {
+			return authoritative
+		}
 		return nil
 	}
-	status := parseStatus(queuedBody)
-	if status == nil || status.State != "queued" {
-		return nil
+	queued := parseStatus(queuedBody)
+	if queued == nil || queued.State != "queued" || !queuedStatusOwnsLock(requestRootPath, queued.RequestID) {
+		return authoritative
 	}
-	return status
+	if authoritative == nil || authoritative.RequestID != queued.RequestID {
+		return queued
+	}
+	return authoritative
+}
+
+func queuedStatusOwnsLock(requestsRoot, requestID string) bool {
+	lockBody, err := os.ReadFile(filepath.Join(requestsRoot, "update.lock"))
+	return err == nil && strings.TrimSpace(string(lockBody)) == requestID
 }
 
 func parseStatus(body []byte) *UpdateStatus {
 	var status UpdateStatus
-	if json.Unmarshal(body, &status) != nil || status.RequestID == "" || !IsStableVersion(status.TargetVersion) {
+	if json.Unmarshal(body, &status) != nil || uuid.Validate(status.RequestID) != nil || !IsStableVersion(status.TargetVersion) {
 		return nil
 	}
 	return &status
