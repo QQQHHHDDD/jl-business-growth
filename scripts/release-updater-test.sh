@@ -29,6 +29,8 @@ grep -Fq 'Group=jl-business' "${repo_root}/deploy/systemd/jl-business-backup.ser
 ! grep -Fq -- ' --version' "${updater}"
 ! grep -Fq 'trusted_backup_helper' "${updater}"
 ! grep -Fq '/usr/local/libexec/jl-business-backup-db' "${updater}"
+! grep -Eq 'goose[[:space:]].*down' "${updater}"
+! grep -Fq 'GOOSE_BIN' "${updater}"
 grep -Fq 'validate_production_application_roots' "${updater}"
 grep -Fq 'backend_app_root="/opt/jl-business-growth"' "${updater}"
 grep -Fq 'web_app_root="/var/www/jl-business-growth"' "${updater}"
@@ -41,6 +43,22 @@ cat "${SCHEMA_FILE}"
 EOF
 cat >"${bin}/goose" <<'EOF'
 #!/usr/bin/env bash
+if [[ "${GOOSE_DRIVER:-}" != postgres || -z "${GOOSE_DBSTRING:-}" ]]; then
+  exit 97
+fi
+if [[ "$#" -ne 3 || "$1" != -dir || "$3" != up || "$2" != */extract/migrations ]]; then
+  exit 98
+fi
+for argument in "$@"; do
+  [[ "${argument}" != "${GOOSE_DBSTRING}" ]] || exit 99
+done
+if [[ -n "${GOOSE_INVOCATION_MARKER:-}" ]]; then
+  {
+    printf 'driver=%s\n' "${GOOSE_DRIVER}"
+    printf 'dbstring_set=true\n'
+    printf 'argv=%s\n' "$*"
+  } >"${GOOSE_INVOCATION_MARKER}"
+fi
 if [[ -n "${BACKUP_MARKER:-}" && ! -e "${BACKUP_MARKER}" ]]; then exit 1; fi
 if [[ -n "${MIGRATION_MARKER:-}" ]]; then : >"${MIGRATION_MARKER}"; fi
 if [[ -n "${GOOSE_SCHEMA:-}" ]]; then printf '%s\n' "${GOOSE_SCHEMA}" >"${SCHEMA_FILE}"; fi
@@ -134,7 +152,7 @@ repack_release() {
 reset_case() {
   rm -rf "${runtime}" "${backend_releases}" "${web_releases}"
   rm -f "${root}/backend-current" "${root}/web-current"
-  rm -f "${root}/backup.called" "${root}/backup-service.started" "${root}/migration.called" "${root}/binary-executed" "${root}/direct-backup.called"
+  rm -f "${root}/backup.called" "${root}/backup-service.started" "${root}/migration.called" "${root}/binary-executed" "${root}/direct-backup.called" "${root}/goose.invocation"
   mkdir -p "${requests}" "${state}" "${work}" "${backend_releases}" "${web_releases}"
   chmod 0750 "${runtime}"
   chmod 0770 "${requests}"; chmod 0750 "${state}"; chmod 0700 "${work}"
@@ -174,6 +192,7 @@ run_updater() {
     RELEASE_HEALTH_ATTEMPTS=1 RELEASE_HEALTH_RETRY_DELAY=0 DATABASE_URL=test \
     SCHEMA_FILE="${root}/schema" FIXTURE_ROOT="${fixture}" BACKUP_MARKER="${root}/backup.called" \
     BACKUP_SERVICE_START_MARKER="${root}/backup-service.started" MIGRATION_MARKER="${root}/migration.called" \
+    GOOSE_INVOCATION_MARKER="${root}/goose.invocation" \
     BINARY_EXECUTED_MARKER="${root}/binary-executed" DIRECT_BACKUP_MARKER="${root}/direct-backup.called" "$updater"
 }
 
@@ -249,6 +268,14 @@ assert_successful_update() {
   [[ -e "${root}/backup.called" ]]
   [[ -e "${root}/backup-service.started" ]]
   [[ -e "${root}/migration.called" ]]
+  [[ -f "${root}/goose.invocation" ]]
+  grep -Fxq 'driver=postgres' "${root}/goose.invocation"
+  grep -Fxq 'dbstring_set=true' "${root}/goose.invocation"
+  local goose_argv
+  goose_argv="$(sed -n 's/^argv=//p' "${root}/goose.invocation")"
+  [[ "${goose_argv}" == "-dir ${root}/runtime/work/run."*/extract/migrations\ up ]]
+  [[ "${goose_argv}" != *postgres* ]]
+  [[ "${goose_argv}" != *test* ]]
   [[ ! -e "${root}/direct-backup.called" ]]
   [[ ! -e "${root}/binary-executed" ]]
   [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.1" ]]

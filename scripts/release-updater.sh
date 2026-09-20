@@ -657,7 +657,9 @@ fi
 if [[ "${action}" == "update" ]]; then
     write_status "migrating" "正在执行向前数据库迁移"
     migration_started=true
-    goose -dir "${temp_root}/extract/migrations" postgres "${DATABASE_URL:?DATABASE_URL is required}" up
+    GOOSE_DRIVER=postgres \
+    GOOSE_DBSTRING="${DATABASE_URL:?DATABASE_URL is required}" \
+    goose -dir "${temp_root}/extract/migrations" up
     actual_schema="$(schema_version_from_db)"
     if [[ ! "${actual_schema}" =~ ^[0-9]+$ ]]; then
         fail_task "迁移后数据库 schema 无效"

@@ -76,19 +76,19 @@ release:
 
 migrate-up:
 	@test -n "$$DATABASE_URL" || (echo 'DATABASE_URL must be set'; exit 1)
-	cd $(BACKEND_DIR) && $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations postgres "$$DATABASE_URL" up
+	cd $(BACKEND_DIR) && GOOSE_DRIVER=postgres GOOSE_DBSTRING="$$DATABASE_URL" $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations up
 
 migrate-status:
 	@test -n "$$DATABASE_URL" || (echo 'DATABASE_URL must be set'; exit 1)
-	cd $(BACKEND_DIR) && $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations postgres "$$DATABASE_URL" status
+	cd $(BACKEND_DIR) && GOOSE_DRIVER=postgres GOOSE_DBSTRING="$$DATABASE_URL" $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations status
 
 migrate-test-up:
 	$(MAKE) check-test-database
-	cd $(BACKEND_DIR) && $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations postgres "$$TEST_DATABASE_URL" up
+	cd $(BACKEND_DIR) && GOOSE_DRIVER=postgres GOOSE_DBSTRING="$$TEST_DATABASE_URL" $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations up
 
 migrate-test-status:
 	$(MAKE) check-test-database
-	cd $(BACKEND_DIR) && $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations postgres "$$TEST_DATABASE_URL" status
+	cd $(BACKEND_DIR) && GOOSE_DRIVER=postgres GOOSE_DBSTRING="$$TEST_DATABASE_URL" $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir db/migrations status
 
 check-test-database:
 	cd $(BACKEND_DIR) && $(GO) run ./cmd/check-test-database-url

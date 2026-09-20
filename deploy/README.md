@@ -118,11 +118,13 @@ sudo install -o root -g root -m 0755 \
    non-symlink, root-owned `EnvironmentFile` that is not group/other writable;
    `/etc/jl-business-growth` must also not be group/other writable. It is used
    by the API, updater, backup service, and migration helper. Deployment
-   operators must not export `DATABASE_URL` in the SSH
-   session. The deployment template starts `jl-business-backup.service` and
-   invokes the root-provisioned migration helper with only a strict `vX.Y.Z`
-   argument; the helper reads the fixed environment file and runs only
-   `goose up` against `/opt/jl-business-growth/releases/<version>/migrations`.
+   operators must not export `DATABASE_URL` in the SSH session. The deployment
+   template starts `jl-business-backup.service` and invokes the root-provisioned
+   migration helper with only a strict `vX.Y.Z` argument; the helper reads the
+   fixed environment file and runs only Goose v3.25.0 `up` with
+   `GOOSE_DRIVER=postgres` and `GOOSE_DBSTRING` against
+   `/opt/jl-business-growth/releases/<version>/migrations`, using fixed
+   `/usr/bin/goose` (forward-only; no `down` migration).
 6. Ensure `curl`, `flock`, `jq`, `sha256sum`, `tar`, `pg_dump`, `psql`, `goose`,
    `stat`, and `readlink` are available to the updater service.
 7. Enable the path unit only after backup and restore rehearsal:
