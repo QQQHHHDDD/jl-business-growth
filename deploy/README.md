@@ -98,9 +98,11 @@ sudo install -o root -g root -m 0755 \
    application account. Updater/helper security updates require explicit root
    provisioning during a trusted deployment. The updater never executes a
    backup script from an application-controlled release directory.
-5. Configure `/etc/jl-business-growth/jl-business-growth.env` as a root-owned
-   `EnvironmentFile` for the API, updater, backup service, and migration
-   helper. Deployment operators must not export `DATABASE_URL` in the SSH
+5. Configure `/etc/jl-business-growth/jl-business-growth.env` as a real,
+   non-symlink, root-owned `EnvironmentFile` that is not group/other writable;
+   `/etc/jl-business-growth` must also not be group/other writable. It is used
+   by the API, updater, backup service, and migration helper. Deployment
+   operators must not export `DATABASE_URL` in the SSH
    session. The deployment template starts `jl-business-backup.service` and
    invokes the root-provisioned migration helper with only a strict `vX.Y.Z`
    argument; the helper reads the fixed environment file and runs only

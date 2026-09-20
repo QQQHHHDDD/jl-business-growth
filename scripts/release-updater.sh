@@ -63,7 +63,6 @@ restore_attempted=false
 restore_succeeded=false
 handling_error=false
 failure_message=""
-claimed_lock_value=""
 claim_dir=""
 claim_path=""
 
@@ -82,11 +81,7 @@ cleanup_owned_request() {
         rm -rf "${claim_dir}"
     fi
     rm -f "${queued_status_path}"
-    if [[ -f "${update_lock_path}" ]]; then
-        if [[ "$(cat "${update_lock_path}" 2>/dev/null || true)" == "${request_id}" || "$(cat "${update_lock_path}" 2>/dev/null || true)" == "${claimed_lock_value}" ]]; then
-            rm -f "${update_lock_path}"
-        fi
-    fi
+    rm -f -- "${update_lock_path}"
 }
 
 write_status() {
@@ -315,6 +310,56 @@ verify_installed_backend() {
     verify_binary_metadata "${root}/jl-business-jobs" "${root}/release.json"
 }
 
+normalize_target_permissions() {
+    local root
+    if [[ "${production_runtime}" == "true" && "$(id -u)" != "0" ]]; then
+        failure_message="生产 updater 必须以 root 规范化目标 release"
+        return 1
+    fi
+    for root in "${target_backend}" "${target_web}"; do
+        if [[ "$(id -u)" == "0" ]] && ! chown -R root:root -- "${root}"; then
+            failure_message="目标 release ownership 规范化失败"
+            return 1
+        fi
+        if ! chmod -R u=rwX,go=rX -- "${root}"; then
+            failure_message="目标 release 权限规范化失败"
+            return 1
+        fi
+    done
+    if [[ -d "${target_backend}/scripts" ]]; then
+        if ! find "${target_backend}/scripts" -type f -exec chmod 0755 {} +; then
+            failure_message="目标 release trusted script 权限规范化失败"
+            return 1
+        fi
+    fi
+    if ! chmod 0755 "${target_backend}/jl-business-api" "${target_backend}/jl-business-jobs" "${target_backend}/scripts/backup-db.sh"; then
+        failure_message="目标 release binary 权限规范化失败"
+        return 1
+    fi
+}
+
+validate_target_permissions() {
+    local root bad
+    for root in "${target_backend}" "${target_web}"; do
+        bad="$(find "${root}" -xdev -perm /022 -print -quit)"
+        if [[ -n "${bad}" ]]; then
+            failure_message="目标 release 存在 group/other writable entry"
+            return 1
+        fi
+        if [[ "${production_runtime}" == "true" ]]; then
+            bad="$(find "${root}" -xdev \( ! -user root -o ! -group root \) -print -quit)"
+            if [[ -n "${bad}" ]]; then
+                failure_message="目标 release 必须由 root:root 拥有"
+                return 1
+            fi
+        fi
+    done
+    if [[ ! -x "${target_backend}/jl-business-api" || ! -x "${target_backend}/jl-business-jobs" || ! -r "${target_backend}/release.json" || ! -r "${target_backend}/migrations" || ! -r "${target_web}/index.html" || ! -x "${target_web}" ]]; then
+        failure_message="目标 release 文件权限不满足运行要求"
+        return 1
+    fi
+}
+
 restore_previous_release() {
     restore_attempted=true
     restore_succeeded=false
@@ -440,7 +485,6 @@ runner_locked=true
 if [[ ! -e "${request_path}" && ! -L "${request_path}" ]]; then
     exit 0
 fi
-claimed_lock_value="$(cat "${update_lock_path}" 2>/dev/null || true)"
 trap on_error ERR
 claim_request
 started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -565,6 +609,12 @@ if [[ "${action}" == "update" ]]; then
     installed_target=true
     cp -a "${temp_root}/extract/." "${target_backend}/"
     cp -a "${temp_root}/extract/web/." "${target_web}/"
+    if ! normalize_target_permissions; then
+        fail_task "${failure_message}"
+    fi
+    if ! validate_target_permissions; then
+        fail_task "${failure_message}"
+    fi
 else
     actual_schema="${current_schema_before}"
 fi

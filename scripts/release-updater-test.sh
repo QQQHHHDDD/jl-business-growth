@@ -134,13 +134,19 @@ EOF
 }
 
 run_updater() {
-  PATH="${bin}:${PATH}" \
-  RELEASE_UPDATE_ENABLED="${RELEASE_UPDATE_ENABLED_OVERRIDE:-true}" RELEASE_RUNTIME_ROOT="${runtime}" \
-  RELEASE_BACKEND_ROOT="${backend_releases}" RELEASE_WEB_ROOT="${web_releases}" \
-  RELEASE_BACKEND_CURRENT="${root}/backend-current" RELEASE_WEB_CURRENT="${root}/web-current" \
-  RELEASE_DOWNLOAD_BASE="file://${fixture}" RELEASE_API_HEALTH="http://test/api/health" \
-  RELEASE_HEALTH_ATTEMPTS=1 RELEASE_HEALTH_RETRY_DELAY=0 DATABASE_URL=test \
-  SCHEMA_FILE="${root}/schema" FIXTURE_ROOT="${fixture}" BACKUP_MARKER="${root}/backup.called" "$updater"
+  local timeout_command=()
+  if [[ -n "${RUN_UPDATER_TIMEOUT:-}" ]]; then
+    timeout_command=(timeout "${RUN_UPDATER_TIMEOUT}")
+  fi
+  umask 077
+  "${timeout_command[@]}" env \
+    PATH="${bin}:${PATH}" \
+    RELEASE_UPDATE_ENABLED="${RELEASE_UPDATE_ENABLED_OVERRIDE:-true}" RELEASE_RUNTIME_ROOT="${runtime}" \
+    RELEASE_BACKEND_ROOT="${backend_releases}" RELEASE_WEB_ROOT="${web_releases}" \
+    RELEASE_BACKEND_CURRENT="${root}/backend-current" RELEASE_WEB_CURRENT="${root}/web-current" \
+    RELEASE_DOWNLOAD_BASE="file://${fixture}" RELEASE_API_HEALTH="http://test/api/health" \
+    RELEASE_HEALTH_ATTEMPTS=1 RELEASE_HEALTH_RETRY_DELAY=0 DATABASE_URL=test \
+    SCHEMA_FILE="${root}/schema" FIXTURE_ROOT="${fixture}" BACKUP_MARKER="${root}/backup.called" "$updater"
 }
 
 run_case() {
@@ -197,6 +203,24 @@ assert_successful_update() {
   [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.1" ]]
   [[ "$(readlink -f "${root}/web-current")" == "${web_releases}/v1.0.1" ]]
   [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
+}
+
+assert_target_permissions() {
+  local expected_owner
+  expected_owner="$(id -un)"
+  [[ "$(stat -c '%U' "${backend_releases}/v1.0.1")" == "${expected_owner}" ]]
+  [[ "$(stat -c '%U' "${web_releases}/v1.0.1")" == "${expected_owner}" ]]
+  [[ "$(stat -c '%a' "${backend_releases}/v1.0.1")" == 755 ]]
+  [[ "$(stat -c '%a' "${web_releases}/v1.0.1")" == 755 ]]
+  [[ "$(stat -c '%a' "${backend_releases}/v1.0.1/jl-business-api")" == 755 ]]
+  [[ "$(stat -c '%a' "${backend_releases}/v1.0.1/jl-business-jobs")" == 755 ]]
+  [[ "$(stat -c '%a' "${backend_releases}/v1.0.1/release.json")" == 644 ]]
+  [[ "$(stat -c '%a' "${web_releases}/v1.0.1/index.html")" == 644 ]]
+  [[ -x "${web_releases}/v1.0.1" ]]
+  [[ -r "${web_releases}/v1.0.1/index.html" ]]
+  local bad_permissions
+  bad_permissions="$(find "${backend_releases}/v1.0.1" "${web_releases}/v1.0.1" -perm /022 -print -quit)"
+  [[ -z "${bad_permissions}" ]]
 }
 
 pass_case() {
@@ -261,7 +285,8 @@ reset_case
 request v1.0.1
 if ! run_case; then echo 'normal claimed request unexpectedly failed' >&2; exit 1; fi
 assert_successful_update
-pass_case 'application request is safely claimed and processed'
+assert_target_permissions
+pass_case 'application request is safely claimed, processed, and target permissions normalized under umask 077'
 
 reset_case
 request v1.0.1
@@ -270,6 +295,23 @@ ln -s "${requests}/request-target.json" "${requests}/request.json"
 if run_case; then echo 'symlink request unexpectedly succeeded' >&2; exit 1; fi
 assert_rejected_request '版本任务请求必须是 regular file，拒绝执行'
 pass_case 'symlink request is rejected without following it'
+
+reset_case
+request v1.0.1
+mv "${requests}/update.lock" "${requests}/update-lock-target"
+ln -s "${requests}/update-lock-target" "${requests}/update.lock"
+if ! run_case; then echo 'symlink update.lock unexpectedly failed' >&2; exit 1; fi
+assert_successful_update
+[[ -f "${requests}/update-lock-target" ]]
+pass_case 'symlink update.lock is unlinked without being read or followed'
+
+reset_case
+request v1.0.1
+rm -f "${requests}/update.lock"
+mkfifo "${requests}/update.lock"
+if ! RUN_UPDATER_TIMEOUT=5 run_case; then echo 'FIFO update.lock unexpectedly failed or blocked' >&2; exit 1; fi
+assert_successful_update
+pass_case 'FIFO update.lock is unlinked without blocking'
 
 reset_case
 request v1.0.1
