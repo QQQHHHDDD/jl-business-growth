@@ -5,14 +5,35 @@ set -euo pipefail
 : "${DEPLOY_HOST:?set DEPLOY_HOST}"
 : "${DEPLOY_USER:?set DEPLOY_USER}"
 : "${ARTIFACT:?set ARTIFACT to the output of build-release.sh}"
+if [[ ! "${RELEASE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo 'RELEASE_VERSION must match vX.Y.Z' >&2
+  exit 1
+fi
 
 remote_root="/opt/jl-business-growth/releases/${RELEASE_VERSION}"
 web_root="/var/www/jl-business-growth/releases/${RELEASE_VERSION}"
-remote_staging="/var/tmp/jl-business-growth/${RELEASE_VERSION}"
 remote="${DEPLOY_USER}@${DEPLOY_HOST}"
 
 test -d "${ARTIFACT}"
-ssh "${remote}" "test ! -e '${remote_root}' && test ! -e '${web_root}' && mkdir -p '${remote_staging}'"
+ssh "${remote}" "test ! -e '${remote_root}' && test ! -L '${remote_root}' && test ! -e '${web_root}' && test ! -L '${web_root}'"
+remote_staging="$(ssh "${remote}" 'set -euo pipefail
+staging="$(mktemp -d /var/tmp/jl-business-growth.XXXXXX)"
+chmod 0700 "${staging}"
+test ! -L "${staging}"
+test "$(stat -c "%u" "${staging}")" = "$(id -u)"
+test "$(stat -c "%a" "${staging}")" = 700
+printf "%s\n" "${staging}"')"
+
+cleanup_remote_staging() {
+  case "${remote_staging}" in
+    /var/tmp/jl-business-growth.[A-Za-z0-9_-]*) ;;
+    *) return 0 ;;
+  esac
+  printf -v quoted_staging '%q' "${remote_staging}"
+  ssh "${remote}" "rm -rf -- ${quoted_staging}" >/dev/null 2>&1 || true
+}
+trap cleanup_remote_staging EXIT
+
 rsync -a --delete "${ARTIFACT}/" "${remote}:${remote_staging}/"
 
 ssh "${remote}" bash -s -- "${remote_root}" "${web_root}" "${remote_staging}" "${RELEASE_VERSION}" <<'REMOTE'
@@ -22,6 +43,15 @@ backend_root="$1"
 web_root="$2"
 staging_root="$3"
 version="$4"
+
+cleanup_staging() {
+  rm -rf -- "$staging_root"
+}
+trap cleanup_staging EXIT
+if [[ -L "$staging_root" || ! -d "$staging_root" || "$(stat -c '%u' "$staging_root")" != "$(id -u)" || "$(stat -c '%a' "$staging_root")" != "700" ]]; then
+  echo 'remote staging must be a deploy-user-owned 0700 real directory' >&2
+  exit 1
+fi
 
 sudo install -d -o root -g root -m 0755 "$backend_root" "$web_root"
 sudo rsync -a --delete --chown=root:root --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$staging_root/" "$backend_root/"
@@ -51,6 +81,5 @@ sudo systemctl restart jl-business-api.service
 sudo systemctl restart jl-business-jobs.timer
 curl --fail --silent --show-error http://127.0.0.1:8080/api/health/live >/dev/null
 curl --fail --silent --show-error http://127.0.0.1:8080/api/health/ready >/dev/null
-rm -rf "$staging_root"
 REMOTE
 printf 'release %s deployed to %s\n' "${RELEASE_VERSION}" "${DEPLOY_HOST}"

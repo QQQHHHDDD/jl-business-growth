@@ -44,9 +44,9 @@ Online update remains disabled until an operator explicitly sets
 2. Provision the permission-separated runtime layout:
 
 ```bash
+test ! -L /var/lib/jl-business-growth/release-updater
 sudo install -d -o root -g jl-business -m 0750 \
   /var/lib/jl-business-growth/release-updater
-test ! -L /var/lib/jl-business-growth/release-updater
 for directory in requests state work; do
   test ! -L "/var/lib/jl-business-growth/release-updater/${directory}"
 done
@@ -62,6 +62,19 @@ The runtime root and all four directories must be real directories, never
 symlinks. The updater validates their owner, group, and exact mode at startup
 and fails closed; production startup does not chmod or chown these paths.
 
+Provision the backup destination before starting the backup service:
+
+```bash
+test ! -L /var/backups/jl-business-growth
+sudo install -d -o jl-business -g jl-business -m 0700 \
+  /var/backups/jl-business-growth
+test -x /usr/bin/goose
+```
+
+The backup directory must already exist and be writable by the
+`jl-business-backup.service` account; the migration helper requires the fixed
+`/usr/bin/goose` executable before it can run.
+
 ```text
 /var/lib/jl-business-growth/release-updater          root:jl-business 0750
 /var/lib/jl-business-growth/release-updater/requests root:jl-business 0770
@@ -73,6 +86,9 @@ The API can write only `requests/` (including the final atomic
 `requests/request.json` trigger and its enqueue lock). The root updater writes
 authoritative `state/status.json` and keeps its runner lock, claims, and
 temporary work under `work/`.
+The API unit marks its requests `ReadWritePaths` entry optional, so
+`RELEASE_UPDATE_ENABLED=false` remains startable before this runtime layout is
+provisioned.
 3. Install `deploy/systemd/jl-business-updater.service` and
    `deploy/systemd/jl-business-updater.path`.
    Production `RELEASE_RUNTIME_ROOT` must remain exactly
@@ -124,3 +140,6 @@ checks. It never performs a production down migration.
 Use `scripts/deploy-prod.sh.example` only after release-stage backup, migration,
 health-check, rollback, and acceptance gates are complete. See
 [release management](../docs/release-management.md) for the full safety model.
+The deployment template creates a random `mktemp -d` staging directory under
+`/var/tmp`, verifies it is a deploy-user-owned `0700` real directory before
+root copy, and removes it on both success and failure paths.

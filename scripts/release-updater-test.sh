@@ -18,6 +18,16 @@ web_releases="${root}/web-releases"
 fixture="${root}/fixture"
 mkdir -p "${bin}" "${runtime}" "${backend_releases}" "${web_releases}" "${fixture}"
 
+# The API remains startable when online update is disabled and the optional
+# requests directory has not been provisioned yet.
+grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp -/var/lib/jl-business-growth/release-updater/requests' "${repo_root}/deploy/systemd/jl-business-api.service"
+grep -Fq 'ReadWritePaths=/opt/jl-business-growth /var/www/jl-business-growth' "${repo_root}/deploy/systemd/jl-business-updater.service"
+grep -Fq 'validate_production_application_roots' "${updater}"
+grep -Fq 'backend_app_root="/opt/jl-business-growth"' "${updater}"
+grep -Fq 'web_app_root="/var/www/jl-business-growth"' "${updater}"
+grep -Fq 'mktemp -d /var/tmp/jl-business-growth.XXXXXX' "${repo_root}/scripts/deploy-prod.sh.example"
+! grep -Fq 'remote_staging="/var/tmp/jl-business-growth/${RELEASE_VERSION}"' "${repo_root}/scripts/deploy-prod.sh.example"
+
 cat >"${bin}/psql" <<'EOF'
 #!/usr/bin/env bash
 cat "${SCHEMA_FILE}"

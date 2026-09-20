@@ -60,5 +60,9 @@ if validate_environment_file "${environment_file}" "${environment_parent}" "${wr
     echo 'migration helper accepted unexpected EnvironmentFile owner' >&2
     exit 1
 fi
+if validate_environment_file "${environment_file}" "${environment_parent}" "$(id -u)" "${wrong_owner_uid}"; then
+    echo 'migration helper accepted unexpected EnvironmentFile parent owner' >&2
+    exit 1
+fi
 
 printf 'migration helper validation tests: PASS\n'

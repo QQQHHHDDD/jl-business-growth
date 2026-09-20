@@ -5,14 +5,16 @@ validate_environment_file() {
     local environment_file="$1"
     local environment_parent="$2"
     local expected_owner_uid="${3:-0}"
-    local environment_owner environment_mode environment_parent_mode
+    local expected_parent_owner_uid="${4:-${expected_owner_uid}}"
+    local environment_owner environment_mode environment_parent_owner environment_parent_mode
     if [[ -L "${environment_parent}" || ! -d "${environment_parent}" || -L "${environment_file}" || ! -f "${environment_file}" ]]; then
         return 1
     fi
     environment_owner="$(stat -c '%u' "${environment_file}")"
     environment_mode="$(stat -c '%a' "${environment_file}")"
+    environment_parent_owner="$(stat -c '%u' "${environment_parent}")"
     environment_parent_mode="$(stat -c '%a' "${environment_parent}")"
-    if [[ "${environment_owner}" != "${expected_owner_uid}" ]] || (( (8#${environment_mode} & 0022) != 0 )) || (( (8#${environment_parent_mode} & 0022) != 0 )); then
+    if [[ "${environment_owner}" != "${expected_owner_uid}" || "${environment_parent_owner}" != "${expected_parent_owner_uid}" ]] || (( (8#${environment_mode} & 0022) != 0 )) || (( (8#${environment_parent_mode} & 0022) != 0 )); then
         return 1
     fi
 }
