@@ -72,7 +72,10 @@ RELEASE_UPDATE_ENABLED=false
 开发环境，不应覆盖主机上的其他服务。updater 和 backup systemd unit 还可加载
 root-provisioned 的可选 `jl-business-growth-cli.env`，仅用于把受信任的
 PostgreSQL `psql`/`pg_dump` 目录加入 PATH；应用源码不硬编码面板 PostgreSQL
-路径，也不会把数据库 URL 放进命令参数、日志或状态。
+路径。`DATABASE_URL` 仅供 Go application 和 Goose (`GOOSE_DBSTRING`) 使用；
+`psql` 和 `pg_dump` 必须通过 `PGSERVICE` 或 `PGHOST`、`PGPORT`、`PGDATABASE`、
+`PGUSER`、`PGSSLMODE` 等 libpq 环境变量连接。数据库 URL、密码和完整 conninfo
+不得进入 CLI argv，`PGPASSWORD` 不得打印或写入日志、状态或前端。
 
 ## 独立 updater
 

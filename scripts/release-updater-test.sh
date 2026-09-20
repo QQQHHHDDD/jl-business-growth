@@ -30,6 +30,7 @@ grep -Fq 'User=jl-business' "${repo_root}/deploy/systemd/jl-business-backup.serv
 grep -Fq 'Group=jl-business' "${repo_root}/deploy/systemd/jl-business-backup.service"
 ! grep -Fq 'verify_binary_metadata' "${updater}"
 ! grep -Fq -- ' --version' "${updater}"
+! grep -Eq 'psql[^[:space:]]*.*DATABASE_URL|psql.*DATABASE_URL' "${updater}"
 ! grep -Fq 'trusted_backup_helper' "${updater}"
 ! grep -Fq '/usr/local/libexec/jl-business-backup-db' "${updater}"
 ! grep -Eq 'goose[[:space:]].*down' "${updater}"
@@ -47,6 +48,12 @@ grep -Fq 'proxy_pass http://127.0.0.1:8081;' "${repo_root}/deploy/nginx/jl-busin
 
 cat >"${bin}/psql" <<'EOF'
 #!/usr/bin/env bash
+if [[ "${PSQL_REQUIRE_LIBPQ:-false}" == true ]]; then
+  [[ -n "${PGSERVICE:-}" || ( -n "${PGHOST:-}" && -n "${PGDATABASE:-}" && -n "${PGUSER:-}" ) ]] || exit 91
+fi
+if [[ -n "${PSQL_ARGV_MARKER:-}" ]]; then
+  printf '%s\n' "$@" >"${PSQL_ARGV_MARKER}"
+fi
 cat "${SCHEMA_FILE}"
 EOF
 cat >"${bin}/goose" <<'EOF'
@@ -171,7 +178,7 @@ repack_release() {
 reset_case() {
   rm -rf "${runtime}" "${backend_releases}" "${web_releases}"
   rm -f "${root}/backend-current" "${root}/web-current"
-  rm -f "${root}/backup.called" "${root}/backup-service.started" "${root}/migration.called" "${root}/binary-executed" "${root}/direct-backup.called" "${root}/goose.invocation" "${root}/health-requests"
+  rm -f "${root}/backup.called" "${root}/backup-service.started" "${root}/migration.called" "${root}/binary-executed" "${root}/direct-backup.called" "${root}/goose.invocation" "${root}/health-requests" "${root}/psql.argv"
   mkdir -p "${requests}" "${state}" "${work}" "${backend_releases}" "${web_releases}"
   chmod 0750 "${runtime}"
   chmod 0770 "${requests}"; chmod 0750 "${state}"; chmod 0700 "${work}"
@@ -208,7 +215,10 @@ run_updater() {
     RELEASE_BACKEND_ROOT="${backend_releases}" RELEASE_WEB_ROOT="${web_releases}" \
     RELEASE_BACKEND_CURRENT="${root}/backend-current" RELEASE_WEB_CURRENT="${root}/web-current" \
     RELEASE_DOWNLOAD_BASE="file://${fixture}" RELEASE_API_HEALTH="${RELEASE_API_HEALTH_OVERRIDE:-http://test/api/health}" \
-    RELEASE_HEALTH_ATTEMPTS=1 RELEASE_HEALTH_RETRY_DELAY=0 DATABASE_URL=test \
+    RELEASE_HEALTH_ATTEMPTS=1 RELEASE_HEALTH_RETRY_DELAY=0 DATABASE_URL="${DATABASE_URL_OVERRIDE:-test}" \
+    PGSERVICE="${PGSERVICE_OVERRIDE-}" PGHOST="${PGHOST_OVERRIDE-127.0.0.1}" PGPORT="${PGPORT_OVERRIDE-5432}" \
+    PGDATABASE="${PGDATABASE_OVERRIDE-test}" PGUSER="${PGUSER_OVERRIDE-test}" PGSSLMODE="${PGSSLMODE_OVERRIDE-disable}" \
+    PSQL_REQUIRE_LIBPQ=true PSQL_ARGV_MARKER="${root}/psql.argv" \
     SCHEMA_FILE="${root}/schema" FIXTURE_ROOT="${fixture}" BACKUP_MARKER="${root}/backup.called" \
     BACKUP_SERVICE_START_MARKER="${root}/backup-service.started" MIGRATION_MARKER="${root}/migration.called" \
     GOOSE_INVOCATION_MARKER="${root}/goose.invocation" \
@@ -409,10 +419,33 @@ pass_case 'PostgreSQL CLI command availability is checked before migration'
 
 reset_case
 request v1.0.1
+if PGHOST_OVERRIDE= PGDATABASE_OVERRIDE= PGUSER_OVERRIDE= PGSERVICE_OVERRIDE= run_case; then
+  echo 'missing libpq configuration unexpectedly succeeded' >&2
+  exit 1
+fi
+assert_failed_cleanup 'PostgreSQL CLI connection configuration is missing'
+assert_no_migration_or_switch
+pass_case 'missing libpq connection environment fails closed before migration'
+
+reset_case
+request v1.0.1
 if ! run_case; then echo 'normal claimed request unexpectedly failed' >&2; exit 1; fi
 assert_successful_update
 assert_target_permissions
 pass_case 'application request is safely claimed, processed, and target permissions normalized under umask 077'
+
+reset_case
+request v1.0.1
+if ! DATABASE_URL_OVERRIDE='postgres://user:VERY_SECRET_TEST_PASSWORD@host/db' run_case; then
+  echo 'secret DATABASE_URL update unexpectedly failed' >&2
+  exit 1
+fi
+assert_successful_update
+grep -Fq -- '-Atqc' "${root}/psql.argv"
+grep -Fq 'SELECT COALESCE(MAX(version_id), 0)' "${root}/psql.argv"
+! grep -Fq 'postgres://user:VERY_SECRET_TEST_PASSWORD@host/db' "${root}/psql.argv"
+! grep -Fq 'VERY_SECRET_TEST_PASSWORD' "${root}/psql.argv"
+pass_case 'schema psql query keeps DATABASE_URL and password out of argv'
 
 reset_case
 request v1.0.1

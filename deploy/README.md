@@ -187,7 +187,12 @@ specific secrets in this repository.
    ```
 
    Keep `DATABASE_URL` and all credentials in that root-only provisioned file;
-   never export them into an SSH deploy session.
+   never export them into an SSH deploy session. `DATABASE_URL` is consumed by
+   the Go application and Goose through `GOOSE_DBSTRING`; `psql` and `pg_dump`
+   use the separately provisioned libpq variables (`PGSERVICE` or `PGHOST`,
+   `PGPORT`, `PGDATABASE`, `PGUSER`, `PGSSLMODE`, and any required password
+   mechanism) instead. The database URL, password, and conninfo must never be
+   command-line arguments, and `PGPASSWORD` must never be printed or logged.
 
 4. Provision a separate trusted CLI environment file at
    `/etc/jl-business-growth/jl-business-growth-cli.env`, owned by root and not
@@ -200,7 +205,9 @@ specific secrets in this repository.
 
    Replace `/trusted/postgresql/bin` during host provisioning with the actual
    trusted directory; do not change application source for a panel-specific
-   path. The updater and backup units load this optional file and must pass
+   path. This PATH file is separate from PostgreSQL connection credentials;
+   do not put `DATABASE_URL`, `PGPASSWORD`, or other secrets in it. The updater
+   and backup units load this optional file and must pass
    `command -v psql`, `command -v pg_dump`, `psql --version`, and
    `pg_dump --version` checks as `jl-business`. The fixed `/usr/bin/goose` and
    root-only helper paths remain unchanged.

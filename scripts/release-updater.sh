@@ -277,8 +277,19 @@ validate_current_backend() {
     fi
 }
 
+libpq_connection_configured() {
+    if [[ -n "${PGSERVICE:-}" ]]; then
+        return 0
+    fi
+    [[ -n "${PGHOST:-}" && -n "${PGDATABASE:-}" && -n "${PGUSER:-}" ]]
+}
+
 schema_version_from_db() {
-    psql "${DATABASE_URL:?DATABASE_URL is required}" -Atqc "SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version WHERE is_applied"
+    if ! libpq_connection_configured; then
+        failure_message="PostgreSQL CLI connection configuration is missing"
+        return 1
+    fi
+    psql -Atqc "SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version WHERE is_applied"
 }
 
 manifest_compatible() {
@@ -619,7 +630,12 @@ if [[ "${action}" == "update" ]]; then
         fail_task "Release migration schema 无法确认"
     fi
     test "$((10#${BASH_REMATCH[1]}))" -eq "${manifest_schema}"
-    current_schema_before="$(schema_version_from_db)"
+    if ! libpq_connection_configured; then
+        fail_task "${failure_message:-PostgreSQL CLI connection configuration is missing}"
+    fi
+    if ! current_schema_before="$(schema_version_from_db)"; then
+        fail_task "无法读取当前数据库 schema"
+    fi
     if [[ ! "${current_schema_before}" =~ ^[0-9]+$ ]]; then
         fail_task "当前数据库 schema 无效"
     fi
@@ -637,7 +653,12 @@ else
         fail_task "已安装 rollback web release 校验失败"
     fi
     test "$(jq -er '.version' "${target_backend}/release.json")" = "${target_version}"
-    current_schema_before="$(schema_version_from_db)"
+    if ! libpq_connection_configured; then
+        fail_task "${failure_message:-PostgreSQL CLI connection configuration is missing}"
+    fi
+    if ! current_schema_before="$(schema_version_from_db)"; then
+        fail_task "无法读取当前数据库 schema"
+    fi
     [[ "${current_schema_before}" =~ ^[0-9]+$ ]]
     compatible_min="$(jq -er '.compatible_schema_min' "${target_backend}/release.json")"
     compatible_max="$(jq -er '.compatible_schema_max' "${target_backend}/release.json")"
