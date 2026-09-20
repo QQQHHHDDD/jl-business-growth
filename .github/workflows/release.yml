@@ -57,7 +57,9 @@ jobs:
           sha256sum --check SHA256SUMS
           grep -Fq "\"version\": \"${GITHUB_REF_NAME}\"" "${GITHUB_REF_NAME}/release.json"
           grep -Fq "\"git_sha\": \"${GITHUB_SHA}\"" "${GITHUB_REF_NAME}/release.json"
-          tar -tzf "jl-business-growth_${GITHUB_REF_NAME}_linux_amd64.tar.gz" | grep -Fq './release.json'
+          archive="jl-business-growth_${GITHUB_REF_NAME}_linux_amd64.tar.gz"
+          tar -tzf "${archive}" > archive-contents.txt
+          grep -Fxq './release.json' archive-contents.txt
 
       - name: Create GitHub Release
         env:
