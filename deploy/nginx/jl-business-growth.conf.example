@@ -4,13 +4,15 @@ server {
 
     client_max_body_size 50m;
     root /var/www/jl-business-growth/current;
+    # Keep ACME challenges in an independently provisioned location/alias;
+    # never place them under the application release/current directory.
 
     add_header X-Content-Type-Options nosniff always;
     add_header X-Frame-Options DENY always;
     add_header Referrer-Policy strict-origin-when-cross-origin always;
 
     location /api/ {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:8081;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

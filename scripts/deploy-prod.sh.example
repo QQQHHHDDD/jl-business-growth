@@ -79,7 +79,7 @@ sudo ln -sfnT "$backend_root" /opt/jl-business-growth/current
 sudo ln -sfnT "$web_root" /var/www/jl-business-growth/current
 sudo systemctl restart jl-business-api.service
 sudo systemctl restart jl-business-jobs.timer
-curl --fail --silent --show-error http://127.0.0.1:8080/api/health/live >/dev/null
-curl --fail --silent --show-error http://127.0.0.1:8080/api/health/ready >/dev/null
+curl --fail --silent --show-error http://127.0.0.1:8081/api/health/live >/dev/null
+curl --fail --silent --show-error http://127.0.0.1:8081/api/health/ready >/dev/null
 REMOTE
 printf 'release %s deployed to %s\n' "${RELEASE_VERSION}" "${DEPLOY_HOST}"

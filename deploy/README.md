@@ -149,3 +149,115 @@ health-check, rollback, and acceptance gates are complete. See
 The deployment template creates a random `mktemp -d` staging directory under
 `/var/tmp`, verifies it is a deploy-user-owned `0700` real directory before
 root copy, and removes it on both success and failure paths.
+
+## Production online-updater bootstrap/runbook
+
+This is a one-time preparation checklist for a host that will later use
+Version Center online updates. It is intentionally generic: replace only the
+trusted local PostgreSQL binary directory and other explicitly marked local
+provisioning inputs. Do not put passwords, tokens, database URLs, or host
+specific secrets in this repository.
+
+1. Create the dedicated runtime identity. Do not use a panel account such as
+   `www` for the API or jobs:
+
+   ```bash
+   getent group jl-business >/dev/null || sudo groupadd --system jl-business
+   id jl-business >/dev/null 2>&1 || sudo useradd --system --gid jl-business \
+     --home-dir /var/lib/jl-business-growth --shell /usr/sbin/nologin \
+     --no-create-home jl-business
+   ```
+
+2. Provision the runtime directories with the ownership and modes shown above.
+   Reject any existing symlink before running `install -d`. Provision
+   `/var/lib/jl-business-growth/files` and `tmp` for the API as real
+   `jl-business:jl-business` directories, and keep release roots and `current`
+   symlinks `root:root` and immutable to the application account.
+
+3. Provision `/etc/jl-business-growth/jl-business-growth.env` as a real,
+   non-symlink, root-owned file with mode `0640` or stricter; its parent must
+   also be root-owned and not group/other writable. Set production values
+   there, including:
+
+   ```text
+   APP_ENV=production
+   LISTEN_ADDR=127.0.0.1:8081
+   RELEASE_API_HEALTH=http://127.0.0.1:8081/api/health
+   RELEASE_UPDATE_ENABLED=false
+   ```
+
+   Keep `DATABASE_URL` and all credentials in that root-only provisioned file;
+   never export them into an SSH deploy session.
+
+4. Provision a separate trusted CLI environment file at
+   `/etc/jl-business-growth/jl-business-growth-cli.env`, owned by root and not
+   group/other writable. Set `PATH` to the verified absolute PostgreSQL binary
+   directory followed by standard system directories, for example:
+
+   ```text
+   PATH=/trusted/postgresql/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+   ```
+
+   Replace `/trusted/postgresql/bin` during host provisioning with the actual
+   trusted directory; do not change application source for a panel-specific
+   path. The updater and backup units load this optional file and must pass
+   `command -v psql`, `command -v pg_dump`, `psql --version`, and
+   `pg_dump --version` checks as `jl-business`. The fixed `/usr/bin/goose` and
+   root-only helper paths remain unchanged.
+
+5. Install the API, jobs, backup, updater, and path units as root, run
+   `systemctl daemon-reload`, and enable the API, jobs timer, and backup timer.
+   `After=postgresql.service` is only an ordering hint; these units do not
+   require PostgreSQL to be managed by systemd. Keep the updater path disabled
+   until the rehearsal gates below pass.
+
+6. Migrate the JL API from the old process manager only after the systemd API
+   is healthy and listening on `127.0.0.1:8081`: stop and disable only the JL
+   panel/Supervisor entry, then verify the unrelated service on `127.0.0.1:8080`
+   is unchanged. Do not grant the updater any Supervisor command capability.
+
+7. Configure Nginx to use the example topology: static root
+   `/var/www/jl-business-growth/current` and API proxy `127.0.0.1:8081`.
+   `current` must remain a root-owned symlink; Nginx is read-only and the
+   updater changes only that symlink. Configure
+   `/.well-known/acme-challenge/` using a separate production-managed
+   location/alias outside the application release directory; ACME must not
+   depend on a release's `web/` contents.
+
+8. Perform a real backup rehearsal with `systemctl start
+   jl-business-backup.service`, verify the oneshot exit status is zero, and
+   verify both database and file backup artifacts. Do not treat a stale unit
+   status as proof of the current start.
+
+9. Validate the root-only migration helper, fixed `/usr/bin/goose`, trusted
+   release migration directory, and `goose validate` output. Migration
+   rehearsal must use an approved isolated non-production database; never use
+   a production database for a test. Production migration remains
+   forward-only.
+
+10. Rehearse updater and rollback with a disposable release fixture: backup
+    must complete before migration, API/jobs restart must use systemd, health
+    checks must use `RELEASE_API_HEALTH`, and failed health/switch conditions
+    must restore only when every restore check succeeds. Confirm request,
+    lock, status, ownership, and immutable release boundaries.
+
+11. After rehearsal, install the trusted root-only helpers under
+    `/usr/local/libexec/`, run `systemctl daemon-reload`, enable
+    `jl-business-updater.path`, and verify its request trigger and oneshot
+    service without changing `RELEASE_UPDATE_ENABLED` yet.
+
+12. Before enabling online updates, confirm the independent `127.0.0.1:8080`
+    service is healthy and unaffected, the API is healthy on `127.0.0.1:8081`,
+    Nginx serves `current`, backup and migration checks passed, and rollback
+    rehearsal evidence is recorded.
+
+13. Only as the final change, set `RELEASE_UPDATE_ENABLED=true` in the trusted
+    environment file and restart the systemd API. Confirm Version Center can
+    check releases, submit one controlled request, and observe the authoritative
+    updater status and health checks. Never enable this setting in a release
+    artifact or API request.
+
+14. Emergency disable procedure: set `RELEASE_UPDATE_ENABLED=false`, restart
+    `jl-business-api.service`, disable `jl-business-updater.path`, and stop a
+    currently running updater only after checking its status and backup/migration
+    state. Preserve the immutable release and status files for investigation.

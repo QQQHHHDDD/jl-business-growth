@@ -16,12 +16,15 @@ work="${runtime}/work"
 backend_releases="${root}/backend-releases"
 web_releases="${root}/web-releases"
 fixture="${root}/fixture"
+restricted_bin="${root}/restricted-bin"
 mkdir -p "${bin}" "${runtime}" "${backend_releases}" "${web_releases}" "${fixture}"
 
 # The API remains startable when online update is disabled and the optional
 # requests directory has not been provisioned yet.
 grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp -/var/lib/jl-business-growth/release-updater/requests' "${repo_root}/deploy/systemd/jl-business-api.service"
 grep -Fq 'ReadWritePaths=/opt/jl-business-growth /var/www/jl-business-growth' "${repo_root}/deploy/systemd/jl-business-updater.service"
+grep -Fq 'EnvironmentFile=-/etc/jl-business-growth/jl-business-growth-cli.env' "${repo_root}/deploy/systemd/jl-business-updater.service"
+grep -Fq 'EnvironmentFile=-/etc/jl-business-growth/jl-business-growth-cli.env' "${repo_root}/deploy/systemd/jl-business-backup.service"
 ! grep -Fq 'ReadWritePaths=/var/backups/jl-business-growth' "${repo_root}/deploy/systemd/jl-business-updater.service"
 grep -Fq 'User=jl-business' "${repo_root}/deploy/systemd/jl-business-backup.service"
 grep -Fq 'Group=jl-business' "${repo_root}/deploy/systemd/jl-business-backup.service"
@@ -36,6 +39,11 @@ grep -Fq 'backend_app_root="/opt/jl-business-growth"' "${updater}"
 grep -Fq 'web_app_root="/var/www/jl-business-growth"' "${updater}"
 grep -Fq 'mktemp -d /var/tmp/jl-business-growth.XXXXXX' "${repo_root}/scripts/deploy-prod.sh.example"
 ! grep -Fq 'remote_staging="/var/tmp/jl-business-growth/${RELEASE_VERSION}"' "${repo_root}/scripts/deploy-prod.sh.example"
+grep -Fq '127.0.0.1:8081/api/health' "${repo_root}/scripts/deploy-prod.sh.example"
+! grep -Fq '127.0.0.1:8080/api/health' "${repo_root}/scripts/deploy-prod.sh.example"
+grep -Fq 'root /var/www/jl-business-growth/current;' "${repo_root}/deploy/nginx/jl-business-growth.conf.example"
+grep -Fq 'proxy_pass http://127.0.0.1:8081;' "${repo_root}/deploy/nginx/jl-business-growth.conf.example"
+! grep -Fq '/www/server/pgsql' "${repo_root}/deploy/systemd/jl-business-updater.service" "${repo_root}/deploy/systemd/jl-business-backup.service" "${repo_root}/scripts/release-updater.sh" "${repo_root}/scripts/backup-db.sh"
 
 cat >"${bin}/psql" <<'EOF'
 #!/usr/bin/env bash
@@ -100,6 +108,9 @@ if [[ -n "${output}" ]]; then
   cp "${FIXTURE_ROOT}/$(basename "${url}")" "${output}"
   exit 0
 fi
+if [[ -n "${HEALTH_REQUEST_LOG:-}" ]]; then
+  printf '%s\n' "${url}" >>"${HEALTH_REQUEST_LOG}"
+fi
 current="$(readlink -f "${RELEASE_BACKEND_CURRENT}")"
 if [[ "${RELEASE_HEALTH_FAIL_TARGET:-false}" == true && "${current}" == *"/v1.0.1" ]]; then exit 22; fi
 if [[ "${RELEASE_HEALTH_FAIL_RESTORED_LIVE:-false}" == true && "${current}" == *"/v1.0.0" && "${url}" == */live ]]; then exit 22; fi
@@ -115,6 +126,14 @@ if [[ "${source_path}" == *"/v1.0.0" && "${destination}" == "${RELEASE_WEB_CURRE
 exec /usr/bin/ln "$@"
 EOF
 chmod +x "${bin}"/*
+
+# A hermetic PATH used to prove command availability checks do not fall back to
+# an unrelated host installation. It intentionally omits pg_dump for one case.
+mkdir -p "${restricted_bin}"
+for command in bash cat chmod cp date dirname env find flock grep id jq mkdir mktemp mv readlink rm sed sha256sum sleep sort stat tail tar wc; do
+  resolved="$(command -v "${command}")"
+  /usr/bin/ln -s "${resolved}" "${restricted_bin}/${command}"
+done
 
 make_release() {
   local version="$1" schema="$2" minimum="$3" maximum="$4" commit="$5"
@@ -152,7 +171,7 @@ repack_release() {
 reset_case() {
   rm -rf "${runtime}" "${backend_releases}" "${web_releases}"
   rm -f "${root}/backend-current" "${root}/web-current"
-  rm -f "${root}/backup.called" "${root}/backup-service.started" "${root}/migration.called" "${root}/binary-executed" "${root}/direct-backup.called" "${root}/goose.invocation"
+  rm -f "${root}/backup.called" "${root}/backup-service.started" "${root}/migration.called" "${root}/binary-executed" "${root}/direct-backup.called" "${root}/goose.invocation" "${root}/health-requests"
   mkdir -p "${requests}" "${state}" "${work}" "${backend_releases}" "${web_releases}"
   chmod 0750 "${runtime}"
   chmod 0770 "${requests}"; chmod 0750 "${state}"; chmod 0700 "${work}"
@@ -184,15 +203,16 @@ run_updater() {
   fi
   umask 077
   "${timeout_command[@]}" env \
-    PATH="${bin}:${PATH}" \
+    PATH="${bin}:${PATH_OVERRIDE:-${PATH}}" \
     RELEASE_UPDATE_ENABLED="${RELEASE_UPDATE_ENABLED_OVERRIDE:-true}" RELEASE_RUNTIME_ROOT="${runtime}" \
     RELEASE_BACKEND_ROOT="${backend_releases}" RELEASE_WEB_ROOT="${web_releases}" \
     RELEASE_BACKEND_CURRENT="${root}/backend-current" RELEASE_WEB_CURRENT="${root}/web-current" \
-    RELEASE_DOWNLOAD_BASE="file://${fixture}" RELEASE_API_HEALTH="http://test/api/health" \
+    RELEASE_DOWNLOAD_BASE="file://${fixture}" RELEASE_API_HEALTH="${RELEASE_API_HEALTH_OVERRIDE:-http://test/api/health}" \
     RELEASE_HEALTH_ATTEMPTS=1 RELEASE_HEALTH_RETRY_DELAY=0 DATABASE_URL=test \
     SCHEMA_FILE="${root}/schema" FIXTURE_ROOT="${fixture}" BACKUP_MARKER="${root}/backup.called" \
     BACKUP_SERVICE_START_MARKER="${root}/backup-service.started" MIGRATION_MARKER="${root}/migration.called" \
     GOOSE_INVOCATION_MARKER="${root}/goose.invocation" \
+    HEALTH_REQUEST_LOG="${root}/health-requests" \
     BINARY_EXECUTED_MARKER="${root}/binary-executed" DIRECT_BACKUP_MARKER="${root}/direct-backup.called" "$updater"
 }
 
@@ -380,10 +400,31 @@ pass_case 'missing required command cleanup'
 
 reset_case
 request v1.0.1
+mv "${bin}/pg_dump" "${bin}/pg_dump.unavailable"
+if PATH_OVERRIDE="${restricted_bin}" run_case; then echo 'missing pg_dump unexpectedly succeeded' >&2; exit 1; fi
+mv "${bin}/pg_dump.unavailable" "${bin}/pg_dump"
+assert_failed_cleanup '版本任务缺少必需命令：pg_dump'
+assert_no_migration_or_switch
+pass_case 'PostgreSQL CLI command availability is checked before migration'
+
+reset_case
+request v1.0.1
 if ! run_case; then echo 'normal claimed request unexpectedly failed' >&2; exit 1; fi
 assert_successful_update
 assert_target_permissions
 pass_case 'application request is safely claimed, processed, and target permissions normalized under umask 077'
+
+reset_case
+request v1.0.1
+if ! RELEASE_API_HEALTH_OVERRIDE='http://127.0.0.1:8081/api/health' run_case; then
+  echo 'configured API health override unexpectedly failed' >&2
+  exit 1
+fi
+assert_successful_update
+grep -Fxq 'http://127.0.0.1:8081/api/health/live' "${root}/health-requests"
+grep -Fxq 'http://127.0.0.1:8081/api/health/ready' "${root}/health-requests"
+! grep -Fq '127.0.0.1:8080' "${root}/health-requests"
+pass_case 'RELEASE_API_HEALTH override uses 8081 and never probes 8080'
 
 reset_case
 request v1.0.1

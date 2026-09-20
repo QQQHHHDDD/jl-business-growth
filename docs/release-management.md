@@ -66,6 +66,14 @@ RELEASE_UPDATE_ENABLED=false
 不会展示可执行的更新按钮。生产环境不会因部署而自动开启。启用前必须
 完成备份与恢复演练、systemd 安装、运行目录权限和命令依赖检查。
 
+生产 API 的监听地址由受信任的 EnvironmentFile 提供；Version Center updater
+使用同一文件中的 `RELEASE_API_HEALTH`，例如
+`http://127.0.0.1:8081/api/health`。应用源码默认的 `127.0.0.1:8080` 仅用于
+开发环境，不应覆盖主机上的其他服务。updater 和 backup systemd unit 还可加载
+root-provisioned 的可选 `jl-business-growth-cli.env`，仅用于把受信任的
+PostgreSQL `psql`/`pg_dump` 目录加入 PATH；应用源码不硬编码面板 PostgreSQL
+路径，也不会把数据库 URL 放进命令参数、日志或状态。
+
 ## 独立 updater
 
 运行中的 API 不替换自身，也不直接调用 `systemctl`。API 完成角色、CSRF、
@@ -82,6 +90,13 @@ runtime 权限域固定为：runtime 根目录 `root:jl-business 0750`，`reques
 为 API 可写输入区，`state/` 为 `root:jl-business 0750` 的 authoritative
 状态区，`work/` 为 `root:root 0700` 的 runner lock、claim 和临时工作区。
 API 的 systemd `ReadWritePaths` 只允许 requests 区域。
+
+正式 production 运行用户是专用的 `jl-business`，不是面板的 `www` 用户。
+Nginx 只读服务 `/var/www/jl-business-growth/current`，updater 只原子切换
+root-owned `current` symlink；ACME `/.well-known` location/alias 必须由生产
+Nginx 独立 provision，不得依赖 application release directory。各 unit 的
+`After=postgresql.service` 只是 ordering hint，不要求 PostgreSQL 本身由
+systemd 管理。
 
 updater 启动后先取得 `work/runner.lock`，再把 `requests/request.json` 原子
 claim 到 root-only work 区域，并在 claim 后重新验证 regular file、非 symlink、

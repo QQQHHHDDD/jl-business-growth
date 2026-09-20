@@ -7,6 +7,7 @@ Type=oneshot
 User=jl-business
 Group=jl-business
 EnvironmentFile=/etc/jl-business-growth/jl-business-growth.env
+EnvironmentFile=-/etc/jl-business-growth/jl-business-growth-cli.env
 ExecStart=/usr/local/libexec/jl-business-backup-db
 NoNewPrivileges=true
 PrivateTmp=true
