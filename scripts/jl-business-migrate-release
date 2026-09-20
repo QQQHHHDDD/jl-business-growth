@@ -43,7 +43,9 @@ main() {
     set +a
     : "${DATABASE_URL:?DATABASE_URL is required in production environment file}"
 
-    exec /usr/bin/goose -dir "${migrations_root}" postgres "${DATABASE_URL}" up
+    GOOSE_DRIVER=postgres \
+    GOOSE_DBSTRING="${DATABASE_URL}" \
+    exec /usr/bin/goose -dir "${migrations_root}" up
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
