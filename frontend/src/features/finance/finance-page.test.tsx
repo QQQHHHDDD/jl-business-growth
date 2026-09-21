@@ -35,13 +35,14 @@ beforeEach(() => {
 });
 
 describe("FinancePage", () => {
-  it("separates finance views and opens transaction entry in a sheet", async () => {
+  it("separates finance views and opens transaction entry in a centered dialog", async () => {
     renderPage();
     expect(await screen.findByRole("tab", { name: "总览" })).toHaveAttribute("data-state", "active");
     fireEvent.mouseDown(screen.getByRole("tab", { name: "流水" }), { button: 0 });
     expect(screen.getByRole("heading", { name: "流水列表" })).toBeVisible();
     fireEvent.click(screen.getAllByRole("button", { name: "新增流水" })[0]);
     expect(screen.getByRole("dialog")).toBeVisible();
+    expect(screen.getByRole("dialog")).toHaveClass("left-1/2", "top-1/2");
     expect(screen.getByRole("heading", { name: "新增财务流水" })).toBeVisible();
     expect(screen.getByLabelText("分类", { exact: true })).toBeVisible();
   });

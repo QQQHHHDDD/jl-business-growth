@@ -407,7 +407,7 @@ func teamMemberInput(value TeamMemberRequest) team.MemberInput {
 		v := uuid.UUID(*value.ParentId)
 		parent = &v
 	}
-	return team.MemberInput{MemberCode: stringPointerValue(value.MemberCode), ParentID: parent, Name: value.Name, JoinedOn: dateValue(value.JoinedOn), Rank: value.Rank, City: value.City, Status: optionalEnum(value.Status, "ACTIVE"), Note: value.Note, NodeColor: stringPointerValue(value.NodeColor), SortOrder: optionalInt(value.SortOrder)}
+	return team.MemberInput{MemberCode: stringPointerValue(value.MemberCode), ParentID: parent, Name: value.Name, JoinedOn: dateValue(value.JoinedOn), Rank: value.Rank, City: value.City, Status: enumValue(value.Status), Note: value.Note, NodeColor: stringPointerValue(value.NodeColor), SortOrder: optionalInt(value.SortOrder)}
 }
 func teamMemberDTO(value team.Member) TeamMember {
 	return TeamMember{Id: value.ID, MemberCode: value.MemberCode, ParentId: uuidPtr(value.ParentID), Name: value.Name, JoinedOn: datePointer(value.JoinedOn), Rank: value.Rank, City: value.City, Status: TeamMemberStatus(value.Status), Note: value.Note, NodeColor: value.NodeColor, SortOrder: value.SortOrder, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
@@ -443,7 +443,7 @@ func knowledgeItemInput(value KnowledgeItemRequest) knowledge.ItemInput {
 			files = append(files, uuid.UUID(id))
 		}
 	}
-	return knowledge.ItemInput{Title: value.Title, Type: optionalEnum(value.Type, "OTHER"), RawText: value.RawText, Summary: value.Summary, Understanding: value.Understanding, ActionItems: value.ActionItems, SourceURL: value.SourceUrl, LearnedOn: learned, Status: optionalEnum(value.Status, "NOT_STARTED"), ProgressCurrent: current, ProgressTotal: total, ProgressUnit: value.ProgressUnit, Tags: tags, FileIDs: files}
+	return knowledge.ItemInput{Title: value.Title, Type: enumValue(value.Type), RawText: value.RawText, Summary: value.Summary, Understanding: value.Understanding, ActionItems: value.ActionItems, SourceURL: value.SourceUrl, LearnedOn: learned, Status: enumValue(value.Status), ProgressCurrent: current, ProgressTotal: total, ProgressUnit: value.ProgressUnit, Tags: tags, FileIDs: files}
 }
 func knowledgeItemDTO(value knowledge.Item) KnowledgeItem {
 	return KnowledgeItem{Id: value.ID, Title: value.Title, Type: KnowledgeItemType(value.Type), RawText: value.RawText, Summary: value.Summary, Understanding: value.Understanding, ActionItems: value.ActionItems, SourceUrl: value.SourceURL, LearnedOn: datePointer(value.LearnedOn), Status: KnowledgeItemStatus(value.Status), ProgressCurrent: float32Ptr(value.ProgressCurrent), ProgressTotal: float32Ptr(value.ProgressTotal), ProgressUnit: value.ProgressUnit, Tags: value.Tags, FileIds: value.FileIDs, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
@@ -454,7 +454,7 @@ func learningSessionInput(value LearningSessionRequest) knowledge.SessionInput {
 		v := uuid.UUID(*value.KnowledgeItemId)
 		item = &v
 	}
-	return knowledge.SessionInput{KnowledgeItemID: item, ActivityType: string(value.ActivityType), ActivityDate: value.ActivityDate.Time, Minutes: value.Minutes, Source: optionalEnum(value.Source, "ITEM"), Note: value.Note}
+	return knowledge.SessionInput{KnowledgeItemID: item, ActivityType: string(value.ActivityType), ActivityDate: value.ActivityDate.Time, Minutes: value.Minutes, Source: enumValue(value.Source), Note: value.Note}
 }
 func learningSessionDTO(value knowledge.Session) LearningSession {
 	return LearningSession{Id: value.ID, KnowledgeItemId: uuidPtr(value.KnowledgeItemID), ActivityType: LearningSessionActivityType(value.ActivityType), ActivityDate: apiDate(value.ActivityDate), Minutes: value.Minutes, Source: LearningSessionSource(value.Source), Note: value.Note, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
@@ -492,9 +492,9 @@ func optionalInt(value *int) int {
 	}
 	return *value
 }
-func optionalEnum[T ~string](value *T, fallback string) string {
+func enumValue[T ~string](value *T) string {
 	if value == nil {
-		return fallback
+		return ""
 	}
 	return string(*value)
 }

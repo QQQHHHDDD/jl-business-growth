@@ -32,8 +32,8 @@ export function TableHead({ children }: { children: ReactNode }) {
 export function TableBody({ children }: { children: ReactNode }) {
   return <tbody className="divide-y divide-outline/30">{children}</tbody>;
 }
-export function TableRow({ children }: { children: ReactNode }) {
-  return <tr className="transition-colors hover:bg-brand-50/55">{children}</tr>;
+export function TableRow({ children, className }: { children: ReactNode; className?: string }) {
+  return <tr className={cn("transition-colors hover:bg-brand-50/55", className)}>{children}</tr>;
 }
 export function TableCell({
   children,

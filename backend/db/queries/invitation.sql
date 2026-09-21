@@ -30,7 +30,12 @@ RETURNING id;
 
 -- name: ConsumeInvitation :one
 UPDATE invitation_codes
-SET used_count = used_count + 1
+SET used_count = used_count + 1,
+    status = CASE
+        WHEN max_uses IS NOT NULL AND used_count + 1 >= max_uses
+            THEN 'DISABLED'::invitation_status
+        ELSE status
+    END
 WHERE id = $1
   AND status = 'ACTIVE'
   AND (expires_at IS NULL OR expires_at > now())

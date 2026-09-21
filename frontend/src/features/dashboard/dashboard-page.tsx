@@ -316,7 +316,7 @@ function DashboardContent({
               ? `${todayEvents.length} 项安排`
               : "今天还没有安排"
           }
-          action={<><Button asChild variant="ghost" size="sm"><Link to="/app/calendar">查看全部<ArrowRight size={15} /></Link></Button><Button asChild variant="secondary" size="sm"><Link to="/app/calendar"><Plus size={15} />添加日程</Link></Button></>}
+          action={<Button asChild variant="ghost" size="sm"><Link to="/app/calendar">查看全部<ArrowRight size={15} /></Link></Button>}
         >
           {todayEvents.length ? (
             <div data-testid="dashboard-today-scroll" className="h-[216px] overflow-y-auto pr-2">

@@ -101,14 +101,14 @@ func (s *Service) Register(ctx context.Context, username, password, invitationCo
 	if err != nil {
 		return Account{}, err
 	}
-	if invitation.Status != generated.InvitationStatusACTIVE {
-		return Account{}, problem.New("INVITATION_INVALID", http.StatusBadRequest, "invitation code is disabled")
-	}
 	if invitation.ExpiresAt.Valid && !invitation.ExpiresAt.Time.After(time.Now()) {
 		return Account{}, problem.New("INVITATION_EXPIRED", http.StatusBadRequest, "invitation code has expired")
 	}
 	if invitation.MaxUses.Valid && invitation.UsedCount >= invitation.MaxUses.Int32 {
 		return Account{}, problem.New("INVITATION_EXHAUSTED", http.StatusConflict, "invitation code has no remaining uses")
+	}
+	if invitation.Status != generated.InvitationStatusACTIVE {
+		return Account{}, problem.New("INVITATION_INVALID", http.StatusBadRequest, "invitation code is disabled")
 	}
 	consumed, err := queries.ConsumeInvitation(ctx, invitation.ID)
 	if errors.Is(err, pgx.ErrNoRows) {

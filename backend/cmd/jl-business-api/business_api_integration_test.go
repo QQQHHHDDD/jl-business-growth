@@ -996,6 +996,12 @@ func TestFinanceIncomeAPIIntegration(t *testing.T) {
 	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "finance-user", "password": "finance-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
 	var userAuth api.AuthResponse
 	decodeTestJSON(t, registered, &userAuth)
+	invitationsBody := getTestJSON(t, adminClient, server.URL, "/api/admin/invitation-codes", http.StatusOK)
+	var invitations api.InvitationListResponse
+	decodeTestJSON(t, invitationsBody, &invitations)
+	if len(invitations.Data.Items) != 1 || invitations.Data.Items[0].Status != api.InvitationStatusDISABLED || invitations.Data.Items[0].UsedCount != 1 {
+		t.Fatalf("consumed invitation = %#v, want disabled with one use", invitations.Data.Items)
+	}
 
 	categoriesBody := getTestJSON(t, userClient, server.URL, "/api/finance/categories", http.StatusOK)
 	var categories api.FinanceCategoryListResponse

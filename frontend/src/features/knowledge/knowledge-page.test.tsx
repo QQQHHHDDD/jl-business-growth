@@ -24,12 +24,13 @@ beforeEach(() => {
 });
 
 describe("KnowledgePage", () => {
-  it("provides project filters, an editor sheet, and an attachment tab", async () => {
+  it("provides project filters, a centered editor dialog, and an attachment tab", async () => {
     renderPage();
     expect(await screen.findByRole("tab", { name: "学习项目" })).toHaveAttribute("data-state", "active");
     expect(screen.getByLabelText("搜索学习项目")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "新增学习" }));
     expect(screen.getByRole("heading", { name: "新增学习项目" })).toBeVisible();
+    expect(screen.getByRole("dialog")).toHaveClass("left-1/2", "top-1/2");
     fireEvent.click(screen.getByRole("button", { name: "关闭" }));
     fireEvent.mouseDown(screen.getByRole("tab", { name: "附件库" }), { button: 0 });
     expect(screen.getByRole("heading", { name: "附件库" })).toBeVisible();
