@@ -42,6 +42,36 @@ function expiresAtFromDuration(value: string, unit: ValidityUnit): string | unde
   return new Date(Date.now() + duration * (unit === "DAYS" ? dayMilliseconds : hourMilliseconds)).toISOString();
 }
 
+async function copyText(value: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    // Fall back to the user-initiated legacy copy path for HTTP test environments.
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  let copied = false;
+  try {
+    copied = document.execCommand?.("copy") ?? false;
+  } catch {
+    copied = false;
+  }
+  textarea.remove();
+  return copied;
+}
+
 export function AdminHomePage({ account }: { account: Account }) {
   const superAdmin = account.role === "SUPER_ADMIN";
   return <div className="space-y-7"><PageHeader eyebrow="管理功能" title="管理员工作台" description="管理账号和注册入口。管理员端不提供普通用户业务数据读取入口。左侧边栏可切换管理模块。" /><div className="grid gap-4 md:grid-cols-3"><Link to="/admin/users" className="rounded-[1.125rem] border border-brand-100/65 bg-gradient-to-br from-white to-brand-50/35 p-5 shadow-card transition hover:border-brand-300 hover:shadow-card-hover"><Users size={20} className="text-brand-700" /><h2 className="mt-4 font-bold">用户管理</h2><p className="mt-1 text-sm leading-6 text-ink-muted">启停用、重置密码或删除普通用户。</p></Link><Link to="/admin/invitations" className="rounded-[1.125rem] border border-brand-100/65 bg-gradient-to-br from-white to-sky-50/35 p-5 shadow-card transition hover:border-brand-300 hover:shadow-card-hover"><ShieldCheck size={20} className="text-brand-700" /><h2 className="mt-4 font-bold">邀请码</h2><p className="mt-1 text-sm leading-6 text-ink-muted">控制普通用户注册入口和使用限制。</p></Link>{superAdmin && <Link to="/admin/admins" className="rounded-[1.125rem] border border-brand-100/65 bg-gradient-to-br from-white to-violet-50/30 p-5 shadow-card transition hover:border-brand-300 hover:shadow-card-hover"><KeyRound size={20} className="text-brand-700" /><h2 className="mt-4 font-bold">管理员管理</h2><p className="mt-1 text-sm leading-6 text-ink-muted">仅超级管理员可管理普通管理员账号。</p></Link>}</div><Panel title="当前权限" description="当前会话的权限范围"><div className="flex flex-wrap items-center gap-3"><StatusBadge tone="success">{roleLabel(account.role)}</StatusBadge><span className="text-sm text-ink-muted">账号：{account.username}</span><span className="text-sm text-ink-faint">时区：{account.timezone}</span></div></Panel></div>;
@@ -118,12 +148,8 @@ function InvitationRow({ item, selected, onToggleSelect, csrfToken, onNotice }: 
   const toggleMutation = useMutation({ mutationFn: () => updateInvitation(csrfToken, item.id, { status: item.status === "ACTIVE" ? "DISABLED" : "ACTIVE" }), onSuccess: () => onNotice("邀请码状态已更新。"), onError: (value) => onNotice(errorMessage(value), true) });
   const deleteMutation = useMutation({ mutationFn: () => deleteInvitation(csrfToken, item.id), onSuccess: () => { setDeleteOpen(false); onNotice("邀请码已删除。"); }, onError: (value) => onNotice(errorMessage(value), true) });
   const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(item.code);
-      onNotice("邀请码已复制。");
-    } catch {
-      onNotice("复制失败，请手动复制邀请码。", true);
-    }
+    const copied = await copyText(item.code);
+    onNotice(copied ? "邀请码已复制。" : "复制失败，请手动复制邀请码。", !copied);
   };
   return <TableRow className={exhausted ? "bg-surface-muted/70 text-ink-faint hover:bg-surface-muted/70" : undefined}><TableCell className="font-semibold"><div className="flex items-center gap-2"><input type="checkbox" checked={selected} onChange={onToggleSelect} aria-label={`选择邀请码 ${item.code}`} /><button type="button" className="group inline-flex items-center gap-1.5 rounded px-1 py-0.5 text-left hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300" onClick={() => void copyCode()} title="复制邀请码" aria-label={`复制邀请码 ${item.code}`}><code className="font-mono text-sm">{item.code}</code><Copy size={14} className="text-ink-faint transition-colors group-hover:text-brand-700" /></button></div></TableCell><TableCell><StatusBadge tone={exhausted ? "neutral" : item.status === "ACTIVE" ? "success" : "danger"}>{exhausted ? "已用完" : item.status === "ACTIVE" ? "启用" : "停用"}</StatusBadge></TableCell><TableCell className="text-slate-600">{item.max_uses !== null && item.max_uses !== undefined ? `${item.used_count}/${item.max_uses} 次` : `${item.used_count}/无限次`}</TableCell><TableCell className="text-slate-600">{item.expires_at ? formatDate(item.expires_at) : "永不过期"}</TableCell><TableCell className="text-slate-600">{formatDate(item.created_at)}</TableCell><TableCell><div className="flex flex-wrap items-center gap-1.5">{!exhausted && <Button variant="ghost" size="sm" onClick={() => toggleMutation.mutate()} loading={toggleMutation.isPending}>{item.status === "ACTIVE" ? "停用" : "启用"}</Button>}<Button variant="icon" size="sm" onClick={() => setDeleteOpen(true)} title="删除邀请码" aria-label={`删除邀请码 ${item.code}`}><Trash2 size={15} className="text-rose-700" /></Button></div><ConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} title="删除邀请码" description={`确定永久删除邀请码“${item.code}”吗？已记录的使用记录也会一并清理，此操作无法撤销。`} confirmLabel="永久删除" loading={deleteMutation.isPending} onConfirm={() => deleteMutation.mutate()} /></TableCell></TableRow>;
 }

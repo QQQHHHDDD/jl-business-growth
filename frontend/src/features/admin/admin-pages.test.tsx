@@ -40,4 +40,16 @@ describe("AdminInvitationsPage", () => {
     expect(screen.getByRole("button", { name: "删除邀请码 USED001" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "启用" })).not.toBeInTheDocument();
   });
+
+  it("falls back to a user-initiated copy command when Clipboard API is unavailable", async () => {
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error("insecure context"));
+    const execCommand = vi.fn(() => true);
+    Object.defineProperty(document, "execCommand", { configurable: true, value: execCommand });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "复制邀请码 WELCOME1" }));
+    await waitFor(() => expect(screen.getByText("邀请码已复制。")).toBeVisible());
+    expect(execCommand).toHaveBeenCalledWith("copy");
+    expect(document.body.querySelector("textarea")).toBeNull();
+  });
 });
