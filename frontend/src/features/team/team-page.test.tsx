@@ -104,7 +104,7 @@ describe("TeamPage", () => {
     renderPage();
     const graphTab = await screen.findByRole("tab", { name: "关系图" });
     expect(graphTab).toHaveAttribute("data-state", "active");
-    expect(screen.getByRole("img", { name: "团队关系图" })).toBeVisible();
+    expect(await screen.findByRole("img", { name: "团队关系图" })).toBeVisible();
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-fit-view", "true");
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-pan-on-drag", "true");
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-edge-count", "1");

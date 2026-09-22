@@ -20,10 +20,10 @@ import {
   UserRoundCheck,
   UsersRound,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useSearchParams } from "react-router-dom";
-import { z } from "zod";
+import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { AuthResponse, Worklog, WorklogRequest } from "@/api/client";
 import { listWorklogs, saveWorklog } from "@/api/client";
@@ -163,7 +163,6 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
       "worklogs",
       rangeStart,
       currentDate,
-      selectedDate,
     ],
     queryFn: () => listWorklogs(rangeStart, currentDate),
   });
@@ -176,9 +175,14 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
   const existing = worklogsQuery.data?.data.items.find(
     (item) => item.work_date === selectedDate,
   );
+  const loadedFormDate = useRef(selectedDate);
   useEffect(() => {
-    form.reset(existing ? fromWorklog(existing) : formDefaults(selectedDate));
-  }, [existing, form, selectedDate]);
+    const dateChanged = loadedFormDate.current !== selectedDate;
+    if (dateChanged || !form.formState.isDirty) {
+      form.reset(existing ? fromWorklog(existing) : formDefaults(selectedDate));
+      loadedFormDate.current = selectedDate;
+    }
+  }, [existing, form, form.formState.isDirty, selectedDate]);
   const mutation = useMutation({
     mutationFn: (value: WorklogRequest) =>
       saveWorklog(authResponse.data.csrf_token, value, Boolean(existing)),
@@ -297,7 +301,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
         </p>
       )}
       <Panel className="worklog-form-panel border-brand-100/70 bg-surface/80 shadow-float">
-        <form className="space-y-0" onSubmit={onSubmit}>
+        {worklogsQuery.isPending && !worklogsQuery.data ? <LoadingState label="正在准备工作量表单" /> : worklogsQuery.isError && !worklogsQuery.data ? <ErrorState message="工作量记录暂时无法加载" onRetry={() => void worklogsQuery.refetch()} /> : <form className="space-y-0" onSubmit={onSubmit}>
           <input type="hidden" {...form.register("work_date")} />
           <section aria-labelledby="worklog-actions" className="worklog-actions-section pb-7">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -450,7 +454,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
               {mutation.isPending ? "处理中..." : "保存今日记录"}
             </Button>
           </div>
-        </form>
+        </form>}
       </Panel>
 
       <Panel

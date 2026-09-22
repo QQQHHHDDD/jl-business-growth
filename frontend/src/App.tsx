@@ -563,7 +563,7 @@ function AppContent() {
       health={healthQuery}
       onLogout={() => logoutMutation.mutate()}
       loggingOut={logoutMutation.isPending}
-      onPrefetchRoute={preloadRoute}
+      onPrefetchRoute={(path) => preloadRoute(path, queryClient, meQuery.data)}
     />
   );
 }

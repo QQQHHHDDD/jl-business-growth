@@ -6,7 +6,7 @@ const superadminPassword = process.env.E2E_SUPERADMIN_PASSWORD;
 
 test("covers administrator, account, and core business workflows", async ({
   page,
-}) => {
+}, testInfo) => {
   test.skip(
     process.env.APP_ENV !== "test" ||
       !superadminUsername ||
@@ -130,6 +130,10 @@ test("covers administrator, account, and core business workflows", async ({
     }
   }
   console.log(`[route-stability] ${JSON.stringify(routeDiagnostics)}`);
+  await testInfo.attach("route-stability.json", {
+    body: JSON.stringify(routeDiagnostics, null, 2),
+    contentType: "application/json",
+  });
 
   let releaseAnalyticsRequest: (() => void) | undefined;
   let analyticsRequestStarted = false;

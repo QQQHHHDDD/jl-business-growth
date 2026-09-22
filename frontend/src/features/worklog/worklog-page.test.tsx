@@ -61,13 +61,16 @@ function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
+  return {
+    client,
+    ...render(
     <MemoryRouter>
       <QueryClientProvider client={client}>
         <WorklogPage authResponse={authResponse} />
       </QueryClientProvider>
     </MemoryRouter>,
-  );
+    ),
+  };
 }
 
 afterEach(() => vi.clearAllMocks());
@@ -102,6 +105,27 @@ describe("WorklogPage", () => {
     expect(screen.getByRole("button", { name: "今天" })).toBeEnabled();
   });
 
+  it("reuses the range query when only the selected date changes", async () => {
+    vi.mocked(listWorklogs).mockResolvedValue({ data: { items: [] }, request_id: "request-2" });
+    renderPage();
+    const dateInput = await screen.findByLabelText("业务日期");
+    fireEvent.click(screen.getByRole("button", { name: "前一天" }));
+    await waitFor(() => expect(dateInput).not.toHaveValue(businessDate(account.timezone)));
+    expect(listWorklogs).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not overwrite a dirty form during a background refresh", async () => {
+    const today = businessDate(account.timezone);
+    const existing = worklog(today, 1);
+    vi.mocked(listWorklogs).mockResolvedValue({ data: { items: [existing] }, request_id: "request-2" });
+    const { client } = renderPage();
+    const actionInput = await screen.findByLabelText("开启对话");
+    fireEvent.change(actionInput, { target: { value: "9" } });
+    vi.mocked(listWorklogs).mockResolvedValueOnce({ data: { items: [worklog(today, 2)] }, request_id: "request-refresh" });
+    await client.invalidateQueries({ queryKey: ["user", account.id, "worklogs"] });
+    expect(actionInput).toHaveValue(9);
+  });
+
   it("uses matching row structure for growth and turnover sections", async () => {
     vi.mocked(listWorklogs).mockResolvedValue({ data: { items: [] }, request_id: "request-2" });
     renderPage();
@@ -130,7 +154,7 @@ describe("WorklogPage", () => {
     renderPage();
 
     expect(await screen.findByText("最近 7 条记录，点击日期即可返回编辑。")).toBeVisible();
-    expect(screen.getAllByRole("row")).toHaveLength(8);
+    expect(await screen.findAllByRole("row")).toHaveLength(8);
 
     const actionInput = screen.getByLabelText("开启对话");
     await waitFor(() => expect(actionInput).toHaveValue(1));

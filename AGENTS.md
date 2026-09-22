@@ -68,6 +68,7 @@ make check
 - `make check` 会生成代码并执行 lint、单元测试和构建；它不等于 integration、E2E、Release 或生产 rehearsal 全部通过。
 - backend 变更至少运行相关 Go tests；frontend 行为变更至少运行相关 unit tests，并在用户流程受影响时运行 E2E。
 - migration 变更补充 fresh/upgrade 或已有 migration regression 验证；数据库级验证只能连接受 guard 保护的测试库。
+- fresh/upgrade、integration 和 E2E 需要数据库时，优先使用 `make test-isolated` 创建任务专用实例；安全边界和分范围命令见 `docs/testing.md`，不得擅自重置外部提供的数据库。
 - shell、updater、backup、migration helper 或 systemd 模板变更，运行对应 syntax check、静态检查和 harness。
 - 未运行的验证必须报告为“未运行”；不要把局部测试描述成完整集成、E2E 或生产验证。
 - 完成修改后检查 `git diff --check`、`git status --short`，并确认没有意外生成物、secret 或用户数据进入 diff。

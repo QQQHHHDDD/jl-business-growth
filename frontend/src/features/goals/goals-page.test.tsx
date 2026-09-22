@@ -116,7 +116,7 @@ describe("GoalsPage", () => {
 
     const mapTab = await screen.findByRole("tab", { name: "目标地图" });
     expect(mapTab).toHaveAttribute("data-state", "active");
-    expect(screen.getByTestId("goal-map")).toBeVisible();
+    expect(await screen.findByTestId("goal-map")).toBeVisible();
 
     const createButton = screen.getByRole("button", { name: "新建目标" });
     createButton.focus();

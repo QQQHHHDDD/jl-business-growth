@@ -125,6 +125,7 @@ describe("AppShell navigation", () => {
     expect(brand).not.toHaveClass("whitespace-nowrap");
     expect(brand.parentElement).toHaveClass("min-w-0");
     expect(screen.getByTestId("page-container")).toHaveClass("w-full");
+    expect(screen.getAllByRole("link", { name: "返回系统首页" })[0]).toHaveAttribute("href", "/app");
   });
 
   it("exposes search and account operations in the topbar", () => {

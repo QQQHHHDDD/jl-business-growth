@@ -20,7 +20,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { DataTable, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { businessDate, formatDateTimeInTimezone, zonedDateTimeToISO } from "@/lib/date";
+import { businessDate, calendarQueryRange, formatDateTimeInTimezone, zonedDateTimeToISO } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
 
 const FullCalendar = (props: ComponentProps<typeof FullCalendarBase>) => <FullCalendarBase locale={zhCnLocale} firstDay={1} {...props} />;
@@ -63,14 +63,6 @@ const scopeOptions: Array<{ value: EditScope; label: string }> = [
   { value: "THIS_AND_FOLLOWING", label: "此日程及之后" },
   { value: "SERIES", label: "整个系列" },
 ];
-const initialRange = () => {
-  const from = new Date();
-  from.setDate(1);
-  from.setMonth(from.getMonth() - 1);
-  const to = new Date(from);
-  to.setMonth(to.getMonth() + 4);
-  return { from: from.toISOString(), to: to.toISOString() };
-};
 const emptyForm = (date?: string, end?: string): FormState => ({
   title: "",
   startAt: date ? (date.includes("T") ? date : `${date}T09:00`) : "",
@@ -190,8 +182,8 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
   const accountId = authResponse.data.account.id;
   const timezone = authResponse.data.account.timezone;
   const queryClient = useQueryClient();
-  const range = useMemo(initialRange, []);
-  const calendarQueryKey = ["user", accountId, "calendar", range.from, range.to] as const;
+  const range = useMemo(() => calendarQueryRange(timezone), [timezone]);
+  const calendarQueryKey = ["user", accountId, "calendar", timezone, range.from, range.to] as const;
   const eventsQuery = useQuery({ queryKey: calendarQueryKey, queryFn: () => listCalendarEvents(range.from, range.to) });
   const contactsQuery = useQuery({ queryKey: ["user", accountId, "calendar-contacts"], queryFn: listCalendarContacts });
   const [searchParams] = useSearchParams();
@@ -364,7 +356,7 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
     </div>
 
     {view === "calendar" ? <Panel className="calendar-overview border-outline/80 bg-surface/95 shadow-float [&>header]:border-outline/55" title="日程总览" description="月视图点击日期；周、日视图可拖动选择时间段，也可拖动或缩放已有事件。">
-      <div className="min-h-[420px] lg:min-h-[min(72vh,760px)]">{eventsQuery.isPending ? <LoadingState label="正在加载日历" /> : eventsQuery.isError ? <ErrorState message="日历暂时无法加载" onRetry={() => void eventsQuery.refetch()} /> : <div className="min-w-0 overflow-x-auto"><div className="calendar-grid min-w-[720px]"><FullCalendar plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]} initialView="dayGridMonth" timeZone={timezone} selectable editable eventStartEditable eventDurationEditable selectMirror selectLongPressDelay={450} headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }} buttonText={{ today: "今天", month: "月", week: "周", day: "日" }} events={calendarEvents} eventContent={(arg) => <CalendarEventContent arg={arg} timezone={timezone} />} dateClick={(info) => openDay(info.dateStr.slice(0, 10))} select={(info) => {
+      <div className="min-h-[420px] lg:min-h-[min(72vh,760px)]">{eventsQuery.isPending && !eventsQuery.data ? <LoadingState label="正在加载日历" /> : eventsQuery.isError && !eventsQuery.data ? <ErrorState message="日历暂时无法加载" onRetry={() => void eventsQuery.refetch()} /> : <div className="min-w-0 overflow-x-auto"><div className="calendar-grid min-w-[720px]"><FullCalendar plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]} initialView="dayGridMonth" timeZone={timezone} selectable editable eventStartEditable eventDurationEditable selectMirror selectLongPressDelay={450} headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }} buttonText={{ today: "今天", month: "月", week: "周", day: "日" }} events={calendarEvents} eventContent={(arg) => <CalendarEventContent arg={arg} timezone={timezone} />} dateClick={(info) => openDay(info.dateStr.slice(0, 10))} select={(info) => {
         if (info.view.type.startsWith("timeGrid") && info.start) {
           const end = info.end ?? new Date(info.start.getTime() + 30 * 60 * 1000);
           openNew(selectionDateTime(info.startStr, info.start, timezone), selectionDateTime(info.endStr, end, timezone));

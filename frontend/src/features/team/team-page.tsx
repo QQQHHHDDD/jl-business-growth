@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { EmptyState, ErrorState, PageLoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
 import { DataTable, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
@@ -163,14 +163,24 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
   const remove = useMutation({ mutationFn: () => deleteTeamMember(authResponse.data.csrf_token, removeTarget!.id), onSuccess: () => { setRemoveTarget(null); closeSheet(); setNotice("团队成员已删除"); setError(""); void client.invalidateQueries({ queryKey: ["user", accountId, "team"] }); }, onError: (value) => setError(errorMessage(value)) });
   const snapshot = useMutation({ mutationFn: () => createTeamSnapshot(authResponse.data.csrf_token, { snapshot_type: "MANUAL", captured_late: false }), onSuccess: (value) => { setNotice("团队快照已保存"); setSelectedSnapshot(value.data); setView("snapshots"); void client.invalidateQueries({ queryKey: ["user", accountId, "team", "snapshots"] }); }, onError: (value) => setError(errorMessage(value)) });
 
-  if (membersQuery.isPending || snapshotsQuery.isPending) return <PageLoadingState eyebrow="组织与协作" title="团队" description="查看团队成长结构。" label="正在加载团队" />;
-  if (membersQuery.isError || snapshotsQuery.isError) return <ErrorState message="团队数据暂时无法加载" onRetry={() => { void membersQuery.refetch(); void snapshotsQuery.refetch(); }} />;
-
   const activeCount = members.filter((member) => member.status === "ACTIVE").length;
+  const membersContent = membersQuery.isPending && !membersQuery.data
+    ? <LoadingState label="正在加载团队成员" />
+    : membersQuery.isError && !membersQuery.data
+      ? <ErrorState message="团队成员暂时无法加载" onRetry={() => void membersQuery.refetch()} />
+      : view === "graph"
+        ? <Panel className="team-graph-panel rounded-[1.25rem] border-outline/75 bg-surface shadow-panel [&>header]:border-b-0 [&>header]:pb-2 [&>div]:pt-3" title="团队关系图" description="搜索可定位成员；使用画布控制调整视图，点击成员打开详情。" action={<TeamSearch value={search} onChange={setSearch} />}><div className={`${members.length ? "h-[min(68vh,720px)] min-h-[500px]" : "min-h-[240px]"} overflow-hidden rounded-[1.25rem] border border-brand-200/80 bg-[#e8f6f4] shadow-inner`}><TeamGraph members={members} selectedID={selectedGraphID} onSelect={(id) => { const member = members.find((item) => item.id === id); if (member) { setSelectedGraphID(id); openDetail(member); } }} /></div></Panel>
+        : view === "list"
+          ? <MemberList members={filteredMembers} allMembers={members} search={search} onSearch={setSearch} onView={openDetail} onEdit={openEdit} onDelete={setRemoveTarget} />
+          : snapshotsQuery.isPending && !snapshotsQuery.data
+            ? <LoadingState label="正在加载团队快照" />
+            : snapshotsQuery.isError && !snapshotsQuery.data
+              ? <ErrorState message="团队快照暂时无法加载" onRetry={() => void snapshotsQuery.refetch()} />
+              : <SnapshotsView snapshots={snapshotsQuery.data?.data.items ?? []} selected={selectedSnapshot} onSelect={setSelectedSnapshot} />;
   return <div className="team-page space-y-6">
     <TeamHero />
     {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-card border px-4 py-3 text-sm shadow-hairline ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-brand-200 bg-brand-50 text-brand-900"}`}>{error || notice}</p>}
-    <section aria-label="团队概览" className="grid gap-3 sm:grid-cols-3"><MetricCard label="成员" value={members.length} icon={<UsersRound size={20} />} tone="brand" /><MetricCard label="启用" value={activeCount} icon={<UserCheck size={20} />} tone="blue" /><MetricCard label="停用" value={members.length - activeCount} icon={<UserRoundX size={20} />} tone="amber" /></section>
+    <section aria-label="团队概览" className="grid gap-3 sm:grid-cols-3"><MetricCard label="成员" value={membersQuery.data ? members.length : "—"} icon={<UsersRound size={20} />} tone="brand" /><MetricCard label="启用" value={membersQuery.data ? activeCount : "—"} icon={<UserCheck size={20} />} tone="blue" /><MetricCard label="停用" value={membersQuery.data ? members.length - activeCount : "—"} icon={<UserRoundX size={20} />} tone="amber" /></section>
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <Tabs value={view} onValueChange={(value) => setView(value as TeamView)}><TabsList aria-label="团队视图"><TabsTrigger value="graph">关系图</TabsTrigger><TabsTrigger value="list">成员列表</TabsTrigger><TabsTrigger value="snapshots">历史快照</TabsTrigger></TabsList></Tabs>
       <div className="flex flex-wrap justify-end gap-2">
@@ -178,9 +188,7 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
         <Button onClick={openCreate}><Plus size={16} />新增成员</Button>
       </div>
     </div>
-    {view === "graph" && <Panel className="team-graph-panel rounded-[1.25rem] border-outline/75 bg-surface shadow-panel [&>header]:border-b-0 [&>header]:pb-2 [&>div]:pt-3" title="团队关系图" description="搜索可定位成员；使用画布控制调整视图，点击成员打开详情。" action={<TeamSearch value={search} onChange={setSearch} />}><div className={`${members.length ? "h-[min(68vh,720px)] min-h-[500px]" : "min-h-[240px]"} overflow-hidden rounded-[1.25rem] border border-brand-200/80 bg-[#e8f6f4] shadow-inner`}><TeamGraph members={members} selectedID={selectedGraphID} onSelect={(id) => { const member = members.find((item) => item.id === id); if (member) { setSelectedGraphID(id); openDetail(member); } }} /></div></Panel>}
-    {view === "list" && <MemberList members={filteredMembers} allMembers={members} search={search} onSearch={setSearch} onView={openDetail} onEdit={openEdit} onDelete={setRemoveTarget} />}
-    {view === "snapshots" && <SnapshotsView snapshots={snapshotsQuery.data.data.items} selected={selectedSnapshot} onSelect={setSelectedSnapshot} />}
+    {membersContent}
 
     <Dialog open={Boolean(memberSheet)} onOpenChange={(open) => !open && closeSheet()}>
       {memberSheet && <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{memberSheet.mode === "detail" ? memberSheet.member.name : memberSheet.mode === "edit" ? "编辑成员" : "新增成员"}</DialogTitle><DialogDescription>{memberSheet.mode === "detail" ? "查看成员关系与基本信息。" : "成员层级仅通过上级成员字段调整。"}</DialogDescription></DialogHeader>{memberSheet.mode === "detail" ? <><MemberDetail member={memberSheet.member} members={members} /><div className="mt-6 flex justify-end gap-3"><Button variant="danger" onClick={() => setRemoveTarget(memberSheet.member)}><Trash2 size={16} />删除</Button><Button onClick={() => openEdit(memberSheet.member, true)}>编辑成员</Button></div></> : <><MemberEditor form={form} members={members} editingID={editing?.id} nameTouched={nameTouched} onChange={setForm} onNameTouched={setNameTouched} /><div className="mt-6 flex justify-end gap-3"><Button variant="secondary" onClick={closeSheet}>取消</Button><Button onClick={() => save.mutate()} loading={save.isPending} disabled={Boolean(teamNameError(form.name))}><Check size={16} />保存成员</Button></div></>}</DialogContent>}

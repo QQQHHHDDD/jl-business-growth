@@ -34,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
 import { LoadingState } from "@/components/ui/state-block";
 import { SearchOverlay } from "@/features/search/search-page";
-import { cn } from "@/lib/utils";
+import { roleHome, cn } from "@/lib/utils";
 
 type NavigationItem = { href: string; label: string; icon: typeof Home };
 type NavigationGroup = {
@@ -138,16 +138,17 @@ function currentUserItem(pathname: string) {
 }
 
 function Brand({ authResponse, compact = false }: { authResponse: AuthResponse; compact?: boolean }) {
+  const homeHref = roleHome(authResponse.data.account.role);
   return (
     <div className={cn("flex min-w-0 items-center gap-3", compact && "justify-center")}>
-      <Link to="/" aria-label="返回系统首页" className="shrink-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+      <Link to={homeHref} aria-label="返回系统首页" className="shrink-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-700 text-sm font-black tracking-tight text-white shadow-hairline ring-1 ring-brand-800/10">
           JL
         </span>
       </Link>
       {!compact && (
         <div className="min-w-0 flex-1 py-0.5">
-          <Link to="/" className="block min-w-0 rounded-sm focus:outline-none focus:ring-2 focus:ring-brand-500" aria-label="返回系统首页">
+          <Link to={homeHref} className="block min-w-0 rounded-sm focus:outline-none focus:ring-2 focus:ring-brand-500" aria-label="返回系统首页">
             <span className="block text-[10px] font-black uppercase leading-3 tracking-[0.2em] text-brand-700">
               JL Growth
             </span>

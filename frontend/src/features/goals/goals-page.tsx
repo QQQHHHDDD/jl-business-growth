@@ -3,7 +3,7 @@ import { BarChart3, Check, ChevronLeft, ChevronRight, Compass, Eye, GripVertical
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode, SelectHTMLAttributes } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
-import { z } from "zod";
+import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Background, Controls, ReactFlow, type Edge, type Node, type Position } from "@xyflow/react";
 import { useSearchParams } from "react-router-dom";
@@ -246,12 +246,21 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
     setDreamFiles(dream.file_ids); setDreamGoals(dream.goal_ids); dreamFormState.reset({ title: dream.title, description: dream.description ?? "" });
   };
 
-  if (goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending) return <div className="space-y-6"><GoalsHero /><LoadingState label="正在加载目标工作台" /></div>;
-  if (goalsQuery.isError || dreamsQuery.isError || filesQuery.isError) return <div className="space-y-6"><GoalsHero /><ErrorState message="目标数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} /></div>;
-
   const activeAction = view === "dreams"
     ? <Button onClick={openDreamCreate}><Plus size={16} />新增梦想</Button>
     : <Button onClick={() => openGoalSheet({ mode: "create" })}><Plus size={16} />新建目标</Button>;
+  const goalsContent = goalsQuery.isPending && !goalsQuery.data
+    ? <LoadingState label="正在加载目标" />
+    : goalsQuery.isError && !goalsQuery.data
+      ? <ErrorState message="目标数据暂时无法加载" onRetry={() => void goalsQuery.refetch()} />
+      : view === "map"
+        ? <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />
+        : <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />;
+  const dreamsContent = goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending
+    ? <LoadingState label="正在加载梦想板" />
+    : goalsQuery.isError || dreamsQuery.isError || filesQuery.isError
+      ? <ErrorState message="梦想数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} />
+      : <DreamBoard dreams={dreamsQuery.data?.data.items ?? []} goals={goals} files={files} onSelect={openDreamDetail} onCreate={openDreamCreate} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />;
 
   return (
     <div className="goals-page space-y-6">
@@ -264,9 +273,7 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
         <div className="flex justify-end">{activeAction}</div>
       </div>
 
-      {view === "map" && <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />}
-      {view === "list" && <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />}
-      {view === "dreams" && <DreamBoard dreams={dreamsQuery.data.data.items} goals={goals} files={files} onSelect={openDreamDetail} onCreate={openDreamCreate} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />}
+      {view === "dreams" ? dreamsContent : goalsContent}
 
       <Dialog open={goalSheet?.mode === "detail"} onOpenChange={(open) => !open && closeGoalSheet()}>
         {goalSheet?.mode === "detail" && <DialogContent className="max-w-2xl overflow-hidden p-0">
