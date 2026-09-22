@@ -44,7 +44,11 @@ describe("FinancePage", () => {
     expect(screen.getByRole("dialog")).toBeVisible();
     expect(screen.getByRole("dialog")).toHaveClass("left-1/2", "top-1/2");
     expect(screen.getByRole("heading", { name: "新增财务流水" })).toBeVisible();
+    expect(screen.getByLabelText("发生日期")).toBeRequired();
+    expect(screen.getByLabelText("类型")).toBeRequired();
     expect(screen.getByLabelText("分类", { exact: true })).toBeVisible();
+    expect(screen.getByLabelText("分类", { exact: true })).toBeRequired();
+    expect(screen.getByLabelText("金额")).toBeRequired();
   });
 
   it("exposes category management as a descriptive full-row disclosure", async () => {

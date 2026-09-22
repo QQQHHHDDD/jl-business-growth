@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { Buffer } from "node:buffer";
-import { readFileSync } from "node:fs";
 
 const superadminUsername = process.env.E2E_SUPERADMIN_USERNAME;
 const superadminPassword = process.env.E2E_SUPERADMIN_PASSWORD;
@@ -86,12 +85,12 @@ test("covers administrator, account, and core business workflows", async ({
     ["/app", "经营进度"], ["/app/worklog", "今日工作量"], ["/app/calendar", "日历"],
     ["/app/goals", "梦想与目标"], ["/app/team", "团队"], ["/app/finance", "财务"],
     ["/app/knowledge", "学习中心"], ["/app/reviews", "复盘"], ["/app/analytics", "数据统计"],
-    ["/app/data", "导入 / 导出"], ["/app/settings", "设置"], ["/app", "经营进度"],
+    ["/app/settings", "设置"], ["/app", "经营进度"],
   ] as const;
   const coldGroups: Record<string, string> = {
     "/app/worklog": "规划与执行", "/app/calendar": "规划与执行", "/app/goals": "规划与执行",
     "/app/team": "经营管理", "/app/finance": "经营管理", "/app/knowledge": "成长与复盘",
-    "/app/reviews": "成长与复盘", "/app/analytics": "成长与复盘", "/app/data": "系统工具", "/app/settings": "系统工具",
+    "/app/reviews": "成长与复盘", "/app/analytics": "成长与复盘", "/app/settings": "系统工具",
   };
   const lazyChunks: Record<string, string> = {
     "/app/calendar": "calendar-page", "/app/goals": "goals-page", "/app/team": "team-page",
@@ -498,33 +497,10 @@ test("covers administrator, account, and core business workflows", async ({
   await page.getByTestId("income-results").getByRole("button", { name: "保存方案" }).click();
   await expect(page.getByRole("status")).toContainText("收入模拟方案已保存");
 
-  await page.goto("/app/data");
-  await expect(
-    page.getByRole("heading", { name: "导入 / 导出", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "每日工作量" }).click();
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /下载.*模板/ }).click();
-  const templateDownload = await downloadPromise;
-  const templatePath = await templateDownload.path();
-  expect(templatePath).toBeTruthy();
-  await page.getByRole("button", { name: "下一步" }).click();
-  await page.getByLabel("选择 XLSX 文件").setInputFiles({
-    name: "worklog-import.xlsx",
-    mimeType:
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    buffer: readFileSync(templatePath!),
-  });
-  await page.getByRole("button", { name: "上传并校验" }).click();
-  await expect(page.getByText("VALIDATED", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "下一步" }).click();
-  await page.getByRole("button", { name: "确认导入", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("数据已导入");
-
   for (const width of [1440, 1280, 1024]) {
     await page.setViewportSize({ width, height: 760 });
     await page.goto("/app");
-    const brand = page.getByText("JL团队生意成长管理系统", { exact: true });
+    const brand = page.getByText("生意成长管理系统", { exact: true });
     await expect(brand).toBeVisible();
     expect(await brand.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   }
@@ -571,7 +547,6 @@ test("covers administrator, account, and core business workflows", async ({
     ["/app/income-simulator", "收入模拟"],
     ["/app/reviews", "复盘"],
     ["/app/analytics", "数据统计"],
-    ["/app/data", "导入 / 导出"],
     ["/app/settings", "设置"],
   ] as const;
   for (const width of [1440, 1024, 768, 390]) {

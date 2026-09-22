@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Database,
   FileText,
   Goal,
   GraduationCap,
@@ -15,6 +14,7 @@ import {
   LineChart,
   Leaf,
   Menu,
+  MessageSquareText,
   PanelLeftOpen,
   Search,
   Settings,
@@ -54,6 +54,7 @@ const userGroups: NavigationGroup[] = [
       { href: "/app/goals", label: "梦想与目标", icon: Goal },
       { href: "/app/calendar", label: "日历", icon: CalendarDays },
       { href: "/app/worklog", label: "今日工作", icon: FileText },
+      { href: "/app/communication", label: "沟通工具", icon: MessageSquareText },
     ],
   },
   {
@@ -81,7 +82,6 @@ const userGroups: NavigationGroup[] = [
     label: "系统工具",
     icon: Wrench,
     items: [
-      { href: "/app/data", label: "导入 / 导出", icon: Database },
       { href: "/app/settings", label: "设置", icon: Settings },
     ],
   },
@@ -140,22 +140,24 @@ function currentUserItem(pathname: string) {
 function Brand({ authResponse, compact = false }: { authResponse: AuthResponse; compact?: boolean }) {
   return (
     <div className={cn("flex min-w-0 items-center gap-3", compact && "justify-center")}>
-      <Link to="/" aria-label="返回系统首页" className="shrink-0 rounded-control focus:outline-none focus:ring-2 focus:ring-brand-500">
-        <span className="grid h-9 w-9 place-items-center rounded-control bg-gradient-to-br from-brand-500 to-brand-800 text-sm font-black text-white shadow-brand-glow ring-1 ring-white/50">
+      <Link to="/" aria-label="返回系统首页" className="shrink-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-700 text-sm font-black tracking-tight text-white shadow-hairline ring-1 ring-brand-800/10">
           JL
         </span>
       </Link>
       {!compact && (
-        <div className="min-w-0 flex-1 leading-none">
+        <div className="min-w-0 flex-1 py-0.5">
           <Link to="/" className="block min-w-0 rounded-sm focus:outline-none focus:ring-2 focus:ring-brand-500" aria-label="返回系统首页">
-            <span className="block text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-700">
+            <span className="block text-[10px] font-black uppercase leading-3 tracking-[0.2em] text-brand-700">
               JL Growth
             </span>
-            <span className="mt-0.5 block text-xs font-bold leading-4 text-ink">
-              JL团队生意成长管理系统
+            <span className="mt-1 block text-[12px] font-bold leading-4 tracking-tight text-ink">
+              生意成长管理系统
             </span>
           </Link>
-          <VersionBadge authResponse={authResponse} />
+          <div className="mt-1">
+            <VersionBadge authResponse={authResponse} />
+          </div>
         </div>
       )}
     </div>
@@ -384,7 +386,7 @@ export function AppLoadingShell({ label }: { label: string }) {
   return (
     <div data-testid="app-loading-shell" className="min-h-screen bg-canvas text-ink">
       <aside className="fixed inset-y-0 left-0 hidden w-[220px] flex-col border-r border-outline bg-surface lg:flex">
-        <div className="flex h-16 items-center border-b border-outline px-4">
+        <div className="flex h-[76px] items-center border-b border-outline bg-brand-50/20 px-4">
           <div className="h-9 w-9 animate-pulse rounded-control bg-brand-100" />
           <div className="ml-3 space-y-2">
             <div className="h-2.5 w-20 animate-pulse rounded bg-surface-muted" />
@@ -457,7 +459,7 @@ export function AppShell({
         homeItem,
         userGroups[0].items[2],
         userGroups[0].items[1],
-        userGroups[3].items[1],
+        settingsItem,
       ];
   const currentItem = admin
     ? adminNavigation.find((item) => isActive(location.pathname, item.href))
@@ -516,7 +518,7 @@ export function AppShell({
         >
           <div
             className={cn(
-              "flex h-16 items-center border-b border-outline",
+              "flex h-[76px] items-center border-b border-outline bg-brand-50/20",
               collapsed ? "justify-center px-2" : "px-4",
             )}
           >
@@ -586,7 +588,7 @@ export function AppShell({
           aria-modal="true"
           aria-label="应用导航"
         >
-          <div className="flex h-16 items-center justify-between border-b border-outline px-4">
+          <div className="flex h-[76px] items-center justify-between border-b border-outline bg-brand-50/20 px-4">
             <Brand authResponse={authResponse} />
             <Button
               variant="icon"

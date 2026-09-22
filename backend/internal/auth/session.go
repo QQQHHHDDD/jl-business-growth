@@ -312,7 +312,7 @@ func SecurityMiddleware(cfg config.Config) echo.MiddlewareFunc {
 }
 
 func validateMutationContentType(ctx echo.Context) error {
-	if ctx.Request().URL.Path == "/api/files" || ctx.Request().URL.Path == "/api/imports" {
+	if ctx.Request().URL.Path == "/api/files" {
 		mediaType, _, err := mime.ParseMediaType(ctx.Request().Header.Get(echo.HeaderContentType))
 		if err != nil || mediaType != "multipart/form-data" {
 			return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "multipart form content type is required")

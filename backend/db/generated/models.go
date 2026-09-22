@@ -488,95 +488,6 @@ func (ns NullGoalType) Value() (driver.Value, error) {
 	return string(ns.GoalType), nil
 }
 
-type ImportJobStatus string
-
-const (
-	ImportJobStatusUPLOADED  ImportJobStatus = "UPLOADED"
-	ImportJobStatusVALIDATED ImportJobStatus = "VALIDATED"
-	ImportJobStatusCOMMITTED ImportJobStatus = "COMMITTED"
-	ImportJobStatusFAILED    ImportJobStatus = "FAILED"
-	ImportJobStatusEXPIRED   ImportJobStatus = "EXPIRED"
-)
-
-func (e *ImportJobStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = ImportJobStatus(s)
-	case string:
-		*e = ImportJobStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for ImportJobStatus: %T", src)
-	}
-	return nil
-}
-
-type NullImportJobStatus struct {
-	ImportJobStatus ImportJobStatus
-	Valid           bool // Valid is true if ImportJobStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullImportJobStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.ImportJobStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.ImportJobStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullImportJobStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.ImportJobStatus), nil
-}
-
-type ImportJobType string
-
-const (
-	ImportJobTypeWORKLOG  ImportJobType = "WORKLOG"
-	ImportJobTypeFINANCE  ImportJobType = "FINANCE"
-	ImportJobTypeTEAM     ImportJobType = "TEAM"
-	ImportJobTypeTURNOVER ImportJobType = "TURNOVER"
-)
-
-func (e *ImportJobType) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = ImportJobType(s)
-	case string:
-		*e = ImportJobType(s)
-	default:
-		return fmt.Errorf("unsupported scan type for ImportJobType: %T", src)
-	}
-	return nil
-}
-
-type NullImportJobType struct {
-	ImportJobType ImportJobType
-	Valid         bool // Valid is true if ImportJobType is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullImportJobType) Scan(value interface{}) error {
-	if value == nil {
-		ns.ImportJobType, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.ImportJobType.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullImportJobType) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.ImportJobType), nil
-}
-
 type InvitationStatus string
 
 const (
@@ -1093,6 +1004,45 @@ type CalendarEventException struct {
 	OverrideLocation        pgtype.Text
 }
 
+type CommunicationFriendRecord struct {
+	ID                pgtype.UUID
+	UserID            pgtype.UUID
+	Platform          string
+	AccountLabel      string
+	GroupName         string
+	AddDirection      string
+	LastAppliedPerson string
+	ApplicationScript string
+	FirstMessage      string
+	Note              string
+	Archived          bool
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+}
+
+type CommunicationScript struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	CategoryID pgtype.UUID
+	Title      string
+	ScriptType string
+	Tags       []string
+	Paragraphs []byte
+	Note       string
+	Favorite   bool
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type CommunicationScriptCategory struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Name      string
+	SortOrder int32
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type DailyTurnover struct {
 	ID           pgtype.UUID
 	UserID       pgtype.UUID
@@ -1185,18 +1135,17 @@ type FinancialSnapshot struct {
 }
 
 type FinancialTransaction struct {
-	ID                pgtype.UUID
-	UserID            pgtype.UUID
-	OccurredOn        pgtype.Date
-	Type              FinanceTransactionType
-	CategoryID        pgtype.UUID
-	Amount            pgtype.Numeric
-	Description       pgtype.Text
-	Note              pgtype.Text
-	Source            FinanceTransactionSource
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
-	ImportFingerprint pgtype.Text
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	OccurredOn  pgtype.Date
+	Type        FinanceTransactionType
+	CategoryID  pgtype.UUID
+	Amount      pgtype.Numeric
+	Description pgtype.Text
+	Note        pgtype.Text
+	Source      FinanceTransactionSource
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type Goal struct {
@@ -1219,23 +1168,6 @@ type GoalMetric struct {
 	MetricCode  string
 	TargetValue pgtype.Numeric
 	Unit        string
-}
-
-type ImportJob struct {
-	ID                pgtype.UUID
-	UserID            pgtype.UUID
-	Type              ImportJobType
-	TempFilePath      string
-	Status            ImportJobStatus
-	RowCount          int32
-	ValidCount        int32
-	InvalidCount      int32
-	ValidationSummary []byte
-	ExpiresAt         pgtype.Timestamptz
-	CreatedAt         pgtype.Timestamptz
-	FileSha256        pgtype.Text
-	DuplicateOfID     pgtype.UUID
-	CommittedAt       pgtype.Timestamptz
 }
 
 type IncomeSimulation struct {

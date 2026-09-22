@@ -121,7 +121,7 @@ describe("AppShell navigation", () => {
 
   it("keeps the full brand name inside a shrinkable wrapping region", () => {
     renderShell("/app");
-    const brand = screen.getByText("JL团队生意成长管理系统");
+    const brand = screen.getByText("生意成长管理系统");
     expect(brand).not.toHaveClass("whitespace-nowrap");
     expect(brand.parentElement).toHaveClass("min-w-0");
     expect(screen.getByTestId("page-container")).toHaveClass("w-full");

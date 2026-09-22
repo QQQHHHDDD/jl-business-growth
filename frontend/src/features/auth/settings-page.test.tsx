@@ -19,7 +19,6 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("listbox", { name: "常用时区" })).toBeVisible();
     expect(screen.getByText(/当前选择：/)).toHaveTextContent("Asia/Shanghai");
     fireEvent.mouseDown(screen.getByRole("tab", { name: "数据与安全" }), { button: 0 });
-    expect(screen.getByRole("link", { name: "打开数据导出" })).toHaveAttribute("href", "/app/data");
     expect(screen.getByRole("button", { name: "永久删除账户" })).toBeVisible();
   });
 

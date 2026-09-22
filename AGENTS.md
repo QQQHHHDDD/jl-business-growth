@@ -32,7 +32,7 @@ JL 团队生意成长管理系统是团队内部使用的个人生意成长与�
 ## Database and migration rules
 
 - 支持 PostgreSQL 13 或更新版本；`pg_trgm` 是必需 extension，应用不依赖 `pgcrypto` 或 OpenSSL 构建选项。
-- migration 默认 append-only，只能通过新增 migration 演进 schema，并同时考虑 fresh database 和从已发布版本升级的路径。
+- migration 默认 append-only，只能通过新增 migration 演进 schema，并同时考虑 fresh database 和从已发布版本升级的路径。当前终点为 `00014_remove_import_export.sql`；除已记录的 pgcrypto 兼容例外外，不得修改已发布 migration。
 - 对 `00001_extensions.sql` 删除未使用 pgcrypto create/drop 是唯一批准的历史兼容例外；不得借此修改其他已发布 migration。不可变的 v1.1.3 tag 不得移动或重建。
 - 生产 migration forward-only，只允许受信任 helper 执行 Goose `up`；不得引入任意 migration 路径、命令或 `down` 流程。
 - 开发和集成测试只能使用明确隔离的数据库。使用 `TEST_DATABASE_URL` 前必须通过项目的 test-database guard，不能猜测地址或复用生产 `DATABASE_URL`。

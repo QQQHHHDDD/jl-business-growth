@@ -42,7 +42,7 @@ test-backend:
 
 test-integration:
 	$(MAKE) check-test-database
-	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^(TestAuthenticationAdminAPIIntegration|TestDailyBusinessAPIIntegration|TestCalendarReviewsAnalyticsAPIIntegration|TestTeamKnowledgeFilesSearchAPIIntegration|TestFinanceIncomeAPIIntegration|TestImportExportAccountLifecycleAPIIntegration)$$'
+	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^(TestAuthenticationAdminAPIIntegration|TestDailyBusinessAPIIntegration|TestCalendarReviewsAnalyticsAPIIntegration|TestTeamKnowledgeFilesSearchAPIIntegration|TestFinanceIncomeAPIIntegration|TestAccountLifecycleAPIIntegration)$$'
 
 test-performance:
 	$(MAKE) check-test-database

@@ -65,7 +65,7 @@ func newComprehensiveTestHarness(t *testing.T) *comprehensiveTestHarness {
 		t.Fatalf("ping comprehensive test test database: %v", err)
 	}
 	var migrated bool
-	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.accounts') IS NOT NULL AND to_regclass('public.file_assets') IS NOT NULL AND to_regclass('public.import_jobs') IS NOT NULL AND to_regclass('public.file_cleanup_failures') IS NOT NULL`).Scan(&migrated); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.accounts') IS NOT NULL AND to_regclass('public.file_assets') IS NOT NULL AND to_regclass('public.file_cleanup_failures') IS NOT NULL AND to_regclass('public.import_jobs') IS NULL`).Scan(&migrated); err != nil {
 		pool.Close()
 		cancel()
 		t.Fatalf("check comprehensive test migrations: %v", err)

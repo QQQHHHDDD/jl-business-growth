@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { Notice } from "@/components/ui/notice";
 import { errorMessage, formatDate, roleLabel } from "@/lib/utils";
+import { copyText } from "@/lib/copy";
 
 type ValidityUnit = "HOURS" | "DAYS";
 
@@ -42,35 +43,6 @@ function expiresAtFromDuration(value: string, unit: ValidityUnit): string | unde
   return new Date(Date.now() + duration * (unit === "DAYS" ? dayMilliseconds : hourMilliseconds)).toISOString();
 }
 
-async function copyText(value: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
-  } catch {
-    // Fall back to the user-initiated legacy copy path for HTTP test environments.
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = value;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  textarea.style.pointerEvents = "none";
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-  textarea.setSelectionRange(0, textarea.value.length);
-  let copied = false;
-  try {
-    copied = document.execCommand?.("copy") ?? false;
-  } catch {
-    copied = false;
-  }
-  textarea.remove();
-  return copied;
-}
 
 export function AdminHomePage({ account }: { account: Account }) {
   const superAdmin = account.role === "SUPER_ADMIN";

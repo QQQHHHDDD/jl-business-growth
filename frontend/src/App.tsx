@@ -29,7 +29,7 @@ import { WorklogPage } from "@/features/worklog/worklog-page";
 import { KnowledgePage } from "@/features/knowledge/knowledge-page";
 import { FinancePage } from "@/features/finance/finance-page";
 import { IncomePage } from "@/features/income/income-page";
-import { DataPage } from "@/features/importexport/data-page";
+import { CommunicationPage } from "@/features/communication/communication-page";
 import { roleHome } from "@/lib/utils";
 import { loadCalendarPage, loadGoalsPage, loadTeamPage, preloadRoute } from "@/lib/route-preload";
 
@@ -41,6 +41,7 @@ const userRoutes = [
   ["/app/goals", "梦想与目标", "建立梦想和目标之间的清晰路径。"],
   ["/app/calendar", "日历", "安排需要持续推进的工作。"],
   ["/app/worklog", "今日工作", "记录今天完成的关键行动。"],
+  ["/app/communication", "沟通工具", "记录加好友进度和整理话术。"],
   ["/app/team", "团队", "查看团队成长结构。"],
   ["/app/knowledge", "学习中心", "整理长期学习投入。"],
   ["/app/finance", "财务", "管理经营过程中的财务信息。"],
@@ -48,7 +49,6 @@ const userRoutes = [
   ["/app/reviews", "复盘", "回顾周期内的行动和结果。"],
   ["/app/analytics", "数据统计", "从真实记录中观察趋势。"],
   ["/app/search", "全局搜索", "在系统中快速查找记录。"],
-  ["/app/data", "导入 / 导出", "管理可迁移的数据文件。"],
 ] as const;
 
 type MeQuery = ReturnType<typeof useQuery<AuthResponse | null>>;
@@ -238,6 +238,10 @@ function UserKnowledgeRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? <KnowledgePage authResponse={meQuery.data} /> : null;
 }
 
+function UserCommunicationRoute({ meQuery }: { meQuery: MeQuery }) {
+  return meQuery.data ? <CommunicationPage authResponse={meQuery.data} /> : null;
+}
+
 function UserSearchRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? <SearchPage authResponse={meQuery.data} /> : null;
 }
@@ -248,10 +252,6 @@ function UserFinanceRoute({ meQuery }: { meQuery: MeQuery }) {
 
 function UserIncomeRoute({ meQuery }: { meQuery: MeQuery }) {
   return meQuery.data ? <IncomePage authResponse={meQuery.data} /> : null;
-}
-
-function DataRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <DataPage authResponse={meQuery.data} /> : null;
 }
 
 function SettingsRoute({ meQuery }: { meQuery: MeQuery }) {
@@ -389,6 +389,14 @@ function AppRoutes({
                     element={<UserKnowledgeRoute meQuery={meQuery} />}
                   />
                 );
+              if (path === "/app/communication")
+                return (
+                  <Route
+                    key={path}
+                    path={path}
+                    element={<UserCommunicationRoute meQuery={meQuery} />}
+                  />
+                );
               if (path === "/app/search")
                 return (
                   <Route
@@ -411,14 +419,6 @@ function AppRoutes({
                     key={path}
                     path={path}
                     element={<UserIncomeRoute meQuery={meQuery} />}
-                  />
-                );
-              if (path === "/app/data")
-                return (
-                  <Route
-                    key={path}
-                    path={path}
-                    element={<DataRoute meQuery={meQuery} />}
                   />
                 );
               return (
@@ -547,7 +547,6 @@ function AppContent() {
       ["/app/reviews", "复盘"],
       ["/app/analytics", "数据统计"],
       ["/app/search", "全局搜索"],
-      ["/app/data", "导入 / 导出"],
       ["/app", "首页"],
       ["/register", "注册"],
       ["/login", "登录"],

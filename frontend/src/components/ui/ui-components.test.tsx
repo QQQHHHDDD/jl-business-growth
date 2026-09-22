@@ -24,6 +24,9 @@ describe("shared UI primitives", () => {
     expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "保存" })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByLabelText("账号")).toHaveAttribute("aria-invalid", "true");
+    const requiredLabel = screen.getByText("账号").closest("label");
+    expect(requiredLabel).toHaveClass("text-ink-muted");
+    expect(requiredLabel?.querySelector("span[aria-hidden='true']")).toHaveClass("after:content-['*']", "text-rose-600");
     expect(screen.getByLabelText("账号")).toHaveClass("pl-10");
     expect(screen.getByLabelText("账号")).toHaveAttribute("aria-describedby");
     expect(screen.getByText("账号不能为空")).toBeInTheDocument();

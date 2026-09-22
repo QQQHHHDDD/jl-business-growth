@@ -13,7 +13,7 @@ import type { AuthResponse, CalendarContact, CalendarEvent, CalendarEventRequest
 import { deleteCalendarContact, deleteCalendarEvent, getCalendarEvent, listCalendarContacts, listCalendarEvents, saveCalendarContact, saveCalendarEvent } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { FormLabel, Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -446,7 +446,8 @@ function EventEditor({ form, editing, contacts, onChange }: { form: FormState; e
 }
 
 function Select({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
-  return <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">{label}</span><select className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={value} onChange={(event) => onChange(event.target.value)}>{children}</select></label>;
+  const selectId = useId();
+  return <div className="block space-y-1.5"><FormLabel htmlFor={selectId}>{label}</FormLabel><select id={selectId} className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={value} onChange={(event) => onChange(event.target.value)}>{children}</select></div>;
 }
 
 function buildRequest(form: FormState, editing: CalendarEvent | null, timezone: string): CalendarEventRequest {

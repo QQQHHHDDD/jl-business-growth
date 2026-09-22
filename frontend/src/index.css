@@ -1068,7 +1068,6 @@ main textarea:hover {
 .income-page > .ui-panel,
 .knowledge-page > .ui-panel,
 .reviews-page > .ui-panel,
-.data-page > .ui-panel,
 .settings-page > .ui-panel {
   border-color: rgb(var(--color-outline) / 0.7);
   box-shadow: var(--shadow-panel);
@@ -1076,8 +1075,7 @@ main textarea:hover {
 
 .finance-page > .ui-panel:nth-of-type(1),
 .income-page > .ui-panel:nth-of-type(1),
-.knowledge-page > .ui-panel:nth-of-type(1),
-.data-page > .ui-panel:nth-of-type(1) {
+.knowledge-page > .ui-panel:nth-of-type(1) {
   background: linear-gradient(135deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-surface-soft) / 0.88));
 }
 
@@ -1095,7 +1093,6 @@ main textarea:hover {
 .finance-page table,
 .knowledge-page table,
 .reviews-page table,
-.data-page table,
 .settings-page table {
   border-collapse: separate;
   border-spacing: 0;
@@ -1108,7 +1105,6 @@ main textarea:hover {
 .finance-page thead,
 .knowledge-page thead,
 .reviews-page thead,
-.data-page thead,
 .settings-page thead {
   background: linear-gradient(90deg, rgb(var(--color-brand-50) / 0.8), rgb(var(--color-sky-50) / 0.58));
 }
@@ -1116,7 +1112,6 @@ main textarea:hover {
 .finance-page tbody tr:hover,
 .knowledge-page tbody tr:hover,
 .reviews-page tbody tr:hover,
-.data-page tbody tr:hover,
 .settings-page tbody tr:hover {
   background: rgb(var(--color-brand-50) / 0.45);
 }
@@ -1148,17 +1143,6 @@ main textarea:hover {
 
 .reviews-page .ui-panel {
   background: linear-gradient(145deg, rgb(var(--color-surface) / 0.98), rgb(var(--color-violet-50) / 0.2));
-}
-
-.data-page ol li {
-  border-radius: var(--radius-card);
-  background-image: linear-gradient(135deg, rgb(var(--color-surface) / 0.96), rgb(var(--color-sky-50) / 0.25));
-}
-
-.data-page label[class*="border-dashed"] {
-  border-radius: var(--radius-card);
-  border-color: rgb(var(--color-brand-300) / 0.68);
-  background: linear-gradient(145deg, rgb(var(--color-brand-50) / 0.44), rgb(var(--color-sky-50) / 0.4));
 }
 
 .settings-page section[class*="border-rose"] {
@@ -1322,7 +1306,6 @@ main:has(.admin-tabs) div.rounded-md.border,
   .income-page > .ui-panel,
   .knowledge-page > .ui-panel,
   .reviews-page > .ui-panel,
-  .data-page > .ui-panel,
   .settings-page > .ui-panel {
     border-radius: var(--radius-card);
   }

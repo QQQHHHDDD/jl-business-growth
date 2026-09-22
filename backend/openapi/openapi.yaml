@@ -11,6 +11,7 @@ tags:
   - name: admin
   - name: daily-core
   - name: calendar-reviews
+  - name: communication
 paths:
   /api/health/live:
     get:
@@ -1899,117 +1900,252 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/IncomeSimulationResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
-  /api/imports/templates/{import_type}:
+  /api/communication/friend-records:
     get:
-      operationId: getImportTemplate
-      tags: [import-export]
-      summary: Download an official XLSX import template
+      operationId: listCommunicationFriendRecords
+      tags: [communication]
+      summary: List personal friend records
       security: [{ sessionCookie: [] }]
       parameters:
-        - $ref: "#/components/parameters/ImportType"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - { name: q, in: query, schema: { type: string } }
+        - { name: platform, in: query, schema: { type: string } }
+        - { name: account, in: query, schema: { type: string } }
+        - { name: archived, in: query, schema: { type: boolean, default: false } }
       responses:
         "200":
-          description: XLSX template
+          description: Friend records
           content:
-            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
-              schema: { type: string, format: binary }
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationFriendRecordListResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
-  /api/imports:
     post:
-      operationId: createImport
-      tags: [import-export]
-      summary: Upload and validate an official XLSX import file
+      operationId: createCommunicationFriendRecord
+      tags: [communication]
+      summary: Create a friend record
       security: [{ sessionCookie: [] }]
       requestBody:
         required: true
         content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [type, file]
-              properties:
-                type:
-                  $ref: "#/components/schemas/ImportType"
-                file:
-                  type: string
-                  format: binary
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationFriendRecordRequest" }
       responses:
         "201":
-          description: Import job created and validated
+          description: Friend record created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ImportJobResponse" }
+              schema: { $ref: "#/components/schemas/CommunicationFriendRecordResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
-  /api/imports/{import_id}:
+  /api/communication/friend-records/{friend_record_id}:
     get:
-      operationId: getImport
-      tags: [import-export]
-      summary: Get an import preview and validation result
+      operationId: getCommunicationFriendRecord
+      tags: [communication]
+      summary: Get a friend record
       security: [{ sessionCookie: [] }]
-      parameters:
-        - $ref: "#/components/parameters/ImportId"
+      parameters: [{ $ref: "#/components/parameters/CommunicationFriendRecordId" }]
       responses:
         "200":
-          description: Import job
+          description: Friend record
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ImportJobResponse" }
+              schema: { $ref: "#/components/schemas/CommunicationFriendRecordResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    put:
+      operationId: updateCommunicationFriendRecord
+      tags: [communication]
+      summary: Update a friend record
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/CommunicationFriendRecordId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationFriendRecordRequest" }
+      responses:
+        "200":
+          description: Friend record updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationFriendRecordResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
     delete:
-      operationId: deleteImport
-      tags: [import-export]
-      summary: Discard an import job and its temporary file
+      operationId: deleteCommunicationFriendRecord
+      tags: [communication]
+      summary: Delete a friend record
       security: [{ sessionCookie: [] }]
-      parameters:
-        - $ref: "#/components/parameters/ImportId"
+      parameters: [{ $ref: "#/components/parameters/CommunicationFriendRecordId" }]
       responses:
-        "204": { description: Import job discarded }
+        "204": { description: Friend record deleted }
         default: { $ref: "#/components/responses/ErrorResponse" }
-  /api/imports/{import_id}/validate:
-    post:
-      operationId: validateImport
-      tags: [import-export]
-      summary: Revalidate an import job before confirmation
+  /api/communication/friend-records/{friend_record_id}/progress:
+    patch:
+      operationId: updateCommunicationFriendProgress
+      tags: [communication]
+      summary: Update only latest friend record progress
       security: [{ sessionCookie: [] }]
-      parameters:
-        - $ref: "#/components/parameters/ImportId"
-      responses:
-        "200":
-          description: Validation result
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ImportJobResponse" }
-        default: { $ref: "#/components/responses/ErrorResponse" }
-  /api/imports/{import_id}/commit:
-    post:
-      operationId: commitImport
-      tags: [import-export]
-      summary: Confirm and transactionally import validated rows
-      security: [{ sessionCookie: [] }]
-      parameters:
-        - $ref: "#/components/parameters/ImportId"
+      parameters: [{ $ref: "#/components/parameters/CommunicationFriendRecordId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationFriendProgressRequest" }
       responses:
         "200":
-          description: Committed import job
+          description: Progress updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ImportJobResponse" }
+              schema: { $ref: "#/components/schemas/CommunicationFriendRecordResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
-  /api/exports/{export_type}:
+  /api/communication/script-categories:
     get:
-      operationId: exportData
-      tags: [import-export]
-      summary: Export current-user structured data or a complete account ZIP
+      operationId: listCommunicationScriptCategories
+      tags: [communication]
+      summary: List script categories
       security: [{ sessionCookie: [] }]
-      parameters:
-        - $ref: "#/components/parameters/ExportType"
-        - $ref: "#/components/parameters/ExportFormat"
       responses:
         "200":
-          description: Export file
+          description: Script categories
           content:
-            application/octet-stream:
-              schema: { type: string, format: binary }
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationScriptCategoryListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: createCommunicationScriptCategory
+      tags: [communication]
+      summary: Create a script category
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationScriptCategoryRequest" }
+      responses:
+        "201":
+          description: Script category created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationScriptCategoryResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/communication/script-categories/{category_id}:
+    put:
+      operationId: updateCommunicationScriptCategory
+      tags: [communication]
+      summary: Update a script category
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/CommunicationScriptCategoryId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationScriptCategoryRequest" }
+      responses:
+        "200":
+          description: Script category updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationScriptCategoryResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    delete:
+      operationId: deleteCommunicationScriptCategory
+      tags: [communication]
+      summary: Delete a script category
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/CommunicationScriptCategoryId" }]
+      responses:
+        "204": { description: Script category deleted }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/communication/scripts:
+    get:
+      operationId: listCommunicationScripts
+      tags: [communication]
+      summary: List scripts
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - { name: q, in: query, schema: { type: string } }
+        - { name: script_type, in: query, schema: { type: string, enum: [STAGE, FAQ] } }
+        - { name: category_id, in: query, schema: { type: string, format: uuid } }
+        - { name: favorite, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: Scripts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationScriptListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: createCommunicationScript
+      tags: [communication]
+      summary: Create a script
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationScriptRequest" }
+      responses:
+        "201":
+          description: Script created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationScriptResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/communication/scripts/{script_id}:
+    get:
+      operationId: getCommunicationScript
+      tags: [communication]
+      summary: Get a script
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/CommunicationScriptId" }]
+      responses:
+        "200":
+          description: Script
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationScriptResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    put:
+      operationId: updateCommunicationScript
+      tags: [communication]
+      summary: Update a script
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/CommunicationScriptId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationScriptRequest" }
+      responses:
+        "200":
+          description: Script updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationScriptResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    delete:
+      operationId: deleteCommunicationScript
+      tags: [communication]
+      summary: Delete a script
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/CommunicationScriptId" }]
+      responses:
+        "204": { description: Script deleted }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /api/communication/scripts/{script_id}/favorite:
+    patch:
+      operationId: toggleCommunicationScriptFavorite
+      tags: [communication]
+      summary: Toggle script favorite
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: "#/components/parameters/CommunicationScriptId" }]
+      responses:
+        "200":
+          description: Favorite toggled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationScriptResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
 components:
   securitySchemes:
@@ -2047,6 +2183,21 @@ components:
         minimum: 1
         maximum: 100
         default: 20
+    CommunicationFriendRecordId:
+      name: friend_record_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CommunicationScriptCategoryId:
+      name: category_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CommunicationScriptId:
+      name: script_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     BusinessDate:
       name: date
       in: query
@@ -2206,32 +2357,6 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
-    ImportId:
-      name: import_id
-      in: path
-      required: true
-      schema: { type: string, format: uuid }
-    ImportType:
-      name: import_type
-      in: path
-      required: true
-      schema:
-        type: string
-        enum: [WORKLOG, FINANCE, TEAM, TURNOVER]
-    ExportType:
-      name: export_type
-      in: path
-      required: true
-      schema:
-        type: string
-        enum: [WORKLOG, TURNOVER, FINANCE, TEAM, KNOWLEDGE, ACCOUNT]
-    ExportFormat:
-      name: format
-      in: query
-      required: true
-      schema:
-        type: string
-        enum: [csv, xlsx, json, markdown, zip]
   responses:
     ErrorResponse:
       description: Request failed
@@ -2279,54 +2404,6 @@ components:
           $ref: "#/components/schemas/ErrorBody"
         request_id:
           type: string
-    ImportJob:
-      type: object
-      required: [id, type, status, row_count, valid_count, invalid_count, validation_summary, expires_at, created_at, rows]
-      properties:
-        id: { type: string, format: uuid }
-        type:
-          type: string
-          enum: [WORKLOG, FINANCE, TEAM, TURNOVER]
-        status:
-          type: string
-          enum: [UPLOADED, VALIDATED, COMMITTED, FAILED, EXPIRED]
-        row_count: { type: integer, minimum: 0 }
-        valid_count: { type: integer, minimum: 0 }
-        invalid_count: { type: integer, minimum: 0 }
-        validation_summary:
-          type: object
-          additionalProperties: true
-        warnings:
-          type: array
-          items: { type: string }
-        expires_at: { type: string, format: date-time }
-        created_at: { type: string, format: date-time }
-        rows:
-          type: array
-          items: { $ref: "#/components/schemas/ImportPreviewRow" }
-    ImportPreviewRow:
-      type: object
-      required: [row_number, values, errors, warnings]
-      properties:
-        row_number: { type: integer, minimum: 2 }
-        values:
-          type: object
-          additionalProperties: { type: string }
-        errors:
-          type: array
-          items: { type: string }
-        warnings:
-          type: array
-          items: { type: string }
-    ImportJobResponse:
-      type: object
-      required: [data, request_id]
-      properties:
-        data: { $ref: "#/components/schemas/ImportJob" }
-        request_id: { type: string }
-    ImportType:
-      type: string
-      enum: [WORKLOG, FINANCE, TEAM, TURNOVER]
     Account:
       type: object
       required: [id, username, role, status, timezone, created_at]
@@ -2610,6 +2687,151 @@ components:
           type: integer
         total:
           type: integer
+    CommunicationFriendRecord:
+      type: object
+      required: [id, platform, account_label, group_name, add_direction, last_applied_person, application_script, first_message, note, archived, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        platform: { type: string }
+        account_label: { type: string }
+        group_name: { type: string }
+        add_direction: { type: string, enum: [FORWARD, REVERSE] }
+        last_applied_person: { type: string }
+        application_script: { type: string }
+        first_message: { type: string }
+        note: { type: string }
+        archived: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CommunicationFriendRecordRequest:
+      type: object
+      required: [platform, account_label, group_name, add_direction]
+      properties:
+        platform: { type: string, minLength: 1, maxLength: 64 }
+        account_label: { type: string, minLength: 1, maxLength: 120 }
+        group_name: { type: string, minLength: 1, maxLength: 200 }
+        add_direction: { type: string, enum: [FORWARD, REVERSE] }
+        last_applied_person: { type: string }
+        application_script: { type: string }
+        first_message: { type: string }
+        note: { type: string }
+        archived: { type: boolean }
+    CommunicationFriendProgressRequest:
+      type: object
+      properties:
+        add_direction: { type: string, enum: [FORWARD, REVERSE] }
+        last_applied_person: { type: string }
+        note: { type: string }
+    CommunicationFriendRecordListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationFriendRecord" }
+    CommunicationFriendRecordListResponse:
+      type: object
+      required: [data, meta, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/CommunicationFriendRecordListData" }
+        meta: { $ref: "#/components/schemas/PaginationMeta" }
+        request_id: { type: string }
+    CommunicationFriendRecordResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/CommunicationFriendRecord" }
+        request_id: { type: string }
+    CommunicationScriptCategory:
+      type: object
+      required: [id, name, sort_order, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        sort_order: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CommunicationScriptCategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        sort_order: { type: integer }
+    CommunicationScriptCategoryListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationScriptCategory" }
+    CommunicationScriptCategoryListResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/CommunicationScriptCategoryListData" }
+        request_id: { type: string }
+    CommunicationScriptCategoryResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/CommunicationScriptCategory" }
+        request_id: { type: string }
+    CommunicationScript:
+      type: object
+      required: [id, title, script_type, tags, paragraphs, note, favorite, category_id, category_name, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        category_id: { type: string, format: uuid, nullable: true }
+        category_name: { type: string }
+        title: { type: string }
+        script_type: { type: string, enum: [STAGE, FAQ] }
+        tags:
+          type: array
+          items: { type: string }
+        paragraphs:
+          type: array
+          minItems: 1
+          items: { type: string }
+        note: { type: string }
+        favorite: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CommunicationScriptRequest:
+      type: object
+      required: [title, script_type, paragraphs]
+      properties:
+        category_id: { type: string, format: uuid, nullable: true }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        script_type: { type: string, enum: [STAGE, FAQ] }
+        tags:
+          type: array
+          items: { type: string }
+        paragraphs:
+          type: array
+          minItems: 1
+          items: { type: string }
+        note: { type: string }
+        favorite: { type: boolean }
+    CommunicationScriptListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationScript" }
+    CommunicationScriptListResponse:
+      type: object
+      required: [data, meta, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/CommunicationScriptListData" }
+        meta: { $ref: "#/components/schemas/PaginationMeta" }
+        request_id: { type: string }
+    CommunicationScriptResponse:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: { $ref: "#/components/schemas/CommunicationScript" }
+        request_id: { type: string }
     AccountsListData:
       type: object
       required: [items]
@@ -3873,7 +4095,7 @@ components:
         amount: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
         description: { type: string, nullable: true }
         note: { type: string, nullable: true }
-        source: { type: string, enum: [MANUAL, IMPORT] }
+        source: { type: string, enum: [MANUAL] }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     FinanceTransactionRequest:
@@ -3886,7 +4108,7 @@ components:
         amount: { type: string, pattern: '^\\d+(?:\\.\\d{1,2})?$' }
         description: { type: string, nullable: true }
         note: { type: string, nullable: true }
-        source: { type: string, enum: [MANUAL, IMPORT], default: MANUAL }
+        source: { type: string, enum: [MANUAL], default: MANUAL }
     FinanceTransactionResponse:
       type: object
       required: [data, request_id]

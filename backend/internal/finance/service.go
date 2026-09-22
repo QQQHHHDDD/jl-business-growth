@@ -415,7 +415,7 @@ func (s *Service) SaveTransaction(ctx context.Context, userID, id uuid.UUID, inp
 	if input.Source == "" {
 		input.Source = "MANUAL"
 	}
-	if input.Source != "MANUAL" && input.Source != "IMPORT" {
+	if input.Source != "MANUAL" {
 		return Transaction{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "transaction source is invalid")
 	}
 	if id == uuid.Nil {
