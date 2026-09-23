@@ -1,7 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AuthResponse } from "@/api/client";
-import { listCalendarEvents, listGoals, listTeamMembers, listWorklogs } from "@/api/client";
-import { businessDate, businessDateDaysAgo, calendarQueryRange } from "@/lib/date";
+import { calendarQueryOptions, goalsQueryOptions, teamMembersQueryOptions, worklogQueryOptions } from "@/lib/query-options";
 
 export const loadCalendarPage = () => import("@/features/calendar/calendar-page").then((module) => ({ default: module.CalendarPage }));
 export const loadGoalsPage = () => import("@/features/goals/goals-page").then((module) => ({ default: module.GoalsPage }));
@@ -16,21 +15,12 @@ export function preloadRoute(path: string, queryClient?: QueryClient, authRespon
   const accountID = authResponse.data.account.id;
   const timezone = authResponse.data.account.timezone;
   if (path === "/app/calendar") {
-    const range = calendarQueryRange(timezone);
-    void queryClient.prefetchQuery({
-      queryKey: ["user", accountID, "calendar", timezone, range.from, range.to],
-      queryFn: () => listCalendarEvents(range.from, range.to),
-    });
+    void queryClient.prefetchQuery(calendarQueryOptions(accountID, timezone));
   } else if (path === "/app/goals") {
-    void queryClient.prefetchQuery({ queryKey: ["user", accountID, "goals"], queryFn: listGoals });
+    void queryClient.prefetchQuery(goalsQueryOptions(accountID));
   } else if (path === "/app/team") {
-    void queryClient.prefetchQuery({ queryKey: ["user", accountID, "team", "members"], queryFn: listTeamMembers });
+    void queryClient.prefetchQuery(teamMembersQueryOptions(accountID));
   } else if (path === "/app/worklog") {
-    const currentDate = businessDate(timezone);
-    const rangeStart = businessDateDaysAgo(timezone, 90);
-    void queryClient.prefetchQuery({
-      queryKey: ["user", accountID, "worklogs", rangeStart, currentDate],
-      queryFn: () => listWorklogs(rangeStart, currentDate),
-    });
+    void queryClient.prefetchQuery(worklogQueryOptions(accountID, timezone));
   }
 }

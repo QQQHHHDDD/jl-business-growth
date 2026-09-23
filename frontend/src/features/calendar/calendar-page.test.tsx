@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -58,7 +58,7 @@ const contact = { id: "00000000-0000-0000-0000-000000000020", name: "访客", em
 
 function renderPage(entry = "/app/calendar", response = authResponse) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<MemoryRouter initialEntries={[entry]}><QueryClientProvider client={client}><CalendarPage authResponse={response} /></QueryClientProvider></MemoryRouter>);
+  return { client, ...render(<MemoryRouter initialEntries={[entry]}><QueryClientProvider client={client}><CalendarPage authResponse={response} /></QueryClientProvider></MemoryRouter>) };
 }
 
 beforeEach(() => {
@@ -72,6 +72,13 @@ beforeEach(() => {
 });
 
 describe("CalendarPage", () => {
+  it("keeps the calendar area in a loading state until the first event response", () => {
+    vi.mocked(listCalendarEvents).mockImplementationOnce(() => new Promise(() => undefined));
+    renderPage();
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载日历");
+    expect(screen.queryByTestId("full-calendar")).not.toBeInTheDocument();
+  });
+
   it("shows contact loading without briefly rendering the empty state", async () => {
     vi.mocked(listCalendarContacts).mockImplementationOnce(() => new Promise(() => undefined));
     renderPage();
@@ -86,6 +93,17 @@ describe("CalendarPage", () => {
     fireEvent.mouseDown(await screen.findByRole("tab", { name: "常用联系人" }), { button: 0 });
     expect(await screen.findByText("还没有常用联系人")).toBeVisible();
     expect(screen.queryByText("常用联系人暂时无法加载")).not.toBeInTheDocument();
+  });
+
+  it("retains contacts and offers retry after a background refresh fails", async () => {
+    const { client } = renderPage();
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "常用联系人" }), { button: 0 });
+    expect(await screen.findByText(contact.email)).toBeVisible();
+    vi.mocked(listCalendarContacts).mockRejectedValueOnce(new Error("refresh failed"));
+    await act(async () => { await client.invalidateQueries({ queryKey: ["user", account.id, "calendar-contacts"] }); });
+    await waitFor(() => expect(listCalendarContacts).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("刷新失败，当前仍显示上次数据"));
+    expect(screen.getByText(contact.email)).toBeVisible();
   });
 
   it("keeps the calendar primary, renders complete event information, and hides timezone labels", async () => {

@@ -20,13 +20,13 @@ import {
   UserRoundCheck,
   UsersRound,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useSearchParams } from "react-router-dom";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { AuthResponse, Worklog, WorklogRequest } from "@/api/client";
-import { listWorklogs, saveWorklog } from "@/api/client";
+import type { AuthResponse, Worklog, WorklogRequest, listWorklogs } from "@/api/client";
+import { saveWorklog } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -39,6 +39,7 @@ import {
 import { businessDate, businessDateDaysAgo } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
 import { netAmountFromPV, pvAndNetAmountMatch, pvFromNetAmount } from "@/lib/pv";
+import { worklogDateQueryOptions, worklogQueryOptions } from "@/lib/query-options";
 
 const countFields = [
   ["open_conversation_count", "开启对话"],
@@ -146,33 +147,33 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
   const accountId = authResponse.data.account.id;
   const timezone = authResponse.data.account.timezone;
   const currentDate = businessDate(timezone);
+  const rangeStart = businessDateDaysAgo(timezone, 90);
   const [searchParams] = useSearchParams();
   const requestedDate = searchParams.get("date");
   const initialDate = requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate <= currentDate ? requestedDate : currentDate;
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const rangeStart = useMemo(
-    () => businessDateDaysAgo(timezone, 90),
-    [timezone],
-  );
-  const worklogsQuery = useQuery({
-    queryKey: [
-      "user",
-      accountId,
-      "worklogs",
-      rangeStart,
-      currentDate,
-    ],
-    queryFn: () => listWorklogs(rangeStart, currentDate),
+  const worklogsQuery = useQuery(worklogQueryOptions(accountId, timezone));
+  const selectedDateInRange = selectedDate >= rangeStart && selectedDate <= currentDate;
+  const selectedDateQuery = useQuery({
+    ...worklogDateQueryOptions(accountId, selectedDate),
+    enabled: !selectedDateInRange,
   });
+  const selectedDateResponse = selectedDateInRange ? worklogsQuery.data : selectedDateQuery.data;
+  const selectedDateLoading = selectedDateInRange
+    ? worklogsQuery.isPending && !worklogsQuery.data
+    : selectedDateQuery.isPending && !selectedDateQuery.data;
+  const selectedDateError = selectedDateInRange
+    ? worklogsQuery.isError && !worklogsQuery.data
+    : selectedDateQuery.isError && !selectedDateQuery.data;
   const form = useForm<WorklogForm>({
     resolver: zodResolver(worklogSchema),
     defaultValues: formDefaults(selectedDate),
     mode: "onChange",
     reValidateMode: "onChange",
   });
-  const existing = worklogsQuery.data?.data.items.find(
+  const existing = selectedDateResponse?.data.items.find(
     (item) => item.work_date === selectedDate,
   );
   const loadedFormDate = useRef(selectedDate);
@@ -228,6 +229,15 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
   const fieldError = (field: keyof WorklogForm) =>
     form.formState.errors[field]?.message?.toString();
   const selectDate = (date: string) => {
+    const dateInRange = date >= rangeStart && date <= currentDate;
+    const cachedResponse = dateInRange
+      ? worklogsQuery.data
+      : queryClient.getQueryData<Awaited<ReturnType<typeof listWorklogs>>>(
+          worklogDateQueryOptions(accountId, date).queryKey,
+        );
+    const nextWorklog = cachedResponse?.data.items.find((item) => item.work_date === date);
+    form.reset(nextWorklog ? fromWorklog(nextWorklog) : formDefaults(date));
+    loadedFormDate.current = date;
     setSelectedDate(date);
     setNotice("");
     setError("");
@@ -243,6 +253,10 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
     });
   };
   const recentWorklogs = worklogsQuery.data?.data.items.slice(0, 7) ?? [];
+  const retrySelectedDate = () => {
+    if (selectedDateInRange) void worklogsQuery.refetch();
+    else void selectedDateQuery.refetch();
+  };
   const updatePV = (value: string) => {
     form.setValue("turnover_pv", value, { shouldDirty: true });
     const converted = netAmountFromPV(value);
@@ -287,9 +301,9 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
           </svg>
         </div>
         <section aria-label="今日概览" className="worklog-summary mx-4 mb-4 mt-4 grid grid-cols-3 gap-2 rounded-panel border border-white/80 bg-surface/70 p-2 shadow-hairline sm:mx-7 sm:mb-5 sm:mt-5 sm:gap-0 sm:p-1.5">
-          <div className="worklog-summary-item worklog-summary-mint"><span className="worklog-summary-icon"><BriefcaseBusiness size={17} /></span><span><span className="worklog-summary-label">行动</span><strong>{actionCount}</strong></span></div>
-          <div className="worklog-summary-item worklog-summary-blue"><span className="worklog-summary-icon"><BookOpen size={17} /></span><span><span className="worklog-summary-label">学习</span><strong>{learningMinutes}<small>分钟</small></strong></span></div>
-          <div className="worklog-summary-item worklog-summary-teal"><span className="worklog-summary-icon"><BarChart3 size={17} /></span><span><span className="worklog-summary-label">净营业额</span><strong>{form.watch("turnover_net_amount").trim() ? `¥${Number.isFinite(netAmount) ? netAmount.toFixed(2) : "0.00"}` : `${pv || 0} PV`}</strong></span></div>
+          <div className="worklog-summary-item worklog-summary-mint"><span className="worklog-summary-icon"><BriefcaseBusiness size={17} /></span><span><span className="worklog-summary-label">行动</span><strong>{selectedDateResponse ? actionCount : "—"}</strong></span></div>
+          <div className="worklog-summary-item worklog-summary-blue"><span className="worklog-summary-icon"><BookOpen size={17} /></span><span><span className="worklog-summary-label">学习</span><strong>{selectedDateResponse ? <>{learningMinutes}<small>分钟</small></> : "—"}</strong></span></div>
+          <div className="worklog-summary-item worklog-summary-teal"><span className="worklog-summary-icon"><BarChart3 size={17} /></span><span><span className="worklog-summary-label">净营业额</span><strong>{selectedDateResponse ? (form.watch("turnover_net_amount").trim() ? `¥${Number.isFinite(netAmount) ? netAmount.toFixed(2) : "0.00"}` : `${pv || 0} PV`) : "—"}</strong></span></div>
         </section>
       </section>
       {(notice || error) && (
@@ -301,7 +315,9 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
         </p>
       )}
       <Panel className="worklog-form-panel border-brand-100/70 bg-surface/80 shadow-float">
-        {worklogsQuery.isPending && !worklogsQuery.data ? <LoadingState label="正在准备工作量表单" /> : worklogsQuery.isError && !worklogsQuery.data ? <ErrorState message="工作量记录暂时无法加载" onRetry={() => void worklogsQuery.refetch()} /> : <form className="space-y-0" onSubmit={onSubmit}>
+        {!selectedDateInRange && selectedDateQuery.isFetching && selectedDateQuery.data && <p role="status" className="mb-3 text-xs text-slate-500">正在刷新所选日期的工作量…</p>}
+        {!selectedDateInRange && selectedDateQuery.isError && selectedDateQuery.data && <p role="alert" className="mb-3 text-xs text-amber-700">刷新失败，当前仍显示上次数据。 <button type="button" className="font-semibold underline" onClick={retrySelectedDate}>重试</button></p>}
+        {selectedDateLoading ? <LoadingState label="正在准备工作量表单" /> : selectedDateError ? <ErrorState message="工作量记录暂时无法加载" onRetry={retrySelectedDate} /> : <form className="space-y-0" onSubmit={onSubmit}>
           <input type="hidden" {...form.register("work_date")} />
           <section aria-labelledby="worklog-actions" className="worklog-actions-section pb-7">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -462,14 +478,17 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
         title="最近记录"
         description="最近 7 条记录，点击日期即可返回编辑。"
       >
-        {worklogsQuery.isPending ? (
+        {worklogsQuery.isPending && !worklogsQuery.data ? (
           <LoadingState label="正在加载工作量记录" />
-        ) : worklogsQuery.isError ? (
+        ) : worklogsQuery.isError && !worklogsQuery.data ? (
           <ErrorState
             message="工作量记录暂时无法加载"
             onRetry={() => void worklogsQuery.refetch()}
           />
-        ) : recentWorklogs.length ? (
+        ) : <>
+          {worklogsQuery.isFetching && <p role="status" className="mb-3 text-xs text-slate-500">正在刷新最近记录…</p>}
+          {worklogsQuery.isError && worklogsQuery.data && <p role="alert" className="mb-3 text-xs text-amber-700">刷新失败，当前仍显示上次数据。 <button type="button" className="font-semibold underline" onClick={() => void worklogsQuery.refetch()}>重试</button></p>}
+          {recentWorklogs.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-left text-sm">
               <thead className="border-b border-slate-200 text-xs font-bold text-slate-500">
@@ -513,12 +532,13 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
               </tbody>
             </table>
           </div>
-        ) : (
+          ) : (
           <EmptyState
             title="还没有工作量记录"
             description="保存第一条每日记录后，它会显示在这里。"
           />
-        )}
+          )}
+        </>}
       </Panel>
       <p className="flex items-center gap-2 text-xs text-slate-500">
         <FileText size={14} className="text-teal-700" />

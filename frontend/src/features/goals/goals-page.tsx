@@ -9,7 +9,7 @@ import { Background, Controls, ReactFlow, type Edge, type Node, type Position } 
 import { useSearchParams } from "react-router-dom";
 import "@xyflow/react/dist/style.css";
 import type { AuthResponse, Dream, FileAsset, Goal, GoalRequest } from "@/api/client";
-import { deleteDream, deleteFile, deleteGoal, listDreams, listFiles, listGoals, saveDream, saveGoal, uploadFile } from "@/api/client";
+import { deleteDream, deleteFile, deleteGoal, listDreams, listFiles, saveDream, saveGoal, uploadFile } from "@/api/client";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -19,6 +19,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-bloc
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
+import { FIRST_SCREEN_STALE_TIME, goalsQueryOptions } from "@/lib/query-options";
 
 const goalTypes = ["LONG_TERM", "YEAR", "STAGE", "MONTH", "WEEK", "DAY"] as const;
 const metricCodes = ["conversation_open_count", "deep_conversation_count", "buffer_count", "story_share_count", "screening_count", "opportunity_count", "meeting_count", "customer_followup_count", "reading_minutes", "audio_minutes", "turnover_pv", "turnover_net_amount"] as const;
@@ -87,9 +88,9 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   const accountID = authResponse.data.account.id;
   const today = businessDate(authResponse.data.account.timezone);
   const queryClient = useQueryClient();
-  const goalsQuery = useQuery({ queryKey: ["user", accountID, "goals"], queryFn: listGoals });
-  const dreamsQuery = useQuery({ queryKey: ["user", accountID, "dreams"], queryFn: listDreams });
-  const filesQuery = useQuery({ queryKey: ["user", accountID, "files"], queryFn: listFiles });
+  const goalsQuery = useQuery(goalsQueryOptions(accountID));
+  const dreamsQuery = useQuery({ queryKey: ["user", accountID, "dreams"], queryFn: listDreams, staleTime: FIRST_SCREEN_STALE_TIME });
+  const filesQuery = useQuery({ queryKey: ["user", accountID, "files"], queryFn: listFiles, staleTime: FIRST_SCREEN_STALE_TIME });
   const [view, setView] = useState<GoalsView>("map");
   const [goalSheet, setGoalSheet] = useState<GoalSheetState>(null);
   const [dreamSheet, setDreamSheet] = useState<DreamSheetState>(null);
@@ -256,11 +257,18 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
       : view === "map"
         ? <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />
         : <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />;
-  const dreamsContent = goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending
+  const dreamsContent = (goalsQuery.isPending && !goalsQuery.data) || (dreamsQuery.isPending && !dreamsQuery.data) || (filesQuery.isPending && !filesQuery.data)
     ? <LoadingState label="正在加载梦想板" />
-    : goalsQuery.isError || dreamsQuery.isError || filesQuery.isError
+    : (goalsQuery.isError && !goalsQuery.data) || (dreamsQuery.isError && !dreamsQuery.data) || (filesQuery.isError && !filesQuery.data)
       ? <ErrorState message="梦想数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} />
       : <DreamBoard dreams={dreamsQuery.data?.data.items ?? []} goals={goals} files={files} onSelect={openDreamDetail} onCreate={openDreamCreate} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />;
+  const staleDataRefreshFailed = view === "dreams"
+    ? (goalsQuery.isError && Boolean(goalsQuery.data)) || (dreamsQuery.isError && Boolean(dreamsQuery.data)) || (filesQuery.isError && Boolean(filesQuery.data))
+    : goalsQuery.isError && Boolean(goalsQuery.data);
+  const retryStaleData = () => {
+    void goalsQuery.refetch();
+    if (view === "dreams") { void dreamsQuery.refetch(); void filesQuery.refetch(); }
+  };
 
   return (
     <div className="goals-page space-y-6">
@@ -272,6 +280,8 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
         </Tabs>
         <div className="flex justify-end">{activeAction}</div>
       </div>
+
+      {staleDataRefreshFailed && <p role="alert" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">刷新失败，当前仍显示上次数据。 <button type="button" className="font-semibold underline" onClick={retryStaleData}>重试</button></p>}
 
       {view === "dreams" ? dreamsContent : goalsContent}
 

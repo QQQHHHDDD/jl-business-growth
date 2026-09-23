@@ -4,7 +4,7 @@ import { Camera, Check, Focus, GitBranch, Plus, Trash2, UserCheck, UserRoundX, U
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { AuthResponse, TeamMember, TeamMemberRequest, TeamSnapshot } from "@/api/client";
-import { createTeamSnapshot, deleteTeamMember, listTeamMembers, listTeamSnapshots, saveTeamMember } from "@/api/client";
+import { createTeamSnapshot, deleteTeamMember, listTeamSnapshots, saveTeamMember } from "@/api/client";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +17,7 @@ import { DataTable, TableBody, TableCell, TableHead, TableRow } from "@/componen
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
+import { FIRST_SCREEN_STALE_TIME, teamMembersQueryOptions } from "@/lib/query-options";
 import "@xyflow/react/dist/style.css";
 
 type Form = { name: string; parent_id: string; rank: string; city: string; joined_on: string; status: "ACTIVE" | "INACTIVE"; note: string; node_color: string };
@@ -114,8 +115,8 @@ function TeamHero() {
 export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
   const accountId = authResponse.data.account.id;
   const client = useQueryClient();
-  const membersQuery = useQuery({ queryKey: ["user", accountId, "team", "members"], queryFn: listTeamMembers });
-  const snapshotsQuery = useQuery({ queryKey: ["user", accountId, "team", "snapshots"], queryFn: listTeamSnapshots });
+  const membersQuery = useQuery(teamMembersQueryOptions(accountId));
+  const snapshotsQuery = useQuery({ queryKey: ["user", accountId, "team", "snapshots"], queryFn: listTeamSnapshots, staleTime: FIRST_SCREEN_STALE_TIME });
   const members = useMemo(() => membersQuery.data?.data.items ?? [], [membersQuery.data]);
   const [view, setView] = useState<TeamView>("graph");
   const [search, setSearch] = useState("");
@@ -164,6 +165,11 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
   const snapshot = useMutation({ mutationFn: () => createTeamSnapshot(authResponse.data.csrf_token, { snapshot_type: "MANUAL", captured_late: false }), onSuccess: (value) => { setNotice("团队快照已保存"); setSelectedSnapshot(value.data); setView("snapshots"); void client.invalidateQueries({ queryKey: ["user", accountId, "team", "snapshots"] }); }, onError: (value) => setError(errorMessage(value)) });
 
   const activeCount = members.filter((member) => member.status === "ACTIVE").length;
+  const staleDataRefreshFailed = (membersQuery.isError && Boolean(membersQuery.data)) || (view === "snapshots" && snapshotsQuery.isError && Boolean(snapshotsQuery.data));
+  const retryStaleData = () => {
+    if (membersQuery.isError) void membersQuery.refetch();
+    if (view === "snapshots" && snapshotsQuery.isError) void snapshotsQuery.refetch();
+  };
   const membersContent = membersQuery.isPending && !membersQuery.data
     ? <LoadingState label="正在加载团队成员" />
     : membersQuery.isError && !membersQuery.data
@@ -188,6 +194,7 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
         <Button onClick={openCreate}><Plus size={16} />新增成员</Button>
       </div>
     </div>
+    {staleDataRefreshFailed && <p role="alert" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">刷新失败，当前仍显示上次数据。 <button type="button" className="font-semibold underline" onClick={retryStaleData}>重试</button></p>}
     {membersContent}
 
     <Dialog open={Boolean(memberSheet)} onOpenChange={(open) => !open && closeSheet()}>

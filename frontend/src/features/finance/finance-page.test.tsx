@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse } from "@/api/client";
 import { listFinanceBudgets, listFinanceCategories, listFinanceSnapshots, listFinanceTransactions } from "@/api/client";
@@ -35,6 +35,19 @@ beforeEach(() => {
 });
 
 describe("FinancePage", () => {
+  it("waits for budgets before showing the overview's no-budget empty state", async () => {
+    let resolveBudgets!: (value: Awaited<ReturnType<typeof listFinanceBudgets>>) => void;
+    vi.mocked(listFinanceBudgets).mockImplementationOnce(() => new Promise((resolve) => { resolveBudgets = resolve; }));
+    renderPage();
+
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载财务总览");
+    expect(screen.queryByText("本月还没有预算")).not.toBeInTheDocument();
+    resolveBudgets({ data: { items: [] }, request_id: "budget-loaded" });
+
+    expect(await screen.findByText("本月还没有预算")).toBeVisible();
+    await waitFor(() => expect(listFinanceBudgets).toHaveBeenCalledTimes(1));
+  });
+
   it("separates finance views and opens transaction entry in a centered dialog", async () => {
     renderPage();
     expect(await screen.findByRole("tab", { name: "总览" })).toHaveAttribute("data-state", "active");
