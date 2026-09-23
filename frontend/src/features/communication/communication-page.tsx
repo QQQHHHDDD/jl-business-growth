@@ -53,6 +53,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { copyText } from "@/lib/copy";
 import { errorMessage, formatDate } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Tab = "friends" | "scripts";
 const textareaClass =
@@ -653,24 +654,18 @@ export function CommunicationPage({
         title="沟通工具"
         description="记录加好友进度，并整理可复用的话术内容。所有内容仅当前账号可见。"
       />
-      <div className="flex flex-wrap gap-2 rounded-card border border-outline/80 bg-surface p-2 shadow-hairline">
-        <Button
-          variant={tab === "friends" ? "primary" : "ghost"}
-          size="sm"
-          onClick={() => switchTab("friends")}
-        >
-          <Users size={16} />
-          加好友记录
-        </Button>
-        <Button
-          variant={tab === "scripts" ? "primary" : "ghost"}
-          size="sm"
-          onClick={() => switchTab("scripts")}
-        >
-          <MessageSquareText size={16} />
-          话术库
-        </Button>
-      </div>
+      <Tabs value={tab} onValueChange={(value) => switchTab(value as Tab)}>
+        <TabsList aria-label="沟通工具视图">
+          <TabsTrigger value="friends">
+            <Users size={16} />
+            加好友记录
+          </TabsTrigger>
+          <TabsTrigger value="scripts">
+            <MessageSquareText size={16} />
+            话术库
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
       {notice && <Notice tone="info">{notice}</Notice>}
       {tab === "friends" ? (
         <FriendTab

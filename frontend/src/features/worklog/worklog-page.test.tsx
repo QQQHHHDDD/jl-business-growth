@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, Worklog } from "@/api/client";
 import { listWorklogs, saveWorklog } from "@/api/client";
 import { businessDate, businessDateDaysAgo } from "@/lib/date";
+import { worklogQueryOptions } from "@/lib/query-options";
 import { WorklogPage } from "./worklog-page";
 
 vi.mock("@/api/client", async (importOriginal) => {
@@ -57,10 +58,9 @@ function worklog(date: string, index: number): Worklog {
   };
 }
 
-function renderPage() {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+function renderPage(client = new QueryClient({
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+})) {
   return {
     client,
     ...render(
@@ -91,6 +91,23 @@ describe("WorklogPage", () => {
     resolveRequest({ data: { items: [worklog(today, 3)] }, request_id: "request-loaded" });
     expect(await screen.findByRole("heading", { name: "五层对话" })).toBeVisible();
     expect(screen.getByLabelText("今日概览")).toHaveTextContent("行动3");
+  });
+
+  it("does not flash default zero totals when cached data is already available", async () => {
+    const today = businessDate(account.timezone);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    client.setQueryData(worklogQueryOptions(account.id, account.timezone).queryKey, {
+      data: { items: [worklog(today, 6)] },
+      request_id: "cached-worklog",
+    });
+
+    renderPage(client);
+
+    expect(screen.getByLabelText("今日概览")).not.toHaveTextContent("行动0");
+    expect(await screen.findByLabelText("开启对话")).toHaveValue(6);
+    expect(screen.getByLabelText("今日概览")).toHaveTextContent("行动6");
   });
 
   it("supports compact date navigation and direct or stepped action input", async () => {

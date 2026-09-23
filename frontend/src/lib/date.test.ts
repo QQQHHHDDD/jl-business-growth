@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   businessDate,
+  businessDateDaysAgo,
   businessRange,
   calendarQueryRange,
   formatDateTimeInTimezone,
@@ -109,6 +110,11 @@ describe("business date ranges", () => {
       from: "2026-03-02",
       to: "2026-03-08",
     });
+  });
+
+  it("subtracts calendar days across a DST boundary", () => {
+    expect(businessDateDaysAgo("America/New_York", 1, new Date("2026-03-09T04:30:00Z")))
+      .toBe("2026-03-08");
   });
 
   it("derives review starts and closed ends", () => {

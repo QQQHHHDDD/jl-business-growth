@@ -6,8 +6,8 @@ export function businessDate(timezone: string, value = new Date()): string {
   }
 }
 
-export function businessDateDaysAgo(timezone: string, days: number): string {
-  return businessDate(timezone, new Date(Date.now() - days * 86400000));
+export function businessDateDaysAgo(timezone: string, days: number, value = new Date()): string {
+  return addCalendarDays(businessDate(timezone, value), -days);
 }
 
 /** Keep calendar query boundaries stable for the current business month. */

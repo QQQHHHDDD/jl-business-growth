@@ -20,22 +20,36 @@ import {
 } from "@/features/admin/admin-pages";
 import { AuthPage } from "@/features/auth/auth-page";
 import { SettingsPage } from "@/features/auth/settings-page";
-import { AnalyticsPage } from "@/features/analytics/analytics-page";
-import { DashboardPage } from "@/features/dashboard/dashboard-page";
 import { PlaceholderPage } from "@/features/placeholder/placeholder-page";
-import { ReviewsPage } from "@/features/reviews/reviews-page";
-import { SearchPage } from "@/features/search/search-page";
-import { WorklogPage } from "@/features/worklog/worklog-page";
-import { KnowledgePage } from "@/features/knowledge/knowledge-page";
-import { FinancePage } from "@/features/finance/finance-page";
-import { IncomePage } from "@/features/income/income-page";
-import { CommunicationPage } from "@/features/communication/communication-page";
 import { roleHome } from "@/lib/utils";
-import { loadCalendarPage, loadGoalsPage, loadTeamPage, preloadRoute } from "@/lib/route-preload";
+import {
+  loadAnalyticsPage,
+  loadCalendarPage,
+  loadCommunicationPage,
+  loadDashboardPage,
+  loadFinancePage,
+  loadGoalsPage,
+  loadIncomePage,
+  loadKnowledgePage,
+  loadReviewsPage,
+  loadSearchPage,
+  loadTeamPage,
+  loadWorklogPage,
+  preloadRoute,
+} from "@/lib/route-preload";
 
+const AnalyticsPage = lazy(loadAnalyticsPage);
 const CalendarPage = lazy(loadCalendarPage);
+const CommunicationPage = lazy(loadCommunicationPage);
+const DashboardPage = lazy(loadDashboardPage);
+const FinancePage = lazy(loadFinancePage);
 const GoalsPage = lazy(loadGoalsPage);
+const IncomePage = lazy(loadIncomePage);
+const KnowledgePage = lazy(loadKnowledgePage);
+const ReviewsPage = lazy(loadReviewsPage);
+const SearchPage = lazy(loadSearchPage);
 const TeamPage = lazy(loadTeamPage);
+const WorklogPage = lazy(loadWorklogPage);
 
 const userRoutes = [
   ["/app/goals", "梦想与目标", "建立梦想和目标之间的清晰路径。"],
@@ -191,10 +205,9 @@ function UserDashboardRoute({ meQuery }: { meQuery: MeQuery }) {
   const authResponse = meQuery.data;
   if (!authResponse) return null;
   return (
-    <DashboardPage
-      account={authResponse.data.account}
-      authResponse={authResponse}
-    />
+    <DeferredPage title="首页" description="查看今天的行动安排和经营概览。">
+      <DashboardPage account={authResponse.data.account} authResponse={authResponse} />
+    </DeferredPage>
   );
 }
 
@@ -207,7 +220,11 @@ function UserGoalsRoute({ meQuery }: { meQuery: MeQuery }) {
 }
 
 function UserWorklogRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <WorklogPage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? (
+    <DeferredPage title="今日工作" description="记录今天完成的关键行动。">
+      <WorklogPage authResponse={meQuery.data} />
+    </DeferredPage>
+  ) : null;
 }
 
 function UserCalendarRoute({ meQuery }: { meQuery: MeQuery }) {
@@ -219,11 +236,19 @@ function UserCalendarRoute({ meQuery }: { meQuery: MeQuery }) {
 }
 
 function UserReviewsRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <ReviewsPage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? (
+    <DeferredPage title="复盘" description="回顾周期内的行动和结果。">
+      <ReviewsPage authResponse={meQuery.data} />
+    </DeferredPage>
+  ) : null;
 }
 
 function UserAnalyticsRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <AnalyticsPage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? (
+    <DeferredPage title="数据统计" description="从真实记录中观察趋势。">
+      <AnalyticsPage authResponse={meQuery.data} />
+    </DeferredPage>
+  ) : null;
 }
 
 function UserTeamRoute({ meQuery }: { meQuery: MeQuery }) {
@@ -235,23 +260,43 @@ function UserTeamRoute({ meQuery }: { meQuery: MeQuery }) {
 }
 
 function UserKnowledgeRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <KnowledgePage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? (
+    <DeferredPage title="学习中心" description="整理长期学习投入。">
+      <KnowledgePage authResponse={meQuery.data} />
+    </DeferredPage>
+  ) : null;
 }
 
 function UserCommunicationRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <CommunicationPage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? (
+    <DeferredPage title="沟通工具" description="记录加好友进度和整理话术。">
+      <CommunicationPage authResponse={meQuery.data} />
+    </DeferredPage>
+  ) : null;
 }
 
 function UserSearchRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <SearchPage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? (
+    <DeferredPage title="全局搜索" description="在系统中快速查找记录。">
+      <SearchPage authResponse={meQuery.data} />
+    </DeferredPage>
+  ) : null;
 }
 
 function UserFinanceRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <FinancePage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? (
+    <DeferredPage title="财务" description="管理经营过程中的财务信息。">
+      <FinancePage authResponse={meQuery.data} />
+    </DeferredPage>
+  ) : null;
 }
 
 function UserIncomeRoute({ meQuery }: { meQuery: MeQuery }) {
-  return meQuery.data ? <IncomePage authResponse={meQuery.data} /> : null;
+  return meQuery.data ? (
+    <DeferredPage title="收入模拟" description="比较不同经营方案的结果。">
+      <IncomePage authResponse={meQuery.data} />
+    </DeferredPage>
+  ) : null;
 }
 
 function SettingsRoute({ meQuery }: { meQuery: MeQuery }) {

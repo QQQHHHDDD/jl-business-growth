@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, SubpageLoadingState } from "@/components/ui/state-block";
 import { DataTable, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
@@ -171,7 +171,7 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
     if (view === "snapshots" && snapshotsQuery.isError) void snapshotsQuery.refetch();
   };
   const membersContent = membersQuery.isPending && !membersQuery.data
-    ? <LoadingState label="正在加载团队成员" />
+    ? <SubpageLoadingState label="正在加载团队成员" />
     : membersQuery.isError && !membersQuery.data
       ? <ErrorState message="团队成员暂时无法加载" onRetry={() => void membersQuery.refetch()} />
       : view === "graph"
@@ -179,7 +179,7 @@ export function TeamPage({ authResponse }: { authResponse: AuthResponse }) {
         : view === "list"
           ? <MemberList members={filteredMembers} allMembers={members} search={search} onSearch={setSearch} onView={openDetail} onEdit={openEdit} onDelete={setRemoveTarget} />
           : snapshotsQuery.isPending && !snapshotsQuery.data
-            ? <LoadingState label="正在加载团队快照" />
+            ? <SubpageLoadingState label="正在加载团队快照" />
             : snapshotsQuery.isError && !snapshotsQuery.data
               ? <ErrorState message="团队快照暂时无法加载" onRetry={() => void snapshotsQuery.refetch()} />
               : <SnapshotsView snapshots={snapshotsQuery.data?.data.items ?? []} selected={selectedSnapshot} onSelect={setSelectedSnapshot} />;

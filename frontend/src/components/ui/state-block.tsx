@@ -5,7 +5,43 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 
 export function LoadingState({ label = "正在加载" }: { label?: string }) {
-  return <div role="status" aria-live="polite" className="min-h-[420px] rounded-panel border border-outline/80 bg-surface p-6 shadow-panel"><span className="sr-only">{label}...</span><div className="space-y-4" aria-hidden="true"><div className="h-4 w-36 animate-pulse rounded-full bg-surface-muted" /><div className="grid gap-3 sm:grid-cols-3"><div className="h-20 animate-pulse rounded-card bg-surface-soft" /><div className="h-20 animate-pulse rounded-card bg-surface-soft" /><div className="h-20 animate-pulse rounded-card bg-surface-soft" /></div><div className="h-24 animate-pulse rounded-card bg-surface-soft" /></div><p className="mt-4 text-sm text-ink-muted">{label}...</p></div>;
+  return <SubpageLoadingState label={label} />;
+}
+
+export function SubpageLoadingState({
+  label = "正在加载",
+  className,
+  testId,
+}: {
+  label?: string;
+  className?: string;
+  testId?: string;
+}) {
+  return (
+    <div
+      data-testid={testId}
+      role="status"
+      aria-live="polite"
+      className={cn(
+        "min-h-[360px] rounded-card border border-outline/70 bg-surface-soft/45 p-5",
+        className,
+      )}
+    >
+      <span className="sr-only">{label}...</span>
+      <div className="space-y-4" aria-hidden="true">
+        <div className="h-4 w-40 animate-pulse rounded-full bg-surface-muted" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="h-16 animate-pulse rounded-card bg-surface-soft" />
+          <div className="h-16 animate-pulse rounded-card bg-surface-soft" />
+          <div className="h-16 animate-pulse rounded-card bg-surface-soft" />
+        </div>
+        <div className="h-10 animate-pulse rounded-card bg-surface-soft" />
+        <div className="h-10 animate-pulse rounded-card bg-surface-soft" />
+        <div className="h-10 animate-pulse rounded-card bg-surface-soft" />
+      </div>
+      <p className="mt-4 text-sm text-ink-muted">{label}...</p>
+    </div>
+  );
 }
 
 export function PageLoadingState({

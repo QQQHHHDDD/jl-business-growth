@@ -185,7 +185,7 @@ test("covers administrator, account, and core business workflows", async ({
       await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
       if (round === 0 && path === "/app/finance") {
         await expect.poll(() => firstBudgetRequestStarted).toBe(true);
-        await expect(page.getByRole("status")).toContainText("正在加载财务总览");
+        await expect(page.getByTestId("finance-budget-loading")).toBeVisible();
         await expect(page.getByText("本月还没有预算")).toHaveCount(0);
         releaseFirstBudgetRequest?.();
         await expect(page.getByText("本月还没有预算")).toBeVisible();

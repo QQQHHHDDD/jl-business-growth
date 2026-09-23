@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { FormLabel, Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, SubpageLoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
@@ -251,14 +251,14 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
     ? <Button onClick={openDreamCreate}><Plus size={16} />新增梦想</Button>
     : <Button onClick={() => openGoalSheet({ mode: "create" })}><Plus size={16} />新建目标</Button>;
   const goalsContent = goalsQuery.isPending && !goalsQuery.data
-    ? <LoadingState label="正在加载目标" />
+    ? <SubpageLoadingState label="正在加载目标" />
     : goalsQuery.isError && !goalsQuery.data
       ? <ErrorState message="目标数据暂时无法加载" onRetry={() => void goalsQuery.refetch()} />
       : view === "map"
         ? <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />
         : <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />;
   const dreamsContent = (goalsQuery.isPending && !goalsQuery.data) || (dreamsQuery.isPending && !dreamsQuery.data) || (filesQuery.isPending && !filesQuery.data)
-    ? <LoadingState label="正在加载梦想板" />
+    ? <SubpageLoadingState label="正在加载梦想板" />
     : (goalsQuery.isError && !goalsQuery.data) || (dreamsQuery.isError && !dreamsQuery.data) || (filesQuery.isError && !filesQuery.data)
       ? <ErrorState message="梦想数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} />
       : <DreamBoard dreams={dreamsQuery.data?.data.items ?? []} goals={goals} files={files} onSelect={openDreamDetail} onCreate={openDreamCreate} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />;
@@ -276,7 +276,7 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
       {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={view} onValueChange={(value) => setView(value as GoalsView)}>
-          <TabsList className="bg-surface-muted/80" aria-label="目标工作台视图"><TabsTrigger value="map" className="min-h-10 px-4">目标地图</TabsTrigger><TabsTrigger value="list" className="min-h-10 px-4">目标列表</TabsTrigger><TabsTrigger value="dreams" className="min-h-10 px-4">梦想板</TabsTrigger></TabsList>
+          <TabsList aria-label="目标工作台视图"><TabsTrigger value="map">目标地图</TabsTrigger><TabsTrigger value="list">目标列表</TabsTrigger><TabsTrigger value="dreams">梦想板</TabsTrigger></TabsList>
         </Tabs>
         <div className="flex justify-end">{activeAction}</div>
       </div>

@@ -6,7 +6,7 @@ import { Input } from "./input";
 import { MetricCard } from "./metric-card";
 import { Notice } from "./notice";
 import { SegmentedControl } from "./segmented-control";
-import { EmptyState, ErrorState, LoadingState, PageLoadingState } from "./state-block";
+import { EmptyState, ErrorState, LoadingState, PageLoadingState, SubpageLoadingState } from "./state-block";
 import { StatusBadge } from "./badge";
 import { DataTable, TableBody, TableCell, TableHead, TableRow } from "./table";
 import { Sheet, SheetContent } from "./sheet";
@@ -76,6 +76,13 @@ describe("shared UI primitives", () => {
     expect(screen.getByRole("heading", { name: "财务" })).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("正在加载财务工作台");
     expect(screen.queryByText("暂无内容")).not.toBeInTheDocument();
+  });
+
+  it("uses the shared stable skeleton for subpage content", () => {
+    render(<SubpageLoadingState label="正在加载子页面" testId="subpage-loading" />);
+
+    expect(screen.getByTestId("subpage-loading")).toHaveClass("min-h-[360px]");
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载子页面");
   });
 
   it("keeps tables readable with a minimum width and semantic column headers", () => {

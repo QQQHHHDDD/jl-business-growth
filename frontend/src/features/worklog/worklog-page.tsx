@@ -167,23 +167,28 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
   const selectedDateError = selectedDateInRange
     ? worklogsQuery.isError && !worklogsQuery.data
     : selectedDateQuery.isError && !selectedDateQuery.data;
-  const form = useForm<WorklogForm>({
-    resolver: zodResolver(worklogSchema),
-    defaultValues: formDefaults(selectedDate),
-    mode: "onChange",
-    reValidateMode: "onChange",
-  });
+  const selectedDateDataReady = Boolean(selectedDateResponse);
   const existing = selectedDateResponse?.data.items.find(
     (item) => item.work_date === selectedDate,
   );
-  const loadedFormDate = useRef(selectedDate);
+  const form = useForm<WorklogForm>({
+    resolver: zodResolver(worklogSchema),
+    defaultValues: existing ? fromWorklog(existing) : formDefaults(selectedDate),
+    mode: "onChange",
+    reValidateMode: "onChange",
+  });
+  const loadedFormDate = useRef<string | null>(selectedDateDataReady ? selectedDate : null);
   useEffect(() => {
+    if (!selectedDateDataReady) {
+      loadedFormDate.current = null;
+      return;
+    }
     const dateChanged = loadedFormDate.current !== selectedDate;
     if (dateChanged || !form.formState.isDirty) {
       form.reset(existing ? fromWorklog(existing) : formDefaults(selectedDate));
       loadedFormDate.current = selectedDate;
     }
-  }, [existing, form, form.formState.isDirty, selectedDate]);
+  }, [existing, form, form.formState.isDirty, selectedDate, selectedDateDataReady]);
   const mutation = useMutation({
     mutationFn: (value: WorklogRequest) =>
       saveWorklog(authResponse.data.csrf_token, value, Boolean(existing)),
@@ -226,6 +231,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
     (Number(form.watch("audio_minutes")) || 0);
   const pv = Number(form.watch("turnover_pv"));
   const netAmount = Number(form.watch("turnover_net_amount"));
+  const summaryReady = selectedDateDataReady && loadedFormDate.current === selectedDate;
   const fieldError = (field: keyof WorklogForm) =>
     form.formState.errors[field]?.message?.toString();
   const selectDate = (date: string) => {
@@ -237,7 +243,7 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
         );
     const nextWorklog = cachedResponse?.data.items.find((item) => item.work_date === date);
     form.reset(nextWorklog ? fromWorklog(nextWorklog) : formDefaults(date));
-    loadedFormDate.current = date;
+    loadedFormDate.current = cachedResponse ? date : null;
     setSelectedDate(date);
     setNotice("");
     setError("");
@@ -301,9 +307,9 @@ export function WorklogPage({ authResponse }: { authResponse: AuthResponse }) {
           </svg>
         </div>
         <section aria-label="今日概览" className="worklog-summary mx-4 mb-4 mt-4 grid grid-cols-3 gap-2 rounded-panel border border-white/80 bg-surface/70 p-2 shadow-hairline sm:mx-7 sm:mb-5 sm:mt-5 sm:gap-0 sm:p-1.5">
-          <div className="worklog-summary-item worklog-summary-mint"><span className="worklog-summary-icon"><BriefcaseBusiness size={17} /></span><span><span className="worklog-summary-label">行动</span><strong>{selectedDateResponse ? actionCount : "—"}</strong></span></div>
-          <div className="worklog-summary-item worklog-summary-blue"><span className="worklog-summary-icon"><BookOpen size={17} /></span><span><span className="worklog-summary-label">学习</span><strong>{selectedDateResponse ? <>{learningMinutes}<small>分钟</small></> : "—"}</strong></span></div>
-          <div className="worklog-summary-item worklog-summary-teal"><span className="worklog-summary-icon"><BarChart3 size={17} /></span><span><span className="worklog-summary-label">净营业额</span><strong>{selectedDateResponse ? (form.watch("turnover_net_amount").trim() ? `¥${Number.isFinite(netAmount) ? netAmount.toFixed(2) : "0.00"}` : `${pv || 0} PV`) : "—"}</strong></span></div>
+          <div className="worklog-summary-item worklog-summary-mint"><span className="worklog-summary-icon"><BriefcaseBusiness size={17} /></span><span><span className="worklog-summary-label">行动</span><strong>{summaryReady ? actionCount : "—"}</strong></span></div>
+          <div className="worklog-summary-item worklog-summary-blue"><span className="worklog-summary-icon"><BookOpen size={17} /></span><span><span className="worklog-summary-label">学习</span><strong>{summaryReady ? <>{learningMinutes}<small>分钟</small></> : "—"}</strong></span></div>
+          <div className="worklog-summary-item worklog-summary-teal"><span className="worklog-summary-icon"><BarChart3 size={17} /></span><span><span className="worklog-summary-label">净营业额</span><strong>{summaryReady ? (form.watch("turnover_net_amount").trim() ? `¥${Number.isFinite(netAmount) ? netAmount.toFixed(2) : "0.00"}` : `${pv || 0} PV`) : "—"}</strong></span></div>
         </section>
       </section>
       {(notice || error) && (

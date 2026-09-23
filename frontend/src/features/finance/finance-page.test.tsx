@@ -35,12 +35,13 @@ beforeEach(() => {
 });
 
 describe("FinancePage", () => {
-  it("waits for budgets before showing the overview's no-budget empty state", async () => {
+  it("keeps the overview visible while budgets are loading", async () => {
     let resolveBudgets!: (value: Awaited<ReturnType<typeof listFinanceBudgets>>) => void;
     vi.mocked(listFinanceBudgets).mockImplementationOnce(() => new Promise((resolve) => { resolveBudgets = resolve; }));
     renderPage();
 
-    expect(screen.getByRole("status")).toHaveTextContent("正在加载财务总览");
+    expect(await screen.findByText("本月收入")).toBeVisible();
+    expect(screen.getByTestId("finance-budget-loading")).toBeVisible();
     expect(screen.queryByText("本月还没有预算")).not.toBeInTheDocument();
     resolveBudgets({ data: { items: [] }, request_id: "budget-loaded" });
 

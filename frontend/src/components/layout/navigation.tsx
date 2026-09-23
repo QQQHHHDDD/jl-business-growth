@@ -152,7 +152,7 @@ function Brand({ authResponse, compact = false }: { authResponse: AuthResponse; 
             <span className="block text-[10px] font-black uppercase leading-3 tracking-[0.2em] text-brand-700">
               JL Growth
             </span>
-            <span className="mt-1 block text-[12px] font-bold leading-4 tracking-tight text-ink">
+            <span className="mt-1 block text-[15px] font-bold leading-4 tracking-tight text-ink">
               生意成长管理系统
             </span>
           </Link>

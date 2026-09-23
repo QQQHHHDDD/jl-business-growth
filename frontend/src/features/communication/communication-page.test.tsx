@@ -37,7 +37,7 @@ describe("CommunicationPage", () => {
   it("opens friend records by default and keeps the scripts tab in the URL", async () => {
     renderPage();
     expect(await screen.findByText("还没有加好友记录")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: /话术库/ }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /话术库/ }));
     expect(await screen.findByText("导师故事")).toBeVisible();
     expect(window.location.href).not.toContain("calendar");
   });
