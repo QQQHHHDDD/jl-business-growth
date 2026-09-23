@@ -116,17 +116,43 @@ function Field({
   );
 }
 
+function DirectionBadge({
+  direction,
+}: {
+  direction: CommunicationFriendRecord["add_direction"];
+}) {
+  const isReverse = direction === "REVERSE";
+  return (
+    <StatusBadge
+      tone="info"
+      className="gap-1"
+      aria-label={isReverse ? "逆序，向上添加" : "顺序，向下添加"}
+    >
+      <span>{isReverse ? "逆序" : "顺序"}</span>
+      {isReverse ? (
+        <ChevronUp size={13} aria-hidden="true" />
+      ) : (
+        <ChevronDown size={13} aria-hidden="true" />
+      )}
+    </StatusBadge>
+  );
+}
+
 function FriendDialog({
   open,
   onOpenChange,
   csrfToken,
   record,
+  template,
+  templateLoading,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   csrfToken: string;
   record?: CommunicationFriendRecord | null;
+  template?: CommunicationFriendRecord | null;
+  templateLoading?: boolean;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState({
@@ -164,6 +190,34 @@ function FriendDialog({
   });
   const set = (key: keyof typeof form, value: string | boolean) =>
     setForm((current) => ({ ...current, [key]: value }));
+  const applyTemplate = () => {
+    if (!template) return;
+    const hasFormContent = [
+      form.platform,
+      form.account_label,
+      form.group_name,
+      form.application_script,
+      form.first_message,
+      form.note,
+    ].some((value) => value.trim().length > 0);
+    if (
+      hasFormContent &&
+      !window.confirm("当前表单已有内容，是否用上一个记录覆盖？")
+    ) {
+      return;
+    }
+    setForm({
+      platform: template.platform,
+      account_label: template.account_label,
+      group_name: template.group_name,
+      add_direction: template.add_direction,
+      last_applied_person: "",
+      application_script: template.application_script,
+      first_message: template.first_message,
+      note: template.note,
+      archived: false,
+    });
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col overflow-hidden p-0">
@@ -175,6 +229,27 @@ function FriendDialog({
             <DialogDescription>
               每个账号和群独立记录，申请话术不会关联话术库。
             </DialogDescription>
+            {!record && (
+              <div className="mt-3 flex flex-wrap items-center gap-3 rounded-control border border-outline/70 bg-surface-muted/40 px-3 py-2.5">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!template || templateLoading}
+                  onClick={applyTemplate}
+                >
+                  <Copy size={15} />
+                  {templateLoading
+                    ? "正在读取最近记录"
+                    : template
+                      ? "填入上一个记录"
+                      : "暂无可复用记录"}
+                </Button>
+                <span className="text-xs text-ink-faint">
+                  仅填入最近更新的记录，不会带入“最后申请的人”。
+                </span>
+              </div>
+            )}
           </DialogHeader>
         </div>
         <div data-testid="communication-dialog-scroll" className="min-h-0 flex-1 overflow-y-auto px-6 pb-5 pr-4 [scrollbar-gutter:stable]">
@@ -606,6 +681,11 @@ export function CommunicationPage({
       }),
     enabled: tab === "friends",
   });
+  const latestFriendQuery = useQuery({
+    queryKey: ["communication", "friends", "latest-template"],
+    queryFn: () => listCommunicationFriendRecords({ page: 1, pageSize: 1 }),
+    enabled: friendDialog === null,
+  });
   const categoriesQuery = useQuery({
     queryKey: ["communication", "categories"],
     queryFn: listCommunicationScriptCategories,
@@ -683,6 +763,7 @@ export function CommunicationPage({
           onEdit={setFriendDialog}
           onProgress={setProgressDialog}
           onDelete={(id) => setDeleteTarget({ kind: "friend", id })}
+          onNotice={setNotice}
         />
       ) : (
         <ScriptTab
@@ -710,6 +791,8 @@ export function CommunicationPage({
           onOpenChange={(open) => !open && setFriendDialog(undefined)}
           csrfToken={csrf}
           record={friendDialog}
+          template={latestFriendQuery.data?.data.items[0] ?? null}
+          templateLoading={latestFriendQuery.isPending}
           onSaved={() => {
             setNotice("加好友记录已保存");
             void queryClient.invalidateQueries({
@@ -776,6 +859,7 @@ function FriendTab({
   onEdit,
   onProgress,
   onDelete,
+  onNotice,
 }: {
   query: FriendQueryState;
   q: string;
@@ -791,10 +875,16 @@ function FriendTab({
   onEdit: (record: CommunicationFriendRecord) => void;
   onProgress: (record: CommunicationFriendRecord) => void;
   onDelete: (id: string) => void;
+  onNotice: (message: string) => void;
 }) {
   const items = query.data?.data.items ?? [];
   const meta = query.data?.meta;
   const hasNext = Boolean(meta && meta.page * meta.page_size < meta.total);
+  const copyFriendScript = async (label: string, value: string) => {
+    if (!value.trim()) return;
+    const copied = await copyText(value);
+    onNotice(copied ? `${label}已复制` : "复制失败，请手动选择文本复制");
+  };
   return (
     <Panel
       title="加好友记录"
@@ -854,16 +944,16 @@ function FriendTab({
         />
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-sm">
+          <div className="hidden lg:block">
+            <table data-testid="friend-record-table" className="w-full table-fixed text-left text-sm">
               <thead>
                 <tr className="border-b border-outline text-xs text-ink-faint">
-                  <th className="px-3 py-3">平台 / 账号</th>
-                  <th className="px-3 py-3">群名称</th>
-                  <th className="px-3 py-3">方向</th>
-                  <th className="px-3 py-3">最后申请的人</th>
-                  <th className="px-3 py-3">更新时间</th>
-                  <th className="px-3 py-3">操作</th>
+                  <th className="w-[17%] px-3 py-3">平台 / 账号</th>
+                  <th className="w-[14%] px-3 py-3">群名称 / 方向</th>
+                  <th className="w-[14%] px-3 py-3">最后申请的人</th>
+                  <th className="w-[23%] px-3 py-3">话术</th>
+                  <th className="w-[12%] px-3 py-3">更新时间</th>
+                  <th className="w-[20%] px-3 py-3">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -872,25 +962,57 @@ function FriendTab({
                     key={item.id}
                     className="border-b border-outline/70 last:border-0"
                   >
-                    <td className="px-3 py-3">
+                    <td className="break-words px-3 py-3 align-top">
                       <div className="font-semibold">{item.platform}</div>
                       <div className="text-xs text-ink-faint">
                         {item.account_label}
                       </div>
                     </td>
-                    <td className="px-3 py-3">{item.group_name}</td>
-                    <td className="px-3 py-3">
-                      <StatusBadge tone="info">
-                        {item.add_direction === "FORWARD" ? "顺序" : "逆序"}
-                      </StatusBadge>
+                    <td className="break-words px-3 py-3 align-top">
+                      <div>{item.group_name}</div>
+                      <DirectionBadge direction={item.add_direction} />
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="break-words px-3 py-3 align-top">
                       {item.last_applied_person || "尚未开始"}
                     </td>
-                    <td className="px-3 py-3 text-ink-muted">
+                    <td className="px-3 py-3 align-top">
+                      <div className="flex flex-wrap gap-1.5">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          disabled={!item.application_script.trim()}
+                          onClick={() =>
+                            void copyFriendScript(
+                              "好友申请话术",
+                              item.application_script,
+                            )
+                          }
+                        >
+                          <Copy size={13} />
+                          申请话术
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          disabled={!item.first_message.trim()}
+                          onClick={() =>
+                            void copyFriendScript(
+                              "通过后第一句话",
+                              item.first_message,
+                            )
+                          }
+                        >
+                          <Copy size={13} />
+                          第一句话
+                        </Button>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 align-top text-ink-muted">
                       {formatDate(item.updated_at)}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 align-top">
                       <div className="flex flex-wrap gap-1">
                         <Button
                           variant="ghost"
@@ -936,6 +1058,84 @@ function FriendTab({
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="space-y-3 lg:hidden">
+            {items.map((item) => (
+              <article
+                key={item.id}
+                className="rounded-control border border-outline/80 bg-surface-muted/20 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-ink">
+                      {item.platform} · {item.account_label}
+                    </div>
+                    <div className="mt-1 break-words text-sm text-ink-muted">
+                      {item.group_name}
+                    </div>
+                  </div>
+                  <DirectionBadge direction={item.add_direction} />
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3 text-sm text-ink-muted">
+                  <span className="min-w-0 break-words">
+                    最后申请：{item.last_applied_person || "尚未开始"}
+                  </span>
+                  <span className="shrink-0 text-xs">{formatDate(item.updated_at)}</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="min-w-0 px-2 text-xs"
+                    disabled={!item.application_script.trim()}
+                    onClick={() =>
+                      void copyFriendScript("好友申请话术", item.application_script)
+                    }
+                  >
+                    <Copy size={13} />
+                    申请话术
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="min-w-0 px-2 text-xs"
+                    disabled={!item.first_message.trim()}
+                    onClick={() =>
+                      void copyFriendScript("通过后第一句话", item.first_message)
+                    }
+                  >
+                    <Copy size={13} />
+                    第一句话
+                  </Button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1 border-t border-outline/70 pt-3">
+                  <Button variant="ghost" size="sm" onClick={() => onEdit(item)}>
+                    <Edit3 size={15} />
+                    查看 / 编辑
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => onProgress(item)}>
+                    <RotateCcw size={14} />
+                    更新进度
+                  </Button>
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    title={item.archived ? "恢复" : "归档"}
+                    onClick={() => onEdit({ ...item, archived: !item.archived })}
+                  >
+                    {item.archived ? <RotateCcw size={15} /> : <Archive size={15} />}
+                  </Button>
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    title="删除"
+                    onClick={() => onDelete(item.id)}
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </div>
+              </article>
+            ))}
           </div>
           <div className="mt-4 flex items-center justify-between text-sm text-ink-muted">
             <span>{meta?.total ?? items.length} 条记录</span>
