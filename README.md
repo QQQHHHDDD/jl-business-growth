@@ -50,14 +50,18 @@ make release VERSION=v1.2.3  # local immutable Linux artifact and checksum
 
 Health endpoints: `GET /api/health/live` and `GET /api/health/ready`.
 
-The current schema is migration version 12, ending at
-`00012_remove_unused_pgcrypto.sql`. PostgreSQL's `pg_trgm` extension remains
+The current schema is migration version 14, ending at
+`00014_remove_import_export.sql`. PostgreSQL's `pg_trgm` extension remains
 required for similarity search. PostgreSQL 13 and newer provide
 `gen_random_uuid()` in core, so the application does not require `pgcrypto` or
 an OpenSSL-enabled PostgreSQL build. V1 business money fields use decimal
 strings in JSON and integer cents inside the Go money boundary; PostgreSQL
 continues to use exact `numeric(14,2)` columns. `make test-integration` covers
 V1 API acceptance.
+
+The legacy import/export API and UI are not part of the current product. The
+schema-14 migration removes their job table and finance deduplication metadata;
+file attachments and account/file cleanup remain supported independently.
 
 ## Build and release version
 

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Clock3, Download, Globe2, KeyRound, TriangleAlert, Trash2 } from "lucide-react";
+import { CalendarDays, Clock3, Globe2, KeyRound, TriangleAlert, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { Account, AuthResponse } from "@/api/client";
 import { changePassword, deleteCurrentAccount, updateTimezone } from "@/api/client";
 import { StatusBadge } from "@/components/ui/badge";
@@ -84,7 +84,6 @@ export function SettingsPage({ account, authResponse }: { account: Account; auth
     </div>}
     {tab === "preferences" && <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"><Panel title="业务时区" description="业务日期使用账号的 IANA 时区，不随服务器时间变化。"><form className="max-w-xl space-y-4" onSubmit={(event) => { event.preventDefault(); if (isSupportedTimezone(timezone, account.timezone)) timezoneMutation.mutate(); }}><TimezoneSelect value={timezone} onChange={setTimezone} /><p className="text-sm text-slate-500">系统中的业务日期边界、日历、工作量、营业额、复盘、统计和团队月末快照均以该时区为准。</p><Button type="submit" loading={timezoneMutation.isPending} disabled={!isSupportedTimezone(timezone, account.timezone)}><Globe2 size={15} />保存时区</Button></form></Panel><BusinessTimePreview timezone={timezone} /></div>}
     {tab === "security" && account.role === "USER" && <div className="space-y-5">
-      <Panel title="完整数据导出" description="前往导入 / 导出页下载当前账号的完整账户 ZIP；不包含密码、登录会话和审计日志。">{account.role === "USER" ? <Button asChild variant="secondary"><Link to="/app/data"><Download size={15} />打开数据导出</Link></Button> : <p className="text-sm text-slate-500">管理员账号不包含普通用户业务数据，也不提供业务数据导出。</p>}</Panel>
       <section className="rounded-xl border border-rose-200 bg-rose-50 p-5"><h2 className="font-bold text-rose-900">危险操作</h2><p className="mt-1 text-sm leading-6 text-rose-700">将永久删除当前账号的在线业务数据、上传文件和登录会话，删除后无法通过系统恢复。历史备份中的副本可能按备份保留策略保存至到期，并在保留期结束后清理。</p><Button className="mt-5" variant="danger" onClick={() => setDeleteOpen(true)}><Trash2 size={15} />永久删除账户</Button></section>
     </div>}
     <ConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} title="确认永久删除账户" description="将永久删除在线业务数据、上传文件和登录会话。历史备份中的副本仍按备份保留策略清理。" confirmLabel="永久删除" loading={deleteMutation.isPending} onConfirm={() => deleteMutation.mutate()} />

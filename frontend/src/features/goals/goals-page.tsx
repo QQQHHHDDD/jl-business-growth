@@ -1,24 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, Check, ChevronLeft, ChevronRight, Compass, Eye, GripVertical, Image as ImageIcon, Leaf, Pencil, Plus, Search, Sparkles, Target, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode, SelectHTMLAttributes } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
-import { z } from "zod";
+import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Background, Controls, ReactFlow, type Edge, type Node, type Position } from "@xyflow/react";
 import { useSearchParams } from "react-router-dom";
 import "@xyflow/react/dist/style.css";
 import type { AuthResponse, Dream, FileAsset, Goal, GoalRequest } from "@/api/client";
-import { deleteDream, deleteFile, deleteGoal, listDreams, listFiles, listGoals, saveDream, saveGoal, uploadFile } from "@/api/client";
+import { deleteDream, deleteFile, deleteGoal, listDreams, listFiles, saveDream, saveGoal, uploadFile } from "@/api/client";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { FormLabel, Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state-block";
+import { EmptyState, ErrorState, SubpageLoadingState } from "@/components/ui/state-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { businessDate } from "@/lib/date";
 import { errorMessage } from "@/lib/utils";
+import { FIRST_SCREEN_STALE_TIME, goalsQueryOptions } from "@/lib/query-options";
 
 const goalTypes = ["LONG_TERM", "YEAR", "STAGE", "MONTH", "WEEK", "DAY"] as const;
 const metricCodes = ["conversation_open_count", "deep_conversation_count", "buffer_count", "story_share_count", "screening_count", "opportunity_count", "meeting_count", "customer_followup_count", "reading_minutes", "audio_minutes", "turnover_pv", "turnover_net_amount"] as const;
@@ -87,9 +88,9 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
   const accountID = authResponse.data.account.id;
   const today = businessDate(authResponse.data.account.timezone);
   const queryClient = useQueryClient();
-  const goalsQuery = useQuery({ queryKey: ["user", accountID, "goals"], queryFn: listGoals });
-  const dreamsQuery = useQuery({ queryKey: ["user", accountID, "dreams"], queryFn: listDreams });
-  const filesQuery = useQuery({ queryKey: ["user", accountID, "files"], queryFn: listFiles });
+  const goalsQuery = useQuery(goalsQueryOptions(accountID));
+  const dreamsQuery = useQuery({ queryKey: ["user", accountID, "dreams"], queryFn: listDreams, staleTime: FIRST_SCREEN_STALE_TIME });
+  const filesQuery = useQuery({ queryKey: ["user", accountID, "files"], queryFn: listFiles, staleTime: FIRST_SCREEN_STALE_TIME });
   const [view, setView] = useState<GoalsView>("map");
   const [goalSheet, setGoalSheet] = useState<GoalSheetState>(null);
   const [dreamSheet, setDreamSheet] = useState<DreamSheetState>(null);
@@ -246,12 +247,28 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
     setDreamFiles(dream.file_ids); setDreamGoals(dream.goal_ids); dreamFormState.reset({ title: dream.title, description: dream.description ?? "" });
   };
 
-  if (goalsQuery.isPending || dreamsQuery.isPending || filesQuery.isPending) return <div className="space-y-6"><GoalsHero /><LoadingState label="正在加载目标工作台" /></div>;
-  if (goalsQuery.isError || dreamsQuery.isError || filesQuery.isError) return <div className="space-y-6"><GoalsHero /><ErrorState message="目标数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} /></div>;
-
   const activeAction = view === "dreams"
     ? <Button onClick={openDreamCreate}><Plus size={16} />新增梦想</Button>
     : <Button onClick={() => openGoalSheet({ mode: "create" })}><Plus size={16} />新建目标</Button>;
+  const goalsContent = goalsQuery.isPending && !goalsQuery.data
+    ? <SubpageLoadingState label="正在加载目标" />
+    : goalsQuery.isError && !goalsQuery.data
+      ? <ErrorState message="目标数据暂时无法加载" onRetry={() => void goalsQuery.refetch()} />
+      : view === "map"
+        ? <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />
+        : <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />;
+  const dreamsContent = (goalsQuery.isPending && !goalsQuery.data) || (dreamsQuery.isPending && !dreamsQuery.data) || (filesQuery.isPending && !filesQuery.data)
+    ? <SubpageLoadingState label="正在加载梦想板" />
+    : (goalsQuery.isError && !goalsQuery.data) || (dreamsQuery.isError && !dreamsQuery.data) || (filesQuery.isError && !filesQuery.data)
+      ? <ErrorState message="梦想数据暂时无法加载" onRetry={() => { void goalsQuery.refetch(); void dreamsQuery.refetch(); void filesQuery.refetch(); }} />
+      : <DreamBoard dreams={dreamsQuery.data?.data.items ?? []} goals={goals} files={files} onSelect={openDreamDetail} onCreate={openDreamCreate} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />;
+  const staleDataRefreshFailed = view === "dreams"
+    ? (goalsQuery.isError && Boolean(goalsQuery.data)) || (dreamsQuery.isError && Boolean(dreamsQuery.data)) || (filesQuery.isError && Boolean(filesQuery.data))
+    : goalsQuery.isError && Boolean(goalsQuery.data);
+  const retryStaleData = () => {
+    void goalsQuery.refetch();
+    if (view === "dreams") { void dreamsQuery.refetch(); void filesQuery.refetch(); }
+  };
 
   return (
     <div className="goals-page space-y-6">
@@ -259,14 +276,14 @@ export function GoalsPage({ authResponse }: { authResponse: AuthResponse }) {
       {(notice || error) && <p role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-teal-200 bg-teal-50 text-teal-900"}`}>{error || notice}</p>}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={view} onValueChange={(value) => setView(value as GoalsView)}>
-          <TabsList className="bg-surface-muted/80" aria-label="目标工作台视图"><TabsTrigger value="map" className="min-h-10 px-4">目标地图</TabsTrigger><TabsTrigger value="list" className="min-h-10 px-4">目标列表</TabsTrigger><TabsTrigger value="dreams" className="min-h-10 px-4">梦想板</TabsTrigger></TabsList>
+          <TabsList aria-label="目标工作台视图"><TabsTrigger value="map">目标地图</TabsTrigger><TabsTrigger value="list">目标列表</TabsTrigger><TabsTrigger value="dreams">梦想板</TabsTrigger></TabsList>
         </Tabs>
         <div className="flex justify-end">{activeAction}</div>
       </div>
 
-      {view === "map" && <GoalMap goals={goals} selectedID={goalSheet && goalSheet.mode !== "create" ? goalSheet.goal.id : null} onSelect={(goal) => openGoalSheet({ mode: "detail", goal })} onCreate={() => openGoalSheet({ mode: "create" })} />}
-      {view === "list" && <GoalListView goals={filteredGoals} search={search} typeFilter={typeFilter} statusFilter={statusFilter} onSearch={setSearch} onTypeFilter={setTypeFilter} onStatusFilter={setStatusFilter} onView={(goal) => openGoalSheet({ mode: "detail", goal })} onEdit={(goal) => openGoalSheet({ mode: "edit", goal })} onDelete={(goal) => setDeleteTarget({ kind: "goal", id: goal.id, title: goal.title })} />}
-      {view === "dreams" && <DreamBoard dreams={dreamsQuery.data.data.items} goals={goals} files={files} onSelect={openDreamDetail} onCreate={openDreamCreate} onDelete={(dream) => setDeleteTarget({ kind: "dream", id: dream.id, title: dream.title })} />}
+      {staleDataRefreshFailed && <p role="alert" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">刷新失败，当前仍显示上次数据。 <button type="button" className="font-semibold underline" onClick={retryStaleData}>重试</button></p>}
+
+      {view === "dreams" ? dreamsContent : goalsContent}
 
       <Dialog open={goalSheet?.mode === "detail"} onOpenChange={(open) => !open && closeGoalSheet()}>
         {goalSheet?.mode === "detail" && <DialogContent className="max-w-2xl overflow-hidden p-0">
@@ -355,7 +372,7 @@ function DreamBoard({ dreams, goals, files, onSelect, onCreate, onDelete }: { dr
 }
 
 function GoalEditor({ form, goals, editingID }: { form: UseFormReturn<GoalForm>; goals: Goal[]; editingID?: string }) {
-  return <form className="space-y-5" onSubmit={(event) => event.preventDefault()}><Input label="目标名称" required error={form.formState.errors.title?.message} {...form.register("title")} /><div className="grid gap-4 sm:grid-cols-2"><Select label="目标层级" {...form.register("type")}>{goalTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}</Select><Select label="父目标" {...form.register("parent_id")}><option value="">无父目标</option>{goals.filter((goal) => goal.id !== editingID).map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</Select></div><div className="grid gap-4 sm:grid-cols-2"><Input label="开始日期" type="date" {...form.register("start_date")} /><Input label="截止日期" type="date" {...form.register("due_date")} /></div><Select label="状态" {...form.register("status")}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select><div className="rounded-card border border-brand-100/70 bg-brand-50/35 p-4"><div className="mb-4 flex items-center gap-2 text-sm font-bold text-brand-900"><BarChart3 size={16} />量化指标（可选）</div><div className="space-y-4"><Select label="指标" {...form.register("metric_code")}><option value="">暂不设置</option>{metricCodes.map((code) => <option key={code} value={code}>{metricLabel(code)}</option>)}</Select><div className="grid gap-4 sm:grid-cols-2"><Input label="目标值" type="number" min={0} step="0.01" error={form.formState.errors.target_value?.message} {...form.register("target_value", { setValueAs: (value) => value === "" ? undefined : Number(value) })} /><Input label="单位" placeholder="次 / PV / 分钟" {...form.register("unit")} /></div></div></div></form>;
+  return <form className="space-y-5" onSubmit={(event) => event.preventDefault()}><Input label="目标名称" required error={form.formState.errors.title?.message} {...form.register("title")} /><div className="grid gap-4 sm:grid-cols-2"><Select label="目标层级" required {...form.register("type")}>{goalTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}</Select><Select label="父目标" {...form.register("parent_id")}><option value="">无父目标</option>{goals.filter((goal) => goal.id !== editingID).map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</Select></div><div className="grid gap-4 sm:grid-cols-2"><Input label="开始日期" type="date" {...form.register("start_date")} /><Input label="截止日期" type="date" {...form.register("due_date")} /></div><Select label="状态" required {...form.register("status")}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select><div className="rounded-card border border-brand-100/70 bg-brand-50/35 p-4"><div className="mb-4 flex items-center gap-2 text-sm font-bold text-brand-900"><BarChart3 size={16} />量化指标（可选）</div><div className="space-y-4"><Select label="指标" {...form.register("metric_code")}><option value="">暂不设置</option>{metricCodes.map((code) => <option key={code} value={code}>{metricLabel(code)}</option>)}</Select><div className="grid gap-4 sm:grid-cols-2"><Input label="目标值" type="number" min={0} step="0.01" error={form.formState.errors.target_value?.message} {...form.register("target_value", { setValueAs: (value) => value === "" ? undefined : Number(value) })} /><Input label="单位" placeholder="次 / PV / 分钟" {...form.register("unit")} /></div></div></div></form>;
 }
 
 function DreamEditor({ form, goals, files, selectedFiles, selectedGoals, uploads, draggingID, onFilesSelected, onRetry, onRemoveFile, onMoveFile, onDragging, onToggleGoal }: { form: UseFormReturn<DreamForm>; goals: Goal[]; files: FileAsset[]; selectedFiles: string[]; selectedGoals: string[]; uploads: DreamUpload[]; draggingID: string | null; onFilesSelected: (files: File[]) => void; onRetry: (entry: DreamUpload) => void; onRemoveFile: (id: string) => void; onMoveFile: (id: string, targetID: string) => void; onDragging: (id: string | null) => void; onToggleGoal: (id: string) => void }) {
@@ -379,8 +396,9 @@ function GoalDetail({ goal, goals }: { goal: Goal; goals: Goal[] }) {
   return <div className="space-y-6"><div className="flex items-center justify-between gap-4"><StatusBadge tone={statusTones[goal.status]}>{statusLabels[goal.status]}</StatusBadge><strong className="text-2xl tabular-nums text-teal-800">{Math.round(goal.progress * 100)}%</strong></div><div><div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-teal-600" style={{ width: `${Math.min(100, goal.progress * 100)}%` }} /></div><p className="mt-2 text-xs text-slate-500">进度由目标范围内的真实记录自动计算。</p></div><dl className="grid grid-cols-[110px_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm"><dt className="text-slate-500">目标层级</dt><dd className="font-semibold text-slate-900">{typeLabels[goal.type]}</dd><dt className="text-slate-500">父目标</dt><dd className="font-semibold text-slate-900">{parent?.title ?? "无"}</dd><dt className="text-slate-500">开始日期</dt><dd className="font-semibold text-slate-900">{goal.start_date || "未设置"}</dd><dt className="text-slate-500">截止日期</dt><dd className="font-semibold text-slate-900">{goal.due_date || "未设置"}</dd></dl><section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">量化指标</h3>{goal.metrics.length ? <div className="mt-3 space-y-3">{goal.metrics.map((metric) => <div key={metric.metric_code} className="rounded-lg bg-slate-50 p-3 text-sm"><div className="flex justify-between gap-4"><span className="font-semibold text-slate-700">{metricLabel(metric.metric_code)}</span><span className="tabular-nums text-slate-600">{metric.actual_value} / {metric.target_value} {metric.unit}</span></div></div>)}</div> : <p className="mt-2 text-sm text-slate-500">未设置量化指标。</p>}</section><section className="border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">子目标</h3>{children.length ? <ul className="mt-3 space-y-2 text-sm text-slate-700">{children.map((child) => <li key={child.id} className="rounded-lg bg-slate-50 px-3 py-2.5 font-semibold">{child.title}</li>)}</ul> : <p className="mt-2 text-sm text-slate-500">暂无子目标。</p>}</section></div>;
 }
 
-function Select({ label, children, ...props }: { label: string; children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) {
-  return <label className="block space-y-1.5"><span className="text-xs font-bold text-ink-muted">{label}</span><select className="min-h-10 w-full rounded-control border border-outline bg-surface px-3 text-sm text-ink outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100" {...props}>{children}</select></label>;
+function Select({ label, children, required, ...props }: { label: string; children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) {
+  const selectId = useId();
+  return <div className="block space-y-1.5"><FormLabel htmlFor={selectId} required={required} className="text-xs font-bold text-ink-muted">{label}</FormLabel><select id={selectId} className="min-h-10 w-full rounded-control border border-outline bg-surface px-3 text-sm text-ink outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100" required={required} {...props}>{children}</select></div>;
 }
 function metricLabel(code: string): string { const labels: Record<string, string> = { conversation_open_count: "开启对话", deep_conversation_count: "深入对话", buffer_count: "Buffer", story_share_count: "分享故事", screening_count: "筛选", opportunity_count: "提供机会", meeting_count: "会面", customer_followup_count: "顾客跟进", reading_minutes: "读书分钟", audio_minutes: "听音频分钟", turnover_pv: "营业额 PV", turnover_net_amount: "净营业额" }; return labels[code] ?? code; }
 function highlightedGoals(goals: Goal[], selectedID: string | null): Set<string> { const result = new Set<string>(); if (!selectedID) return result; const byID = new Map(goals.map((goal) => [goal.id, goal])); let current: string | null | undefined = selectedID; while (current && !result.has(current)) { result.add(current); current = byID.get(current)?.parent_id; } const addChildren = (id: string) => goals.filter((goal) => goal.parent_id === id).forEach((goal) => { if (!result.has(goal.id)) { result.add(goal.id); addChildren(goal.id); } }); addChildren(selectedID); return result; }

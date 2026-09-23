@@ -1,13 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { Buffer } from "node:buffer";
-import { readFileSync } from "node:fs";
 
 const superadminUsername = process.env.E2E_SUPERADMIN_USERNAME;
 const superadminPassword = process.env.E2E_SUPERADMIN_PASSWORD;
 
 test("covers administrator, account, and core business workflows", async ({
   page,
-}) => {
+}, testInfo) => {
   test.skip(
     process.env.APP_ENV !== "test" ||
       !superadminUsername ||
@@ -86,17 +85,81 @@ test("covers administrator, account, and core business workflows", async ({
     ["/app", "经营进度"], ["/app/worklog", "今日工作量"], ["/app/calendar", "日历"],
     ["/app/goals", "梦想与目标"], ["/app/team", "团队"], ["/app/finance", "财务"],
     ["/app/knowledge", "学习中心"], ["/app/reviews", "复盘"], ["/app/analytics", "数据统计"],
-    ["/app/data", "导入 / 导出"], ["/app/settings", "设置"], ["/app", "经营进度"],
+    ["/app/settings", "设置"], ["/app", "经营进度"],
   ] as const;
   const coldGroups: Record<string, string> = {
     "/app/worklog": "规划与执行", "/app/calendar": "规划与执行", "/app/goals": "规划与执行",
     "/app/team": "经营管理", "/app/finance": "经营管理", "/app/knowledge": "成长与复盘",
-    "/app/reviews": "成长与复盘", "/app/analytics": "成长与复盘", "/app/data": "系统工具", "/app/settings": "系统工具",
+    "/app/reviews": "成长与复盘", "/app/analytics": "成长与复盘", "/app/settings": "系统工具",
   };
   const lazyChunks: Record<string, string> = {
     "/app/calendar": "calendar-page", "/app/goals": "goals-page", "/app/team": "team-page",
   };
   const routeDiagnostics: Array<Record<string, unknown>> = [];
+  const firstScreenRequests = new Map<string, number>();
+  const firstScreenPaths = new Set(["/api/calendar/events", "/api/goals", "/api/team/members", "/api/worklogs"]);
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (request.method() === "GET" && firstScreenPaths.has(url.pathname)) {
+      firstScreenRequests.set(url.pathname, (firstScreenRequests.get(url.pathname) ?? 0) + 1);
+    }
+  });
+
+  let releaseFirstWorklogRequest: (() => void) | undefined;
+  let firstWorklogRequestStarted = false;
+  const firstWorklogRequestGate = new Promise<void>((resolve) => { releaseFirstWorklogRequest = resolve; });
+  await page.route("**/api/worklogs?*", async (route) => {
+    firstWorklogRequestStarted = true;
+    await firstWorklogRequestGate;
+    await route.continue();
+  }, { times: 1 });
+  const initialWorklogLink = coldSidebar.locator('a[href="/app/worklog"]').first();
+  if (await initialWorklogLink.count() === 0) await coldSidebar.getByRole("button", { name: "规划与执行", exact: true }).click();
+  await initialWorklogLink.hover();
+  await expect.poll(() => firstWorklogRequestStarted).toBe(true);
+  await initialWorklogLink.click();
+  await expect(page.getByRole("heading", { name: "今日工作量", exact: true })).toBeVisible();
+  const initialWorklogSummary = page.getByLabel("今日概览");
+  await expect(initialWorklogSummary).toContainText("行动—");
+  await expect(initialWorklogSummary).not.toContainText("行动0");
+  await expect(initialWorklogSummary).not.toContainText("0分钟");
+  await expect(initialWorklogSummary).not.toContainText("0 PV");
+  releaseFirstWorklogRequest?.();
+  await expect(page.getByRole("heading", { name: "五层对话", exact: true })).toBeVisible();
+
+  let releaseFirstBudgetRequest: (() => void) | undefined;
+  let firstBudgetRequestStarted = false;
+  const firstBudgetRequestGate = new Promise<void>((resolve) => { releaseFirstBudgetRequest = resolve; });
+  await page.route((url) => new URL(url).pathname === "/api/finance/budgets", async (route) => {
+    firstBudgetRequestStarted = true;
+    await firstBudgetRequestGate;
+    await route.continue();
+  }, { times: 1 });
+  let releaseFirstCalendarRequest: (() => void) | undefined;
+  let firstCalendarRequestStarted = false;
+  const firstCalendarRequestGate = new Promise<void>((resolve) => { releaseFirstCalendarRequest = resolve; });
+  await page.route((url) => new URL(url).pathname === "/api/calendar/events", async (route) => {
+    firstCalendarRequestStarted = true;
+    await firstCalendarRequestGate;
+    await route.continue();
+  }, { times: 1 });
+  let releaseFirstGoalsRequest: (() => void) | undefined;
+  let firstGoalsRequestStarted = false;
+  const firstGoalsRequestGate = new Promise<void>((resolve) => { releaseFirstGoalsRequest = resolve; });
+  await page.route("**/api/goals", async (route) => {
+    firstGoalsRequestStarted = true;
+    await firstGoalsRequestGate;
+    await route.continue();
+  }, { times: 1 });
+  let releaseFirstTeamRequest: (() => void) | undefined;
+  let firstTeamRequestStarted = false;
+  const firstTeamRequestGate = new Promise<void>((resolve) => { releaseFirstTeamRequest = resolve; });
+  await page.route("**/api/team/members", async (route) => {
+    firstTeamRequestStarted = true;
+    await firstTeamRequestGate;
+    await route.continue();
+  }, { times: 1 });
+
   for (let round = 0; round < 5; round += 1) {
     for (const [path, heading] of coldRoutes) {
       const routeLink = coldSidebar.locator(`a[href="${path}"]`).first();
@@ -120,6 +183,34 @@ test("covers administrator, account, and core business workflows", async ({
       await routeLink.click();
       await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}\\/?$`));
       await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      if (round === 0 && path === "/app/finance") {
+        await expect.poll(() => firstBudgetRequestStarted).toBe(true);
+        await expect(page.getByTestId("finance-budget-loading")).toBeVisible();
+        await expect(page.getByText("本月还没有预算")).toHaveCount(0);
+        releaseFirstBudgetRequest?.();
+        await expect(page.getByText("本月还没有预算")).toBeVisible();
+      }
+      if (round === 0 && path === "/app/calendar") {
+        await expect.poll(() => firstCalendarRequestStarted).toBe(true);
+        await expect(page.getByRole("status")).toContainText("正在加载日历");
+        await expect(page.locator(".fc")).toHaveCount(0);
+        releaseFirstCalendarRequest?.();
+        await expect(page.locator(".fc")).toBeVisible();
+      }
+      if (round === 0 && path === "/app/goals") {
+        await expect.poll(() => firstGoalsRequestStarted).toBe(true);
+        await expect(page.getByRole("status")).toContainText("正在加载目标");
+        await expect(page.getByText("还没有目标")).toHaveCount(0);
+        releaseFirstGoalsRequest?.();
+        await expect(page.getByText("还没有目标")).toBeVisible();
+      }
+      if (round === 0 && path === "/app/team") {
+        await expect.poll(() => firstTeamRequestStarted).toBe(true);
+        await expect(page.getByRole("status")).toContainText("正在加载团队成员");
+        await expect(page.getByText("还没有团队成员")).toHaveCount(0);
+        releaseFirstTeamRequest?.();
+        await expect(page.getByText("还没有团队成员")).toBeVisible();
+      }
       const frames = await framesPromise;
       expect(frames.every((frame) => frame.childCount > 0 && frame.header && frame.height >= 400 && frame.width > 0 && frame.scrollWidth <= frame.clientWidth + 1)).toBe(true);
       expect(Math.min(...frames.map((frame) => frame.height))).toBeGreaterThanOrEqual(400);
@@ -129,8 +220,35 @@ test("covers administrator, account, and core business workflows", async ({
       expect(await coldContainer.evaluate((element, previous) => element === previous, coldContainerHandle)).toBe(true);
       routeDiagnostics.push({ round, path, resourceCount, minHeight: Math.min(...frames.map((frame) => frame.height)), maxHeight: Math.max(...frames.map((frame) => frame.height)), headerFrames: frames.filter((frame) => frame.header).length });
     }
+    if (round === 0) {
+      for (const path of firstScreenPaths) expect(firstScreenRequests.get(path), `${path} request count after preload and first mount`).toBe(1);
+    }
   }
   console.log(`[route-stability] ${JSON.stringify(routeDiagnostics)}`);
+  await testInfo.attach("route-stability.json", {
+    body: JSON.stringify(routeDiagnostics, null, 2),
+    contentType: "application/json",
+  });
+
+  await page.goto("/app/finance");
+  await expect(page.getByRole("heading", { name: "财务", exact: true })).toBeVisible();
+  const logoSidebarHandle = await page.getByTestId("app-sidebar").elementHandle();
+  const logoTopbarHandle = await page.getByTestId("app-topbar").elementHandle();
+  await page.getByRole("link", { name: "返回系统首页" }).first().click();
+  await expect(page).toHaveURL(/\/app\/?$/);
+  await expect(page.getByRole("heading", { name: "经营进度", exact: true })).toBeVisible();
+  expect(await page.getByTestId("app-sidebar").evaluate((element, previous) => element === previous, logoSidebarHandle)).toBe(true);
+  expect(await page.getByTestId("app-topbar").evaluate((element, previous) => element === previous, logoTopbarHandle)).toBe(true);
+  await page.goto("/app/calendar");
+  await expect(page.getByRole("heading", { name: "日历", exact: true })).toBeVisible();
+  await page.goto("/app/goals");
+  await expect(page.getByRole("heading", { name: "梦想与目标", exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/app\/calendar\/?$/);
+  await expect(page.getByRole("heading", { name: "日历", exact: true })).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(/\/app\/goals\/?$/);
+  await expect(page.getByRole("heading", { name: "梦想与目标", exact: true })).toBeVisible();
 
   let releaseAnalyticsRequest: (() => void) | undefined;
   let analyticsRequestStarted = false;
@@ -185,8 +303,27 @@ test("covers administrator, account, and core business workflows", async ({
   await page.getByLabel("读书分钟").fill("30");
   await page.getByLabel("听音频分钟").fill("15");
   await page.getByLabel("营业额 PV（可选）").fill("2");
+  let releaseWorklogRefresh: (() => void) | undefined;
+  let worklogRefreshStarted = false;
+  const worklogRefreshGate = new Promise<void>((resolve) => { releaseWorklogRefresh = resolve; });
+  await page.route("**/api/worklogs?*", async (route) => {
+    worklogRefreshStarted = true;
+    await worklogRefreshGate;
+    await route.continue();
+  }, { times: 1 });
+  const worklogRefreshAfterSave = page.waitForResponse((response) => response.request().method() === "GET" && new URL(response.url()).pathname === "/api/worklogs");
   await page.getByRole("button", { name: "保存今日记录" }).click();
-  await expect(page.getByRole("status")).toContainText("今日工作已保存");
+  await expect(page.getByText("今日工作已保存，目标进度已更新。", { exact: true })).toBeVisible();
+  await expect.poll(() => worklogRefreshStarted).toBe(true);
+  await expect(page.getByRole("spinbutton", { name: "开启对话" })).toHaveValue("1");
+  releaseWorklogRefresh?.();
+  expect((await worklogRefreshAfterSave).ok()).toBe(true);
+  const worklogRequestsBeforeDateSwitch = firstScreenRequests.get("/api/worklogs") ?? 0;
+  await page.getByRole("button", { name: "前一天" }).click();
+  await expect(page.locator('input[aria-label="业务日期"]')).not.toHaveValue(new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(new Date()));
+  await page.getByRole("button", { name: "今天" }).click();
+  await expect(page.getByRole("spinbutton", { name: "开启对话" })).toHaveValue("1");
+  expect(firstScreenRequests.get("/api/worklogs") ?? 0).toBe(worklogRequestsBeforeDateSwitch);
 
   await page.goto("/app/goals");
   await expect(
@@ -227,6 +364,34 @@ test("covers administrator, account, and core business workflows", async ({
   await page.getByRole("button", { name: "保存梦想" }).click();
   await expect(page.getByRole("status")).toContainText("梦想已保存");
   await expect(page.getByRole("heading", { name: "更有节奏的经营" })).toBeVisible();
+
+  const browser = page.context().browser();
+  expect(browser).not.toBeNull();
+  const secondContext = await browser!.newContext();
+  const secondPage = await secondContext.newPage();
+  await secondPage.goto(new URL("/register", page.url()).toString());
+  await secondPage.getByLabel("账号").fill(secondUsername);
+  await secondPage.getByLabel("密码").fill(secondUserPassword);
+  await secondPage.getByLabel("邀请码").fill(invitationCode!);
+  await secondPage.getByRole("button", { name: "注册并登录" }).click();
+  await expect(secondPage.getByRole("heading", { name: "经营进度", exact: true })).toBeVisible();
+  await secondContext.close();
+
+  await page.getByRole("button", { name: new RegExp(`账号菜单 ${firstUsername}`) }).click();
+  await page.getByRole("menuitem", { name: "添加账号" }).click();
+  await page.getByLabel("账号").last().fill(secondUsername);
+  await page.getByLabel("密码", { exact: true }).fill(secondUserPassword);
+  await page.getByRole("button", { name: "验证并加入" }).click();
+  await expect(page.getByRole("button", { name: new RegExp(`账号菜单 ${secondUsername}`) })).toBeVisible();
+  await page.goto("/app/goals");
+  await expect(page.getByText("还没有目标")).toBeVisible();
+  await expect(page.getByText("本周会面目标", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: new RegExp(`账号菜单 ${secondUsername}`) }).click();
+  await page.getByRole("menuitem", { name: firstUsername }).click();
+  await expect(page.getByRole("button", { name: new RegExp(`账号菜单 ${firstUsername}`) })).toBeVisible();
+  await page.goto("/app/goals");
+  await page.getByRole("tab", { name: "目标列表" }).click();
+  await expect(page.getByText("本周会面目标", { exact: true }).first()).toBeVisible();
 
   await page.goto("/app");
   await expect(
@@ -345,7 +510,8 @@ test("covers administrator, account, and core business workflows", async ({
     const response = page.waitForResponse((value) => value.request().method() === "PUT" && value.url().includes("/api/calendar/events/"));
     await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
     await page.mouse.down();
-    await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2 + 30, { steps: 12 });
+    const resizeDelta = index % 2 === 0 ? -30 : 30;
+    await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2 + resizeDelta, { steps: 12 });
     await page.mouse.up();
     expect((await response).ok()).toBe(true);
     await expect(findStableEvent()).toBeVisible();
@@ -498,33 +664,10 @@ test("covers administrator, account, and core business workflows", async ({
   await page.getByTestId("income-results").getByRole("button", { name: "保存方案" }).click();
   await expect(page.getByRole("status")).toContainText("收入模拟方案已保存");
 
-  await page.goto("/app/data");
-  await expect(
-    page.getByRole("heading", { name: "导入 / 导出", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "每日工作量" }).click();
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /下载.*模板/ }).click();
-  const templateDownload = await downloadPromise;
-  const templatePath = await templateDownload.path();
-  expect(templatePath).toBeTruthy();
-  await page.getByRole("button", { name: "下一步" }).click();
-  await page.getByLabel("选择 XLSX 文件").setInputFiles({
-    name: "worklog-import.xlsx",
-    mimeType:
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    buffer: readFileSync(templatePath!),
-  });
-  await page.getByRole("button", { name: "上传并校验" }).click();
-  await expect(page.getByText("VALIDATED", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "下一步" }).click();
-  await page.getByRole("button", { name: "确认导入", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("数据已导入");
-
   for (const width of [1440, 1280, 1024]) {
     await page.setViewportSize({ width, height: 760 });
     await page.goto("/app");
-    const brand = page.getByText("JL团队生意成长管理系统", { exact: true });
+    const brand = page.getByText("生意成长管理系统", { exact: true });
     await expect(brand).toBeVisible();
     expect(await brand.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   }
@@ -571,7 +714,6 @@ test("covers administrator, account, and core business workflows", async ({
     ["/app/income-simulator", "收入模拟"],
     ["/app/reviews", "复盘"],
     ["/app/analytics", "数据统计"],
-    ["/app/data", "导入 / 导出"],
     ["/app/settings", "设置"],
   ] as const;
   for (const width of [1440, 1024, 768, 390]) {
@@ -597,7 +739,6 @@ test("covers administrator, account, and core business workflows", async ({
   const financeSheet = await page.getByRole("dialog").boundingBox();
   expect(financeSheet?.width).toBeLessThanOrEqual(390);
   await page.getByRole("button", { name: "关闭" }).click();
-
   await page
     .getByRole("button", { name: new RegExp(`账号菜单 ${firstUsername}`) })
     .click();
@@ -606,34 +747,6 @@ test("covers administrator, account, and core business workflows", async ({
   await expect(
     page.getByRole("heading", { name: "登录系统", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "首次使用？注册普通用户" }).click();
-  await expect(page).toHaveURL(/\/register$/);
-  await expect(
-    page.getByRole("heading", { name: "注册普通用户", exact: true }),
-  ).toBeVisible();
-  await page.getByLabel("账号").fill(secondUsername);
-  await page.getByLabel("密码").fill(secondUserPassword);
-  await page.getByLabel("邀请码").fill(invitationCode!);
-  await page.getByRole("button", { name: "注册并登录" }).click();
-  await expect(
-    page.getByRole("heading", { name: new RegExp(secondUsername) }),
-  ).toBeVisible();
-
-  await page
-    .getByRole("button", { name: new RegExp(`账号菜单 ${secondUsername}`) })
-    .click();
-  await page.getByRole("menuitem", { name: "添加账号" }).click();
-  await page.getByLabel("账号").last().fill(firstUsername);
-  await page.getByLabel("密码", { exact: true }).fill(userPassword);
-  await page.getByRole("button", { name: "验证并加入" }).click();
-  await expect(
-    page.getByRole("heading", { name: new RegExp(firstUsername) }),
-  ).toBeVisible();
-
-  await page
-    .getByRole("button", { name: new RegExp(`账号菜单 ${firstUsername}`) })
-    .click();
-  await expect(
-    page.getByRole("menuitem", { name: secondUsername }),
-  ).toBeVisible();
+  await page.goto("/app/goals");
+  await expect(page.getByRole("heading", { name: "登录系统", exact: true })).toBeVisible();
 });

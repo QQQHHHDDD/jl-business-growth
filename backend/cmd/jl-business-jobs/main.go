@@ -15,7 +15,7 @@ import (
 	"jl-business-growth/backend/internal/buildinfo"
 	"jl-business-growth/backend/internal/config"
 	"jl-business-growth/backend/internal/database"
-	"jl-business-growth/backend/internal/importexport"
+	fileassets "jl-business-growth/backend/internal/files"
 	"jl-business-growth/backend/internal/team"
 )
 
@@ -50,21 +50,13 @@ func main() {
 }
 
 func run(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, job string) error {
-	imports := importexport.NewService(pool, cfg)
+	files := fileassets.NewService(pool, cfg)
 	switch job {
-	case "cleanup", "cleanup-imports":
-		if err := imports.CleanupExpired(ctx); err != nil {
-			return fmt.Errorf("cleanup expired imports: %w", err)
-		}
-		if job == "cleanup-imports" {
-			return nil
-		}
-		fallthrough
-	case "cleanup-files":
-		if err := imports.CleanupOrphanFiles(ctx); err != nil {
+	case "cleanup", "cleanup-files":
+		if err := files.CleanupOrphanFiles(ctx); err != nil {
 			return fmt.Errorf("cleanup orphan files: %w", err)
 		}
-		if err := imports.RetryFileCleanup(ctx); err != nil {
+		if err := files.RetryFileCleanup(ctx); err != nil {
 			return fmt.Errorf("retry deferred file cleanup: %w", err)
 		}
 		if job == "cleanup-files" {
@@ -79,6 +71,6 @@ func run(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, job string)
 	case "team-snapshots":
 		return team.NewService(pool).CaptureMonthlySnapshots(ctx, time.Now())
 	default:
-		return errors.New("job must be cleanup, cleanup-imports, cleanup-files, cleanup-sessions, or team-snapshots")
+		return errors.New("job must be cleanup, cleanup-files, cleanup-sessions, or team-snapshots")
 	}
 }

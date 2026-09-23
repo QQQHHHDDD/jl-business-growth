@@ -100,11 +100,22 @@ beforeEach(() => {
 });
 
 describe("TeamPage", () => {
+  it("does not show an empty team graph before the member response succeeds", async () => {
+    let resolveMembers!: (value: Awaited<ReturnType<typeof listTeamMembers>>) => void;
+    vi.mocked(listTeamMembers).mockImplementationOnce(() => new Promise((resolve) => { resolveMembers = resolve; }));
+    renderPage();
+
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载团队成员");
+    expect(screen.queryByText("还没有团队成员")).not.toBeInTheDocument();
+    resolveMembers({ data: { items: [] }, request_id: "members-empty" });
+    expect(await screen.findByText("还没有团队成员")).toBeVisible();
+  });
+
   it("defaults to the graph and opens member details and the shared editor sheet", async () => {
     renderPage();
     const graphTab = await screen.findByRole("tab", { name: "关系图" });
     expect(graphTab).toHaveAttribute("data-state", "active");
-    expect(screen.getByRole("img", { name: "团队关系图" })).toBeVisible();
+    expect(await screen.findByRole("img", { name: "团队关系图" })).toBeVisible();
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-fit-view", "true");
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-pan-on-drag", "true");
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-edge-count", "1");

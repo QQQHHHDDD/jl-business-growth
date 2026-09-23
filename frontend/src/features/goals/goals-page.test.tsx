@@ -111,12 +111,23 @@ beforeEach(() => {
 });
 
 describe("GoalsPage", () => {
+  it("does not show an empty goal map before the goals response succeeds", async () => {
+    let resolveGoals!: (value: Awaited<ReturnType<typeof listGoals>>) => void;
+    vi.mocked(listGoals).mockImplementationOnce(() => new Promise((resolve) => { resolveGoals = resolve; }));
+    renderPage();
+
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载目标");
+    expect(screen.queryByText("还没有目标")).not.toBeInTheDocument();
+    resolveGoals({ data: { items: [] }, request_id: "goals-empty" });
+    expect(await screen.findByText("还没有目标")).toBeVisible();
+  });
+
   it("defaults to the map and opens accessible create and detail sheets", async () => {
     renderPage();
 
     const mapTab = await screen.findByRole("tab", { name: "目标地图" });
     expect(mapTab).toHaveAttribute("data-state", "active");
-    expect(screen.getByTestId("goal-map")).toBeVisible();
+    expect(await screen.findByTestId("goal-map")).toBeVisible();
 
     const createButton = screen.getByRole("button", { name: "新建目标" });
     createButton.focus();

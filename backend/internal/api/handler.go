@@ -19,11 +19,11 @@ import (
 	"jl-business-growth/backend/internal/analytics"
 	"jl-business-growth/backend/internal/auth"
 	"jl-business-growth/backend/internal/calendar"
+	"jl-business-growth/backend/internal/communication"
 	"jl-business-growth/backend/internal/config"
 	"jl-business-growth/backend/internal/daily"
 	fileassets "jl-business-growth/backend/internal/files"
 	"jl-business-growth/backend/internal/finance"
-	"jl-business-growth/backend/internal/importexport"
 	"jl-business-growth/backend/internal/invitation"
 	"jl-business-growth/backend/internal/knowledge"
 	"jl-business-growth/backend/internal/mail"
@@ -36,21 +36,21 @@ import (
 )
 
 type Handler struct {
-	auth       *auth.Service
-	admin      *admin.Service
-	invitation *invitation.Service
-	daily      *daily.Service
-	calendar   *calendar.Service
-	reviews    *reviews.Service
-	analytics  *analytics.Service
-	team       *team.Service
-	knowledge  *knowledge.Service
-	files      *fileassets.Service
-	search     *search.Service
-	finance    *finance.Service
-	imports    *importexport.Service
-	releases   *releases.Service
-	config     config.Config
+	auth          *auth.Service
+	admin         *admin.Service
+	invitation    *invitation.Service
+	daily         *daily.Service
+	calendar      *calendar.Service
+	communication *communication.Service
+	reviews       *reviews.Service
+	analytics     *analytics.Service
+	team          *team.Service
+	knowledge     *knowledge.Service
+	files         *fileassets.Service
+	search        *search.Service
+	finance       *finance.Service
+	releases      *releases.Service
+	config        config.Config
 }
 
 func NewHandler(authService *auth.Service, adminService *admin.Service, invitationService *invitation.Service, cfg config.Config, releaseServices ...*releases.Service) *Handler {
@@ -64,7 +64,7 @@ func NewHandler(authService *auth.Service, adminService *admin.Service, invitati
 	if len(releaseServices) > 0 && releaseServices[0] != nil {
 		releaseService = releaseServices[0]
 	}
-	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(pool), calendar: calendar.NewService(pool, mail.NewSender(cfg)), reviews: reviews.NewService(pool), analytics: analytics.NewService(pool), team: team.NewService(pool), knowledge: knowledge.NewService(pool), files: fileassets.NewService(pool, cfg), search: search.NewService(pool), finance: finance.NewService(pool), imports: importexport.NewService(pool, cfg), releases: releaseService, config: cfg}
+	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(pool), calendar: calendar.NewService(pool, mail.NewSender(cfg)), communication: communication.NewService(pool), reviews: reviews.NewService(pool), analytics: analytics.NewService(pool), team: team.NewService(pool), knowledge: knowledge.NewService(pool), files: fileassets.NewService(pool, cfg), search: search.NewService(pool), finance: finance.NewService(pool), releases: releaseService, config: cfg}
 }
 
 func (h *Handler) PostAuthRegister(ctx echo.Context) error {
@@ -404,7 +404,7 @@ func (h *Handler) deleteAccount(ctx echo.Context, accountID AccountId, administr
 	if !administrator && target.Role != auth.RoleUser {
 		return problem.New("FORBIDDEN", http.StatusForbidden, "only normal users can be deleted here")
 	}
-	if err := h.imports.DeleteAccount(ctx.Request().Context(), accountID); err != nil {
+	if err := h.files.DeleteAccount(ctx.Request().Context(), accountID); err != nil {
 		return err
 	}
 	h.audit(ctx, "account_deleted", actor.ID, uuid.Nil, accountID)

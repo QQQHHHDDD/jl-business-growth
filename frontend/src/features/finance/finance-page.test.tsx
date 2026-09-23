@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse } from "@/api/client";
 import { listFinanceBudgets, listFinanceCategories, listFinanceSnapshots, listFinanceTransactions } from "@/api/client";
@@ -35,6 +35,20 @@ beforeEach(() => {
 });
 
 describe("FinancePage", () => {
+  it("keeps the overview visible while budgets are loading", async () => {
+    let resolveBudgets!: (value: Awaited<ReturnType<typeof listFinanceBudgets>>) => void;
+    vi.mocked(listFinanceBudgets).mockImplementationOnce(() => new Promise((resolve) => { resolveBudgets = resolve; }));
+    renderPage();
+
+    expect(await screen.findByText("本月收入")).toBeVisible();
+    expect(screen.getByTestId("finance-budget-loading")).toBeVisible();
+    expect(screen.queryByText("本月还没有预算")).not.toBeInTheDocument();
+    resolveBudgets({ data: { items: [] }, request_id: "budget-loaded" });
+
+    expect(await screen.findByText("本月还没有预算")).toBeVisible();
+    await waitFor(() => expect(listFinanceBudgets).toHaveBeenCalledTimes(1));
+  });
+
   it("separates finance views and opens transaction entry in a centered dialog", async () => {
     renderPage();
     expect(await screen.findByRole("tab", { name: "总览" })).toHaveAttribute("data-state", "active");
@@ -44,7 +58,11 @@ describe("FinancePage", () => {
     expect(screen.getByRole("dialog")).toBeVisible();
     expect(screen.getByRole("dialog")).toHaveClass("left-1/2", "top-1/2");
     expect(screen.getByRole("heading", { name: "新增财务流水" })).toBeVisible();
+    expect(screen.getByLabelText("发生日期")).toBeRequired();
+    expect(screen.getByLabelText("类型")).toBeRequired();
     expect(screen.getByLabelText("分类", { exact: true })).toBeVisible();
+    expect(screen.getByLabelText("分类", { exact: true })).toBeRequired();
+    expect(screen.getByLabelText("金额")).toBeRequired();
   });
 
   it("exposes category management as a descriptive full-row disclosure", async () => {

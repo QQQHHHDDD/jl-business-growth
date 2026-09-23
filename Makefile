@@ -4,9 +4,10 @@ GO ?= go
 NPM ?= npm
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
+FRONTEND_RUNNER ?= ./scripts/frontend-run.sh
 
 .PHONY: dev generate generate-openapi generate-sqlc generate-frontend lint lint-backend lint-frontend \
-	test test-backend test-integration test-performance test-frontend test-e2e build build-backend build-jobs build-frontend release reset-superadmin-password \
+	test test-backend test-integration test-performance test-frontend test-e2e test-isolated build build-backend build-jobs build-frontend release reset-superadmin-password \
 	migrate-up migrate-status migrate-test-up migrate-test-status check-test-database check
 
 dev:
@@ -24,7 +25,7 @@ generate-sqlc:
 	cd $(BACKEND_DIR) && $(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate
 
 generate-frontend:
-	$(NPM) --prefix $(FRONTEND_DIR) run generate:api
+	$(FRONTEND_RUNNER) generate:api
 
 lint: lint-backend lint-frontend
 
@@ -33,7 +34,7 @@ lint-backend:
 	cd $(BACKEND_DIR) && $(GO) vet ./...
 
 lint-frontend:
-	$(NPM) --prefix $(FRONTEND_DIR) run lint
+	$(FRONTEND_RUNNER) lint
 
 test: test-backend test-frontend
 
@@ -42,20 +43,20 @@ test-backend:
 
 test-integration:
 	$(MAKE) check-test-database
-	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^(TestAuthenticationAdminAPIIntegration|TestDailyBusinessAPIIntegration|TestCalendarReviewsAnalyticsAPIIntegration|TestTeamKnowledgeFilesSearchAPIIntegration|TestFinanceIncomeAPIIntegration|TestImportExportAccountLifecycleAPIIntegration)$$'
+	cd $(BACKEND_DIR) && $(GO) test -v ./cmd/jl-business-api -run '^(TestAuthenticationAdminAPIIntegration|TestDailyBusinessAPIIntegration|TestCalendarReviewsAnalyticsAPIIntegration|TestTeamKnowledgeFilesSearchAPIIntegration|TestFinanceIncomeAPIIntegration|TestAccountLifecycleAPIIntegration)$$'
 
 test-performance:
 	$(MAKE) check-test-database
 	cd $(BACKEND_DIR) && RUN_PERFORMANCE_TESTS=1 /usr/bin/time -v $(GO) test -v ./cmd/jl-business-api -run '^TestPerformanceIntegration$$' -count=1
 
 test-frontend:
-	$(NPM) --prefix $(FRONTEND_DIR) run test
+	$(FRONTEND_RUNNER) test
 
 test-e2e:
 	@if [ "$${APP_ENV:-development}" = "test" ]; then $(MAKE) check-test-database; fi
 	@test "$${APP_ENV:-development}" != "test" || test -n "$${E2E_SUPERADMIN_USERNAME}" || (echo 'APP_ENV=test requires E2E_SUPERADMIN_USERNAME'; exit 1)
 	@test "$${APP_ENV:-development}" != "test" || test -n "$${E2E_SUPERADMIN_PASSWORD}" || (echo 'APP_ENV=test requires E2E_SUPERADMIN_PASSWORD'; exit 1)
-	$(NPM) --prefix $(FRONTEND_DIR) run test:e2e
+	$(FRONTEND_RUNNER) test:e2e
 
 build: build-backend build-jobs build-frontend
 
@@ -68,7 +69,7 @@ build-jobs:
 	cd $(BACKEND_DIR) && $(GO) build -o bin/jl-business-jobs ./cmd/jl-business-jobs
 
 build-frontend:
-	$(NPM) --prefix $(FRONTEND_DIR) run build
+	$(FRONTEND_RUNNER) build
 
 release:
 	@test -n "$(VERSION)" || (echo 'VERSION must be set, for example: make release VERSION=v1.0.0'; exit 1)
@@ -92,5 +93,8 @@ migrate-test-status:
 
 check-test-database:
 	cd $(BACKEND_DIR) && $(GO) run ./cmd/check-test-database-url
+
+test-isolated:
+	./scripts/test-isolated.sh $(SCOPE)
 
 check: generate lint test build

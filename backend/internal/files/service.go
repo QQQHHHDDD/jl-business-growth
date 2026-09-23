@@ -17,6 +17,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"jl-business-growth/backend/db/generated"
+	"jl-business-growth/backend/internal/auth"
 	"jl-business-growth/backend/internal/config"
 	"jl-business-growth/backend/internal/problem"
 )
@@ -156,5 +158,147 @@ func (s *Service) Delete(ctx context.Context, userID, id uuid.UUID) error {
 		return err
 	}
 	_, err = s.pool.Exec(ctx, `DELETE FROM file_assets WHERE id=$1 AND user_id=$2`, item.ID, userID)
+	return err
+}
+
+// DeleteAccount removes an account and its owned files. Failed physical
+// removals are recorded for the file cleanup job to retry.
+func (s *Service) DeleteAccount(ctx context.Context, accountID uuid.UUID) error {
+	result, err := s.pool.Exec(ctx, `UPDATE accounts SET status='DELETING', updated_at=now() WHERE id=$1 AND status <> 'DELETING'`, accountID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return problem.New("CONFLICT", http.StatusConflict, "account is already being deleted")
+	}
+	rows, err := s.pool.Query(ctx, `SELECT storage_name FROM file_assets WHERE user_id=$1`, accountID)
+	if err != nil {
+		return err
+	}
+	var storageNames []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return err
+		}
+		storageNames = append(storageNames, name)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err := generated.New(s.pool).WithTx(tx).DeleteAccountSessions(ctx, auth.ToPGUUID(accountID)); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM accounts WHERE id=$1`, accountID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	for _, name := range storageNames {
+		path, pathErr := s.storagePath(name)
+		if pathErr != nil {
+			_ = s.recordFileCleanupFailure(ctx, nil, name, pathErr)
+			continue
+		}
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			_ = s.recordFileCleanupFailure(ctx, nil, name, err)
+		}
+	}
+	return nil
+}
+
+func (s *Service) CleanupOrphanFiles(ctx context.Context) error {
+	rows, err := s.pool.Query(ctx, `SELECT storage_name FROM file_assets`)
+	if err != nil {
+		return err
+	}
+	known := make(map[string]struct{})
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return err
+		}
+		known[name] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	entries, err := os.ReadDir(s.root)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if _, ok := known[entry.Name()]; ok {
+			continue
+		}
+		path, pathErr := s.storagePath(entry.Name())
+		if pathErr != nil {
+			continue
+		}
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) RetryFileCleanup(ctx context.Context) error {
+	rows, err := s.pool.Query(ctx, `SELECT id,storage_name FROM file_cleanup_failures WHERE resolved_at IS NULL AND next_attempt_at <= now() ORDER BY created_at LIMIT 100`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id uuid.UUID
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return err
+		}
+		path, pathErr := s.storagePath(name)
+		if pathErr == nil {
+			pathErr = os.Remove(path)
+			if errors.Is(pathErr, os.ErrNotExist) {
+				pathErr = nil
+			}
+		}
+		if pathErr == nil {
+			if _, err := s.pool.Exec(ctx, `UPDATE file_cleanup_failures SET resolved_at=now() WHERE id=$1`, id); err != nil {
+				return err
+			}
+		} else if _, err := s.pool.Exec(ctx, `UPDATE file_cleanup_failures SET error_message=$2,attempts=attempts+1,next_attempt_at=now()+interval '1 hour' WHERE id=$1`, id, pathErr.Error()); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+
+func (s *Service) storagePath(name string) (string, error) {
+	if name == "" || filepath.Base(name) != name || strings.Contains(name, string(filepath.Separator)) {
+		return "", errors.New("unsafe storage name")
+	}
+	path := filepath.Join(s.root, name)
+	if filepath.Dir(path) != filepath.Clean(s.root) {
+		return "", errors.New("unsafe storage path")
+	}
+	return path, nil
+}
+
+func (s *Service) recordFileCleanupFailure(ctx context.Context, userID *uuid.UUID, name string, cause error) error {
+	_, err := s.pool.Exec(ctx, `INSERT INTO file_cleanup_failures (user_id,storage_name,error_message,attempts,next_attempt_at) VALUES ($1,$2,$3,1,now()+interval '5 minutes') ON CONFLICT (storage_name) WHERE resolved_at IS NULL DO UPDATE SET error_message=EXCLUDED.error_message,attempts=file_cleanup_failures.attempts+1,next_attempt_at=now()+interval '5 minutes'`, userID, name, cause.Error())
 	return err
 }

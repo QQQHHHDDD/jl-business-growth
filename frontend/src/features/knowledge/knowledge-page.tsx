@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FileText, FileUp, Plus, Search, Timer, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode, SelectHTMLAttributes } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { AuthResponse, FileAsset, KnowledgeItem, KnowledgeItemRequest } from "@/api/client";
 import { deleteFile, deleteKnowledgeItem, listFiles, listKnowledgeItems, listLearningSessions, saveKnowledgeItem, saveLearningSession, uploadFile } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { FormLabel, Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { StatusBadge } from "@/components/ui/badge";
@@ -93,6 +93,6 @@ function AttachmentLibrary({ files, items, onDelete }: { files: FileAsset[]; ite
 function Summary({ label, value }: { label: string; value: string }) { return <MetricCard label={label} value={value} tone={label.includes("文件") ? "purple" : label.includes("完成") ? "brand" : "blue"} />; }
 function Progress({ item }: { item: KnowledgeItem }) { const percent = item.progress_total ? Math.min(100, Math.round(((item.progress_current ?? 0) / item.progress_total) * 100)) : null; return percent === null ? null : <div className="mt-4"><div className="flex justify-between text-xs text-slate-500"><span>{item.progress_current ?? 0} / {item.progress_total} {item.progress_unit}</span><span>{percent}%</span></div><div className="mt-2 h-1.5 rounded-full bg-slate-100"><div className="h-1.5 rounded-full bg-teal-600" style={{ width: `${percent}%` }} /></div></div>; }
 function Filter({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) { return <label><span className="sr-only">{label}</span><select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm">{children}</select></label>; }
-function Select({ label, children, ...props }: { label: string; children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) { return <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-700">{label}</span><select className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm" {...props}>{children}</select></label>; }
+function Select({ label, children, required, ...props }: { label: string; children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) { const selectId = useId(); return <div className="block space-y-1.5"><FormLabel htmlFor={selectId} required={required}>{label}</FormLabel><select id={selectId} className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm" required={required} {...props}>{children}</select></div>; }
 function formFromItem(item: KnowledgeItem): Form { return { title: item.title, type: item.type, status: item.status, raw_text: item.raw_text ?? "", tags: item.tags.join(", "), progress_current: item.progress_current?.toString() ?? "", progress_total: item.progress_total?.toString() ?? "", progress_unit: item.progress_unit ?? "页" }; }
 function itemRequest(form: Form, fileIds: string[]): KnowledgeItemRequest { return { title: form.title.trim(), type: form.type, status: form.status, raw_text: form.raw_text.trim() || null, tags: form.tags.split(",").map((item) => item.trim()).filter(Boolean), progress_current: form.progress_current === "" ? null : Number(form.progress_current), progress_total: form.progress_total === "" ? null : Number(form.progress_total), progress_unit: form.progress_unit.trim() || null, file_ids: fileIds }; }

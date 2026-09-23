@@ -129,12 +129,12 @@ export function AnalyticsPage({ authResponse }: { authResponse: AuthResponse }) 
   return <div className="analytics-page space-y-6">
     <AnalyticsHero />
     <Tabs value={metric} onValueChange={(value) => setMetric(value as Metric)}>
-      <TabsList aria-label="统计领域" className="w-fit rounded-card border border-outline/55 bg-surface-muted/80 p-1.5 shadow-hairline">
-        <TabsTrigger value="worklogs" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">工作量</TabsTrigger>
-        <TabsTrigger value="turnover" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">营业额</TabsTrigger>
-        <TabsTrigger value="goals" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">目标</TabsTrigger>
-        <TabsTrigger value="team" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">团队</TabsTrigger>
-        <TabsTrigger value="finance" className="min-h-10 rounded-control px-4 data-[state=active]:shadow-card">财务</TabsTrigger>
+      <TabsList aria-label="统计领域">
+        <TabsTrigger value="worklogs">工作量</TabsTrigger>
+        <TabsTrigger value="turnover">营业额</TabsTrigger>
+        <TabsTrigger value="goals">目标</TabsTrigger>
+        <TabsTrigger value="team">团队</TabsTrigger>
+        <TabsTrigger value="finance">财务</TabsTrigger>
       </TabsList>
     </Tabs>
     <div data-testid="analytics-range-toolbar" className="grid min-h-[76px] items-center gap-3 rounded-card border border-outline/55 bg-surface/85 p-3 shadow-hairline lg:h-[88px] lg:grid-cols-[auto_minmax(320px,1fr)_auto]">

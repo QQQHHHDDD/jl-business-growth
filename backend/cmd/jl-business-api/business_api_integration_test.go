@@ -878,15 +878,6 @@ func TestTeamKnowledgeFilesSearchAPIIntegration(t *testing.T) {
 	if len(dreamResponse.Data.FileIds) != 1 || dreamResponse.Data.FileIds[0] != imageResponse.Data.Id {
 		t.Fatalf("dream attachments = %v, want uploaded image", dreamResponse.Data.FileIds)
 	}
-	exportRequest, err := http.NewRequest(http.MethodGet, endpointURL(server.URL, "/api/exports/TEAM?format=csv"), nil)
-	if err != nil {
-		t.Fatalf("create team export request: %v", err)
-	}
-	exportRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
-	exportData := doTestRequest(t, userClient, exportRequest, http.StatusOK)
-	if !strings.Contains(string(exportData), "member_code,name,parent_member_code") || !strings.Contains(string(exportData), "node_color") || !strings.Contains(string(exportData), "#7c3aed") {
-		t.Fatalf("team export does not contain stable hierarchy columns: %q", exportData)
-	}
 	searchResponse := getTestJSON(t, userClient, server.URL, "/api/search?q=Knowledge%20book", http.StatusOK)
 	var searchResult api.SearchResponse
 	decodeTestJSON(t, searchResponse, &searchResult)
@@ -1065,7 +1056,7 @@ func TestFinanceIncomeAPIIntegration(t *testing.T) {
 	deleteTestJSON(t, userClient, server.URL, "/api/income-simulations/"+duplicate.Data.Id.String(), userAuth.Data.CsrfToken, http.StatusNoContent)
 }
 
-func TestImportExportAccountLifecycleAPIIntegration(t *testing.T) {
+func TestAccountLifecycleAPIIntegration(t *testing.T) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("set TEST_DATABASE_URL to the isolated jl_business_test database")
@@ -1086,13 +1077,6 @@ func TestImportExportAccountLifecycleAPIIntegration(t *testing.T) {
 	defer pool.Close()
 	if err := pool.Ping(ctx); err != nil {
 		t.Fatalf("ping test database: %v", err)
-	}
-	var tableExists bool
-	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.import_jobs') IS NOT NULL`).Scan(&tableExists); err != nil {
-		t.Fatalf("check import/export migration: %v", err)
-	}
-	if !tableExists {
-		t.Fatal("import/export migration is not applied; run make migrate-test-up first")
 	}
 	if _, err := pool.Exec(ctx, `TRUNCATE security_audit_logs, invitation_uses, browser_session_accounts, browser_sessions, invitation_codes, accounts CASCADE`); err != nil {
 		t.Fatalf("reset isolated test database: %v", err)
@@ -1116,113 +1100,21 @@ func TestImportExportAccountLifecycleAPIIntegration(t *testing.T) {
 	var invite api.InvitationResponse
 	decodeTestJSON(t, inviteBody, &invite)
 	userClient := newTestClient(t)
-	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "import-user", "password": "import-user-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
+	registered := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "lifecycle-user", "password": "lifecycle-user-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
 	var userAuth api.AuthResponse
 	decodeTestJSON(t, registered, &userAuth)
 	deleteClient := newTestClient(t)
 	deleteRegistered := postTestJSON(t, deleteClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "delete-admin-user", "password": "delete-admin-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
 	var deleteAuth api.AuthResponse
 	decodeTestJSON(t, deleteRegistered, &deleteAuth)
-	teamTargetClient := newTestClient(t)
-	teamTargetRegistered := postTestJSON(t, teamTargetClient, server.URL, cfg.PublicBaseURL, "/api/auth/register", map[string]string{"username": "team-target-user", "password": "team-target-password", "invitation_code": invite.Data.Code}, "", http.StatusCreated)
-	var teamTargetAuth api.AuthResponse
-	decodeTestJSON(t, teamTargetRegistered, &teamTargetAuth)
-
-	templateRequest, err := http.NewRequest(http.MethodGet, endpointURL(server.URL, "/api/imports/templates/WORKLOG"), nil)
-	if err != nil {
-		t.Fatalf("create template request: %v", err)
-	}
-	templateRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
-	templateData := doTestRequest(t, userClient, templateRequest, http.StatusOK)
-	var uploadBody bytes.Buffer
-	writer := multipart.NewWriter(&uploadBody)
-	if err := writer.WriteField("type", "WORKLOG"); err != nil {
-		t.Fatalf("write import type: %v", err)
-	}
-	part, err := writer.CreateFormFile("file", "worklog-import.xlsx")
-	if err != nil {
-		t.Fatalf("create import file: %v", err)
-	}
-	if _, err := part.Write(templateData); err != nil {
-		t.Fatalf("write import workbook: %v", err)
-	}
-	if err := writer.Close(); err != nil {
-		t.Fatalf("close import form: %v", err)
-	}
-	request, err := http.NewRequest(http.MethodPost, endpointURL(server.URL, "/api/imports"), &uploadBody)
-	if err != nil {
-		t.Fatalf("create import request: %v", err)
-	}
-	request.Header.Set("Content-Type", writer.FormDataContentType())
-	request.Header.Set("Origin", cfg.PublicBaseURL)
-	request.Header.Set("X-CSRF-Token", userAuth.Data.CsrfToken)
-	request.Header.Set("X-Forwarded-For", testClientIP(userClient))
-	importResponse := doTestRequest(t, userClient, request, http.StatusCreated)
-	var job api.ImportJobResponse
-	decodeTestJSON(t, importResponse, &job)
-	if job.Data.Status != api.ImportJobStatus("VALIDATED") || job.Data.InvalidCount != 0 {
-		t.Fatalf("import job = %+v", job.Data)
-	}
-	var worklogCount int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM daily_worklogs WHERE user_id=(SELECT id FROM accounts WHERE username='import-user')`).Scan(&worklogCount); err != nil {
-		t.Fatalf("count pre-commit worklogs: %v", err)
-	}
-	if worklogCount != 0 {
-		t.Fatalf("worklogs written before confirmation: %d", worklogCount)
-	}
-	committed := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+job.Data.Id.String()+"/commit", nil, userAuth.Data.CsrfToken, http.StatusOK)
-	decodeTestJSON(t, committed, &job)
-	if job.Data.Status != api.ImportJobStatus("COMMITTED") {
-		t.Fatalf("committed import job = %+v", job.Data)
-	}
-	reimport := uploadTestImport(t, userClient, server.URL, cfg.PublicBaseURL, userAuth.Data.CsrfToken, "WORKLOG", "worklog-import-again.xlsx", templateData)
-	if reimport.Warnings == nil || !containsTestString(*reimport.Warnings, "same file was successfully imported before") {
-		t.Fatalf("reimport warnings = %v, want prior-import warning", reimport.Warnings)
-	}
-	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+reimport.Id.String()+"/commit", nil, userAuth.Data.CsrfToken, http.StatusConflict)
-	postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+reimport.Id.String()+"/commit", nil, userAuth.Data.CsrfToken, http.StatusConflict)
-
-	rootBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"member_code": "roundtrip-root", "name": "Roundtrip root", "node_color": "#be123c"}, userAuth.Data.CsrfToken, http.StatusCreated)
-	var root api.TeamMemberResponse
-	decodeTestJSON(t, rootBody, &root)
-	childBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"member_code": "roundtrip-child", "name": "Roundtrip child", "parent_id": root.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
-	var child api.TeamMemberResponse
-	decodeTestJSON(t, childBody, &child)
-	leafBody := postTestJSON(t, userClient, server.URL, cfg.PublicBaseURL, "/api/team/members", map[string]interface{}{"member_code": "roundtrip-leaf", "name": "Roundtrip leaf", "parent_id": child.Data.Id.String()}, userAuth.Data.CsrfToken, http.StatusCreated)
-	var leaf api.TeamMemberResponse
-	decodeTestJSON(t, leafBody, &leaf)
-	teamExportRequest, err := http.NewRequest(http.MethodGet, endpointURL(server.URL, "/api/exports/TEAM?format=xlsx"), nil)
-	if err != nil {
-		t.Fatalf("create team export request: %v", err)
-	}
-	teamExportRequest.Header.Set("X-Forwarded-For", testClientIP(userClient))
-	teamWorkbook := doTestRequest(t, userClient, teamExportRequest, http.StatusOK)
-	teamJob := uploadTestImport(t, teamTargetClient, server.URL, cfg.PublicBaseURL, teamTargetAuth.Data.CsrfToken, "TEAM", "team-roundtrip.xlsx", teamWorkbook)
-	if teamJob.Status != api.ImportJobStatus("VALIDATED") || teamJob.InvalidCount != 0 {
-		t.Fatalf("team import job = %+v", teamJob)
-	}
-	postTestJSON(t, teamTargetClient, server.URL, cfg.PublicBaseURL, "/api/imports/"+teamJob.Id.String()+"/commit", nil, teamTargetAuth.Data.CsrfToken, http.StatusOK)
-	teamMembersBody := getTestJSON(t, teamTargetClient, server.URL, "/api/team/members", http.StatusOK)
-	var teamMembers api.TeamMemberListResponse
-	decodeTestJSON(t, teamMembersBody, &teamMembers)
-	byCode := make(map[string]api.TeamMember, len(teamMembers.Data.Items))
-	for _, member := range teamMembers.Data.Items {
-		byCode[member.MemberCode] = member
-	}
-	importedRoot, rootFound := byCode["roundtrip-root"]
-	importedChild, childFound := byCode["roundtrip-child"]
-	importedLeaf, leafFound := byCode["roundtrip-leaf"]
-	if !rootFound || !childFound || !leafFound || importedChild.ParentId == nil || importedLeaf.ParentId == nil || *importedChild.ParentId != importedRoot.Id || *importedLeaf.ParentId != importedChild.Id || importedRoot.NodeColor != "#be123c" {
-		t.Fatalf("team round trip did not restore three-level hierarchy: %+v", teamMembers.Data.Items)
-	}
-
 	fileID := uploadTestFile(t, userClient, server.URL, cfg.PublicBaseURL, userAuth.Data.CsrfToken, "account-deletion.txt", "account deletion file")
+	var worklogCount int
 	var storageName string
 	if err := pool.QueryRow(ctx, `SELECT storage_name FROM file_assets WHERE id=$1`, fileID).Scan(&storageName); err != nil {
 		t.Fatalf("find self-deletion file: %v", err)
 	}
 	deleteTestJSON(t, userClient, server.URL, "/api/auth/account", userAuth.Data.CsrfToken, http.StatusNoContent)
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM accounts WHERE username='import-user'`).Scan(&worklogCount); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM accounts WHERE username='lifecycle-user'`).Scan(&worklogCount); err != nil {
 		t.Fatalf("check deleted account: %v", err)
 	}
 	if worklogCount != 0 {
@@ -1305,46 +1197,6 @@ func uploadTestFile(t *testing.T, client *http.Client, serverURL, origin, csrfTo
 	var file api.FileResponse
 	decodeTestJSON(t, response, &file)
 	return file.Data.Id
-}
-
-func uploadTestImport(t *testing.T, client *http.Client, serverURL, origin, csrfToken, kind, filename string, workbook []byte) api.ImportJob {
-	t.Helper()
-	var body bytes.Buffer
-	writer := multipart.NewWriter(&body)
-	if err := writer.WriteField("type", kind); err != nil {
-		t.Fatalf("write import type: %v", err)
-	}
-	part, err := writer.CreateFormFile("file", filename)
-	if err != nil {
-		t.Fatalf("create import workbook: %v", err)
-	}
-	if _, err := part.Write(workbook); err != nil {
-		t.Fatalf("write import workbook: %v", err)
-	}
-	if err := writer.Close(); err != nil {
-		t.Fatalf("close import workbook form: %v", err)
-	}
-	request, err := http.NewRequest(http.MethodPost, endpointURL(serverURL, "/api/imports"), &body)
-	if err != nil {
-		t.Fatalf("create import workbook request: %v", err)
-	}
-	request.Header.Set("Content-Type", writer.FormDataContentType())
-	request.Header.Set("Origin", origin)
-	request.Header.Set("X-CSRF-Token", csrfToken)
-	request.Header.Set("X-Forwarded-For", testClientIP(client))
-	response := doTestRequest(t, client, request, http.StatusCreated)
-	var job api.ImportJobResponse
-	decodeTestJSON(t, response, &job)
-	return job.Data
-}
-
-func containsTestString(items []string, want string) bool {
-	for _, item := range items {
-		if item == want {
-			return true
-		}
-	}
-	return false
 }
 
 func postTestJSON(t *testing.T, client *http.Client, serverURL, origin, path string, body interface{}, csrfToken string, expectedStatus int) []byte {

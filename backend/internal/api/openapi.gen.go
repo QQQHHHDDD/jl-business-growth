@@ -76,6 +76,36 @@ const (
 	CalendarEventRequestRecurrenceFreqYEARLY  CalendarEventRequestRecurrenceFreq = "YEARLY"
 )
 
+// Defines values for CommunicationFriendProgressRequestAddDirection.
+const (
+	CommunicationFriendProgressRequestAddDirectionFORWARD CommunicationFriendProgressRequestAddDirection = "FORWARD"
+	CommunicationFriendProgressRequestAddDirectionREVERSE CommunicationFriendProgressRequestAddDirection = "REVERSE"
+)
+
+// Defines values for CommunicationFriendRecordAddDirection.
+const (
+	CommunicationFriendRecordAddDirectionFORWARD CommunicationFriendRecordAddDirection = "FORWARD"
+	CommunicationFriendRecordAddDirectionREVERSE CommunicationFriendRecordAddDirection = "REVERSE"
+)
+
+// Defines values for CommunicationFriendRecordRequestAddDirection.
+const (
+	FORWARD CommunicationFriendRecordRequestAddDirection = "FORWARD"
+	REVERSE CommunicationFriendRecordRequestAddDirection = "REVERSE"
+)
+
+// Defines values for CommunicationScriptScriptType.
+const (
+	CommunicationScriptScriptTypeFAQ   CommunicationScriptScriptType = "FAQ"
+	CommunicationScriptScriptTypeSTAGE CommunicationScriptScriptType = "STAGE"
+)
+
+// Defines values for CommunicationScriptRequestScriptType.
+const (
+	CommunicationScriptRequestScriptTypeFAQ   CommunicationScriptRequestScriptType = "FAQ"
+	CommunicationScriptRequestScriptTypeSTAGE CommunicationScriptRequestScriptType = "STAGE"
+)
+
 // Defines values for FileAssetCategory.
 const (
 	FileAssetCategoryDREAMIMAGE        FileAssetCategory = "DREAM_IMAGE"
@@ -109,7 +139,6 @@ const (
 
 // Defines values for FinanceTransactionSource.
 const (
-	FinanceTransactionSourceIMPORT FinanceTransactionSource = "IMPORT"
 	FinanceTransactionSourceMANUAL FinanceTransactionSource = "MANUAL"
 )
 
@@ -121,7 +150,6 @@ const (
 
 // Defines values for FinanceTransactionRequestSource.
 const (
-	FinanceTransactionRequestSourceIMPORT FinanceTransactionRequestSource = "IMPORT"
 	FinanceTransactionRequestSourceMANUAL FinanceTransactionRequestSource = "MANUAL"
 )
 
@@ -210,31 +238,6 @@ const (
 // Defines values for HealthDataStatus.
 const (
 	Ok HealthDataStatus = "ok"
-)
-
-// Defines values for ImportJobStatus.
-const (
-	COMMITTED ImportJobStatus = "COMMITTED"
-	EXPIRED   ImportJobStatus = "EXPIRED"
-	FAILED    ImportJobStatus = "FAILED"
-	UPLOADED  ImportJobStatus = "UPLOADED"
-	VALIDATED ImportJobStatus = "VALIDATED"
-)
-
-// Defines values for ImportJobType.
-const (
-	ImportJobTypeFINANCE  ImportJobType = "FINANCE"
-	ImportJobTypeTEAM     ImportJobType = "TEAM"
-	ImportJobTypeTURNOVER ImportJobType = "TURNOVER"
-	ImportJobTypeWORKLOG  ImportJobType = "WORKLOG"
-)
-
-// Defines values for ImportType.
-const (
-	ImportTypeFINANCE  ImportType = "FINANCE"
-	ImportTypeTEAM     ImportType = "TEAM"
-	ImportTypeTURNOVER ImportType = "TURNOVER"
-	ImportTypeWORKLOG  ImportType = "WORKLOG"
 )
 
 // Defines values for IncomeSimulationInputAnnualGrowthStatus.
@@ -410,25 +413,6 @@ const (
 	AnalyticsGranularityWeek  AnalyticsGranularity = "week"
 )
 
-// Defines values for ExportFormat.
-const (
-	ExportFormatCsv      ExportFormat = "csv"
-	ExportFormatJson     ExportFormat = "json"
-	ExportFormatMarkdown ExportFormat = "markdown"
-	ExportFormatXlsx     ExportFormat = "xlsx"
-	ExportFormatZip      ExportFormat = "zip"
-)
-
-// Defines values for ExportType.
-const (
-	ExportTypeACCOUNT   ExportType = "ACCOUNT"
-	ExportTypeFINANCE   ExportType = "FINANCE"
-	ExportTypeKNOWLEDGE ExportType = "KNOWLEDGE"
-	ExportTypeTEAM      ExportType = "TEAM"
-	ExportTypeTURNOVER  ExportType = "TURNOVER"
-	ExportTypeWORKLOG   ExportType = "WORKLOG"
-)
-
 // Defines values for GetFinanceAnalyticsParamsGranularity.
 const (
 	GetFinanceAnalyticsParamsGranularityDay   GetFinanceAnalyticsParamsGranularity = "day"
@@ -464,23 +448,10 @@ const (
 	Week  GetWorklogAnalyticsParamsGranularity = "week"
 )
 
-// Defines values for ExportDataParamsFormat.
+// Defines values for ListCommunicationScriptsParamsScriptType.
 const (
-	ExportDataParamsFormatCsv      ExportDataParamsFormat = "csv"
-	ExportDataParamsFormatJson     ExportDataParamsFormat = "json"
-	ExportDataParamsFormatMarkdown ExportDataParamsFormat = "markdown"
-	ExportDataParamsFormatXlsx     ExportDataParamsFormat = "xlsx"
-	ExportDataParamsFormatZip      ExportDataParamsFormat = "zip"
-)
-
-// Defines values for ExportDataParamsExportType.
-const (
-	ExportDataParamsExportTypeACCOUNT   ExportDataParamsExportType = "ACCOUNT"
-	ExportDataParamsExportTypeFINANCE   ExportDataParamsExportType = "FINANCE"
-	ExportDataParamsExportTypeKNOWLEDGE ExportDataParamsExportType = "KNOWLEDGE"
-	ExportDataParamsExportTypeTEAM      ExportDataParamsExportType = "TEAM"
-	ExportDataParamsExportTypeTURNOVER  ExportDataParamsExportType = "TURNOVER"
-	ExportDataParamsExportTypeWORKLOG   ExportDataParamsExportType = "WORKLOG"
+	FAQ   ListCommunicationScriptsParamsScriptType = "FAQ"
+	STAGE ListCommunicationScriptsParamsScriptType = "STAGE"
 )
 
 // Defines values for UploadFileMultipartBodyCategory.
@@ -494,14 +465,6 @@ const (
 const (
 	Attachment GetFileContentParamsDisposition = "attachment"
 	Inline     GetFileContentParamsDisposition = "inline"
-)
-
-// Defines values for GetImportTemplateParamsImportType.
-const (
-	FINANCE  GetImportTemplateParamsImportType = "FINANCE"
-	TEAM     GetImportTemplateParamsImportType = "TEAM"
-	TURNOVER GetImportTemplateParamsImportType = "TURNOVER"
-	WORKLOG  GetImportTemplateParamsImportType = "WORKLOG"
 )
 
 // Defines values for GetReviewParamsReviewType.
@@ -737,6 +700,151 @@ type CalendarEventResponse struct {
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`
+}
+
+// CommunicationFriendProgressRequest defines model for CommunicationFriendProgressRequest.
+type CommunicationFriendProgressRequest struct {
+	AddDirection      *CommunicationFriendProgressRequestAddDirection `json:"add_direction,omitempty"`
+	LastAppliedPerson *string                                         `json:"last_applied_person,omitempty"`
+	Note              *string                                         `json:"note,omitempty"`
+}
+
+// CommunicationFriendProgressRequestAddDirection defines model for CommunicationFriendProgressRequest.AddDirection.
+type CommunicationFriendProgressRequestAddDirection string
+
+// CommunicationFriendRecord defines model for CommunicationFriendRecord.
+type CommunicationFriendRecord struct {
+	AccountLabel      string                                `json:"account_label"`
+	AddDirection      CommunicationFriendRecordAddDirection `json:"add_direction"`
+	ApplicationScript string                                `json:"application_script"`
+	Archived          bool                                  `json:"archived"`
+	CreatedAt         time.Time                             `json:"created_at"`
+	FirstMessage      string                                `json:"first_message"`
+	GroupName         string                                `json:"group_name"`
+	Id                openapi_types.UUID                    `json:"id"`
+	LastAppliedPerson string                                `json:"last_applied_person"`
+	Note              string                                `json:"note"`
+	Platform          string                                `json:"platform"`
+	UpdatedAt         time.Time                             `json:"updated_at"`
+}
+
+// CommunicationFriendRecordAddDirection defines model for CommunicationFriendRecord.AddDirection.
+type CommunicationFriendRecordAddDirection string
+
+// CommunicationFriendRecordListData defines model for CommunicationFriendRecordListData.
+type CommunicationFriendRecordListData struct {
+	Items []CommunicationFriendRecord `json:"items"`
+}
+
+// CommunicationFriendRecordListResponse defines model for CommunicationFriendRecordListResponse.
+type CommunicationFriendRecordListResponse struct {
+	Data      CommunicationFriendRecordListData `json:"data"`
+	Meta      PaginationMeta                    `json:"meta"`
+	RequestId string                            `json:"request_id"`
+}
+
+// CommunicationFriendRecordRequest defines model for CommunicationFriendRecordRequest.
+type CommunicationFriendRecordRequest struct {
+	AccountLabel      string                                       `json:"account_label"`
+	AddDirection      CommunicationFriendRecordRequestAddDirection `json:"add_direction"`
+	ApplicationScript *string                                      `json:"application_script,omitempty"`
+	Archived          *bool                                        `json:"archived,omitempty"`
+	FirstMessage      *string                                      `json:"first_message,omitempty"`
+	GroupName         string                                       `json:"group_name"`
+	LastAppliedPerson *string                                      `json:"last_applied_person,omitempty"`
+	Note              *string                                      `json:"note,omitempty"`
+	Platform          string                                       `json:"platform"`
+}
+
+// CommunicationFriendRecordRequestAddDirection defines model for CommunicationFriendRecordRequest.AddDirection.
+type CommunicationFriendRecordRequestAddDirection string
+
+// CommunicationFriendRecordResponse defines model for CommunicationFriendRecordResponse.
+type CommunicationFriendRecordResponse struct {
+	Data      CommunicationFriendRecord `json:"data"`
+	RequestId string                    `json:"request_id"`
+}
+
+// CommunicationScript defines model for CommunicationScript.
+type CommunicationScript struct {
+	CategoryId   *openapi_types.UUID           `json:"category_id"`
+	CategoryName string                        `json:"category_name"`
+	CreatedAt    time.Time                     `json:"created_at"`
+	Favorite     bool                          `json:"favorite"`
+	Id           openapi_types.UUID            `json:"id"`
+	Note         string                        `json:"note"`
+	Paragraphs   []string                      `json:"paragraphs"`
+	ScriptType   CommunicationScriptScriptType `json:"script_type"`
+	Tags         []string                      `json:"tags"`
+	Title        string                        `json:"title"`
+	UpdatedAt    time.Time                     `json:"updated_at"`
+}
+
+// CommunicationScriptScriptType defines model for CommunicationScript.ScriptType.
+type CommunicationScriptScriptType string
+
+// CommunicationScriptCategory defines model for CommunicationScriptCategory.
+type CommunicationScriptCategory struct {
+	CreatedAt time.Time          `json:"created_at"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	SortOrder int                `json:"sort_order"`
+	UpdatedAt time.Time          `json:"updated_at"`
+}
+
+// CommunicationScriptCategoryListData defines model for CommunicationScriptCategoryListData.
+type CommunicationScriptCategoryListData struct {
+	Items []CommunicationScriptCategory `json:"items"`
+}
+
+// CommunicationScriptCategoryListResponse defines model for CommunicationScriptCategoryListResponse.
+type CommunicationScriptCategoryListResponse struct {
+	Data      CommunicationScriptCategoryListData `json:"data"`
+	RequestId string                              `json:"request_id"`
+}
+
+// CommunicationScriptCategoryRequest defines model for CommunicationScriptCategoryRequest.
+type CommunicationScriptCategoryRequest struct {
+	Name      string `json:"name"`
+	SortOrder *int   `json:"sort_order,omitempty"`
+}
+
+// CommunicationScriptCategoryResponse defines model for CommunicationScriptCategoryResponse.
+type CommunicationScriptCategoryResponse struct {
+	Data      CommunicationScriptCategory `json:"data"`
+	RequestId string                      `json:"request_id"`
+}
+
+// CommunicationScriptListData defines model for CommunicationScriptListData.
+type CommunicationScriptListData struct {
+	Items []CommunicationScript `json:"items"`
+}
+
+// CommunicationScriptListResponse defines model for CommunicationScriptListResponse.
+type CommunicationScriptListResponse struct {
+	Data      CommunicationScriptListData `json:"data"`
+	Meta      PaginationMeta              `json:"meta"`
+	RequestId string                      `json:"request_id"`
+}
+
+// CommunicationScriptRequest defines model for CommunicationScriptRequest.
+type CommunicationScriptRequest struct {
+	CategoryId *openapi_types.UUID                  `json:"category_id"`
+	Favorite   *bool                                `json:"favorite,omitempty"`
+	Note       *string                              `json:"note,omitempty"`
+	Paragraphs []string                             `json:"paragraphs"`
+	ScriptType CommunicationScriptRequestScriptType `json:"script_type"`
+	Tags       *[]string                            `json:"tags,omitempty"`
+	Title      string                               `json:"title"`
+}
+
+// CommunicationScriptRequestScriptType defines model for CommunicationScriptRequest.ScriptType.
+type CommunicationScriptRequestScriptType string
+
+// CommunicationScriptResponse defines model for CommunicationScriptResponse.
+type CommunicationScriptResponse struct {
+	Data      CommunicationScript `json:"data"`
+	RequestId string              `json:"request_id"`
 }
 
 // CreateAdminRequest defines model for CreateAdminRequest.
@@ -1142,44 +1250,6 @@ type HealthResponse struct {
 	Data      HealthData `json:"data"`
 	RequestId string     `json:"request_id"`
 }
-
-// ImportJob defines model for ImportJob.
-type ImportJob struct {
-	CreatedAt         time.Time              `json:"created_at"`
-	ExpiresAt         time.Time              `json:"expires_at"`
-	Id                openapi_types.UUID     `json:"id"`
-	InvalidCount      int                    `json:"invalid_count"`
-	RowCount          int                    `json:"row_count"`
-	Rows              []ImportPreviewRow     `json:"rows"`
-	Status            ImportJobStatus        `json:"status"`
-	Type              ImportJobType          `json:"type"`
-	ValidCount        int                    `json:"valid_count"`
-	ValidationSummary map[string]interface{} `json:"validation_summary"`
-	Warnings          *[]string              `json:"warnings,omitempty"`
-}
-
-// ImportJobStatus defines model for ImportJob.Status.
-type ImportJobStatus string
-
-// ImportJobType defines model for ImportJob.Type.
-type ImportJobType string
-
-// ImportJobResponse defines model for ImportJobResponse.
-type ImportJobResponse struct {
-	Data      ImportJob `json:"data"`
-	RequestId string    `json:"request_id"`
-}
-
-// ImportPreviewRow defines model for ImportPreviewRow.
-type ImportPreviewRow struct {
-	Errors    []string          `json:"errors"`
-	RowNumber int               `json:"row_number"`
-	Values    map[string]string `json:"values"`
-	Warnings  []string          `json:"warnings"`
-}
-
-// ImportType defines model for ImportType.
-type ImportType string
 
 // IncomeCalculationResponse defines model for IncomeCalculationResponse.
 type IncomeCalculationResponse struct {
@@ -1843,6 +1913,15 @@ type CalendarTo = time.Time
 // CategoryId defines model for CategoryId.
 type CategoryId = openapi_types.UUID
 
+// CommunicationFriendRecordId defines model for CommunicationFriendRecordId.
+type CommunicationFriendRecordId = openapi_types.UUID
+
+// CommunicationScriptCategoryId defines model for CommunicationScriptCategoryId.
+type CommunicationScriptCategoryId = openapi_types.UUID
+
+// CommunicationScriptId defines model for CommunicationScriptId.
+type CommunicationScriptId = openapi_types.UUID
+
 // DateFrom defines model for DateFrom.
 type DateFrom = openapi_types.Date
 
@@ -1852,20 +1931,11 @@ type DateTo = openapi_types.Date
 // DreamId defines model for DreamId.
 type DreamId = openapi_types.UUID
 
-// ExportFormat defines model for ExportFormat.
-type ExportFormat string
-
-// ExportType defines model for ExportType.
-type ExportType string
-
 // FileId defines model for FileId.
 type FileId = openapi_types.UUID
 
 // GoalId defines model for GoalId.
 type GoalId = openapi_types.UUID
-
-// ImportId defines model for ImportId.
-type ImportId = openapi_types.UUID
 
 // InvitationId defines model for InvitationId.
 type InvitationId = openapi_types.UUID
@@ -1968,21 +2038,33 @@ type ListCalendarEventsParams struct {
 	To   CalendarTo   `form:"to" json:"to"`
 }
 
+// ListCommunicationFriendRecordsParams defines parameters for ListCommunicationFriendRecords.
+type ListCommunicationFriendRecordsParams struct {
+	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Q        *string   `form:"q,omitempty" json:"q,omitempty"`
+	Platform *string   `form:"platform,omitempty" json:"platform,omitempty"`
+	Account  *string   `form:"account,omitempty" json:"account,omitempty"`
+	Archived *bool     `form:"archived,omitempty" json:"archived,omitempty"`
+}
+
+// ListCommunicationScriptsParams defines parameters for ListCommunicationScripts.
+type ListCommunicationScriptsParams struct {
+	Page       *Page                                     `form:"page,omitempty" json:"page,omitempty"`
+	PageSize   *PageSize                                 `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Q          *string                                   `form:"q,omitempty" json:"q,omitempty"`
+	ScriptType *ListCommunicationScriptsParamsScriptType `form:"script_type,omitempty" json:"script_type,omitempty"`
+	CategoryId *openapi_types.UUID                       `form:"category_id,omitempty" json:"category_id,omitempty"`
+	Favorite   *bool                                     `form:"favorite,omitempty" json:"favorite,omitempty"`
+}
+
+// ListCommunicationScriptsParamsScriptType defines parameters for ListCommunicationScripts.
+type ListCommunicationScriptsParamsScriptType string
+
 // GetDashboardParams defines parameters for GetDashboard.
 type GetDashboardParams struct {
 	Date BusinessDate `form:"date" json:"date"`
 }
-
-// ExportDataParams defines parameters for ExportData.
-type ExportDataParams struct {
-	Format ExportDataParamsFormat `form:"format" json:"format"`
-}
-
-// ExportDataParamsFormat defines parameters for ExportData.
-type ExportDataParamsFormat string
-
-// ExportDataParamsExportType defines parameters for ExportData.
-type ExportDataParamsExportType string
 
 // UploadFileMultipartBody defines parameters for UploadFile.
 type UploadFileMultipartBody struct {
@@ -2006,15 +2088,6 @@ type ListFinanceTransactionsParams struct {
 	From *DateFrom `form:"from,omitempty" json:"from,omitempty"`
 	To   *DateTo   `form:"to,omitempty" json:"to,omitempty"`
 }
-
-// CreateImportMultipartBody defines parameters for CreateImport.
-type CreateImportMultipartBody struct {
-	File openapi_types.File `json:"file"`
-	Type ImportType         `json:"type"`
-}
-
-// GetImportTemplateParamsImportType defines parameters for GetImportTemplate.
-type GetImportTemplateParamsImportType string
 
 // CompareIncomeSimulationsJSONBody defines parameters for CompareIncomeSimulations.
 type CompareIncomeSimulationsJSONBody struct {
@@ -2120,6 +2193,27 @@ type CreateCalendarEventJSONRequestBody = CalendarEventRequest
 // UpdateCalendarEventJSONRequestBody defines body for UpdateCalendarEvent for application/json ContentType.
 type UpdateCalendarEventJSONRequestBody = CalendarEventRequest
 
+// CreateCommunicationFriendRecordJSONRequestBody defines body for CreateCommunicationFriendRecord for application/json ContentType.
+type CreateCommunicationFriendRecordJSONRequestBody = CommunicationFriendRecordRequest
+
+// UpdateCommunicationFriendRecordJSONRequestBody defines body for UpdateCommunicationFriendRecord for application/json ContentType.
+type UpdateCommunicationFriendRecordJSONRequestBody = CommunicationFriendRecordRequest
+
+// UpdateCommunicationFriendProgressJSONRequestBody defines body for UpdateCommunicationFriendProgress for application/json ContentType.
+type UpdateCommunicationFriendProgressJSONRequestBody = CommunicationFriendProgressRequest
+
+// CreateCommunicationScriptCategoryJSONRequestBody defines body for CreateCommunicationScriptCategory for application/json ContentType.
+type CreateCommunicationScriptCategoryJSONRequestBody = CommunicationScriptCategoryRequest
+
+// UpdateCommunicationScriptCategoryJSONRequestBody defines body for UpdateCommunicationScriptCategory for application/json ContentType.
+type UpdateCommunicationScriptCategoryJSONRequestBody = CommunicationScriptCategoryRequest
+
+// CreateCommunicationScriptJSONRequestBody defines body for CreateCommunicationScript for application/json ContentType.
+type CreateCommunicationScriptJSONRequestBody = CommunicationScriptRequest
+
+// UpdateCommunicationScriptJSONRequestBody defines body for UpdateCommunicationScript for application/json ContentType.
+type UpdateCommunicationScriptJSONRequestBody = CommunicationScriptRequest
+
 // CreateDreamJSONRequestBody defines body for CreateDream for application/json ContentType.
 type CreateDreamJSONRequestBody = DreamRequest
 
@@ -2149,9 +2243,6 @@ type CreateGoalJSONRequestBody = GoalRequest
 
 // UpdateGoalJSONRequestBody defines body for UpdateGoal for application/json ContentType.
 type UpdateGoalJSONRequestBody = GoalRequest
-
-// CreateImportMultipartRequestBody defines body for CreateImport for multipart/form-data ContentType.
-type CreateImportMultipartRequestBody CreateImportMultipartBody
 
 // CreateIncomeSimulationJSONRequestBody defines body for CreateIncomeSimulation for application/json ContentType.
 type CreateIncomeSimulationJSONRequestBody = IncomeSimulationRequest
@@ -2329,6 +2420,54 @@ type ServerInterface interface {
 	// Update an entire series, one occurrence, or an occurrence and following events
 	// (PUT /api/calendar/events/{event_id})
 	UpdateCalendarEvent(ctx echo.Context, eventId CalendarEventId) error
+	// List personal friend records
+	// (GET /api/communication/friend-records)
+	ListCommunicationFriendRecords(ctx echo.Context, params ListCommunicationFriendRecordsParams) error
+	// Create a friend record
+	// (POST /api/communication/friend-records)
+	CreateCommunicationFriendRecord(ctx echo.Context) error
+	// Delete a friend record
+	// (DELETE /api/communication/friend-records/{friend_record_id})
+	DeleteCommunicationFriendRecord(ctx echo.Context, friendRecordId CommunicationFriendRecordId) error
+	// Get a friend record
+	// (GET /api/communication/friend-records/{friend_record_id})
+	GetCommunicationFriendRecord(ctx echo.Context, friendRecordId CommunicationFriendRecordId) error
+	// Update a friend record
+	// (PUT /api/communication/friend-records/{friend_record_id})
+	UpdateCommunicationFriendRecord(ctx echo.Context, friendRecordId CommunicationFriendRecordId) error
+	// Update only latest friend record progress
+	// (PATCH /api/communication/friend-records/{friend_record_id}/progress)
+	UpdateCommunicationFriendProgress(ctx echo.Context, friendRecordId CommunicationFriendRecordId) error
+	// List script categories
+	// (GET /api/communication/script-categories)
+	ListCommunicationScriptCategories(ctx echo.Context) error
+	// Create a script category
+	// (POST /api/communication/script-categories)
+	CreateCommunicationScriptCategory(ctx echo.Context) error
+	// Delete a script category
+	// (DELETE /api/communication/script-categories/{category_id})
+	DeleteCommunicationScriptCategory(ctx echo.Context, categoryId CommunicationScriptCategoryId) error
+	// Update a script category
+	// (PUT /api/communication/script-categories/{category_id})
+	UpdateCommunicationScriptCategory(ctx echo.Context, categoryId CommunicationScriptCategoryId) error
+	// List scripts
+	// (GET /api/communication/scripts)
+	ListCommunicationScripts(ctx echo.Context, params ListCommunicationScriptsParams) error
+	// Create a script
+	// (POST /api/communication/scripts)
+	CreateCommunicationScript(ctx echo.Context) error
+	// Delete a script
+	// (DELETE /api/communication/scripts/{script_id})
+	DeleteCommunicationScript(ctx echo.Context, scriptId CommunicationScriptId) error
+	// Get a script
+	// (GET /api/communication/scripts/{script_id})
+	GetCommunicationScript(ctx echo.Context, scriptId CommunicationScriptId) error
+	// Update a script
+	// (PUT /api/communication/scripts/{script_id})
+	UpdateCommunicationScript(ctx echo.Context, scriptId CommunicationScriptId) error
+	// Toggle script favorite
+	// (PATCH /api/communication/scripts/{script_id}/favorite)
+	ToggleCommunicationScriptFavorite(ctx echo.Context, scriptId CommunicationScriptId) error
 	// Return the user dashboard aggregates for a business date
 	// (GET /api/dashboard)
 	GetDashboard(ctx echo.Context, params GetDashboardParams) error
@@ -2347,9 +2486,6 @@ type ServerInterface interface {
 	// Replace a dream
 	// (PUT /api/dreams/{dream_id})
 	UpdateDream(ctx echo.Context, dreamId DreamId) error
-	// Export current-user structured data or a complete account ZIP
-	// (GET /api/exports/{export_type})
-	ExportData(ctx echo.Context, exportType ExportDataParamsExportType, params ExportDataParams) error
 	// List uploaded files
 	// (GET /api/files)
 	ListFiles(ctx echo.Context) error
@@ -2416,24 +2552,6 @@ type ServerInterface interface {
 	// Check whether required runtime dependencies are ready
 	// (GET /api/health/ready)
 	GetHealthReady(ctx echo.Context) error
-	// Upload and validate an official XLSX import file
-	// (POST /api/imports)
-	CreateImport(ctx echo.Context) error
-	// Download an official XLSX import template
-	// (GET /api/imports/templates/{import_type})
-	GetImportTemplate(ctx echo.Context, importType GetImportTemplateParamsImportType) error
-	// Discard an import job and its temporary file
-	// (DELETE /api/imports/{import_id})
-	DeleteImport(ctx echo.Context, importId ImportId) error
-	// Get an import preview and validation result
-	// (GET /api/imports/{import_id})
-	GetImport(ctx echo.Context, importId ImportId) error
-	// Confirm and transactionally import validated rows
-	// (POST /api/imports/{import_id}/commit)
-	CommitImport(ctx echo.Context, importId ImportId) error
-	// Revalidate an import job before confirmation
-	// (POST /api/imports/{import_id}/validate)
-	ValidateImport(ctx echo.Context, importId ImportId) error
 	// List saved income simulations
 	// (GET /api/income-simulations)
 	ListIncomeSimulations(ctx echo.Context) error
@@ -3276,6 +3394,340 @@ func (w *ServerInterfaceWrapper) UpdateCalendarEvent(ctx echo.Context) error {
 	return err
 }
 
+// ListCommunicationFriendRecords converts echo context to params.
+func (w *ServerInterfaceWrapper) ListCommunicationFriendRecords(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCommunicationFriendRecordsParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page_size", ctx.QueryParams(), &params.PageSize)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page_size: %s", err))
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", ctx.QueryParams(), &params.Q)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter q: %s", err))
+	}
+
+	// ------------- Optional query parameter "platform" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "platform", ctx.QueryParams(), &params.Platform)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter platform: %s", err))
+	}
+
+	// ------------- Optional query parameter "account" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "account", ctx.QueryParams(), &params.Account)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account: %s", err))
+	}
+
+	// ------------- Optional query parameter "archived" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "archived", ctx.QueryParams(), &params.Archived)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter archived: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListCommunicationFriendRecords(ctx, params)
+	return err
+}
+
+// CreateCommunicationFriendRecord converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateCommunicationFriendRecord(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateCommunicationFriendRecord(ctx)
+	return err
+}
+
+// DeleteCommunicationFriendRecord converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCommunicationFriendRecord(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "friend_record_id" -------------
+	var friendRecordId CommunicationFriendRecordId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "friend_record_id", ctx.Param("friend_record_id"), &friendRecordId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter friend_record_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCommunicationFriendRecord(ctx, friendRecordId)
+	return err
+}
+
+// GetCommunicationFriendRecord converts echo context to params.
+func (w *ServerInterfaceWrapper) GetCommunicationFriendRecord(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "friend_record_id" -------------
+	var friendRecordId CommunicationFriendRecordId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "friend_record_id", ctx.Param("friend_record_id"), &friendRecordId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter friend_record_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetCommunicationFriendRecord(ctx, friendRecordId)
+	return err
+}
+
+// UpdateCommunicationFriendRecord converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateCommunicationFriendRecord(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "friend_record_id" -------------
+	var friendRecordId CommunicationFriendRecordId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "friend_record_id", ctx.Param("friend_record_id"), &friendRecordId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter friend_record_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateCommunicationFriendRecord(ctx, friendRecordId)
+	return err
+}
+
+// UpdateCommunicationFriendProgress converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateCommunicationFriendProgress(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "friend_record_id" -------------
+	var friendRecordId CommunicationFriendRecordId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "friend_record_id", ctx.Param("friend_record_id"), &friendRecordId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter friend_record_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateCommunicationFriendProgress(ctx, friendRecordId)
+	return err
+}
+
+// ListCommunicationScriptCategories converts echo context to params.
+func (w *ServerInterfaceWrapper) ListCommunicationScriptCategories(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListCommunicationScriptCategories(ctx)
+	return err
+}
+
+// CreateCommunicationScriptCategory converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateCommunicationScriptCategory(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateCommunicationScriptCategory(ctx)
+	return err
+}
+
+// DeleteCommunicationScriptCategory converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCommunicationScriptCategory(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "category_id" -------------
+	var categoryId CommunicationScriptCategoryId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "category_id", ctx.Param("category_id"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter category_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCommunicationScriptCategory(ctx, categoryId)
+	return err
+}
+
+// UpdateCommunicationScriptCategory converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateCommunicationScriptCategory(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "category_id" -------------
+	var categoryId CommunicationScriptCategoryId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "category_id", ctx.Param("category_id"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter category_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateCommunicationScriptCategory(ctx, categoryId)
+	return err
+}
+
+// ListCommunicationScripts converts echo context to params.
+func (w *ServerInterfaceWrapper) ListCommunicationScripts(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCommunicationScriptsParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page_size", ctx.QueryParams(), &params.PageSize)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page_size: %s", err))
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", ctx.QueryParams(), &params.Q)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter q: %s", err))
+	}
+
+	// ------------- Optional query parameter "script_type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "script_type", ctx.QueryParams(), &params.ScriptType)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter script_type: %s", err))
+	}
+
+	// ------------- Optional query parameter "category_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "category_id", ctx.QueryParams(), &params.CategoryId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter category_id: %s", err))
+	}
+
+	// ------------- Optional query parameter "favorite" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "favorite", ctx.QueryParams(), &params.Favorite)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter favorite: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListCommunicationScripts(ctx, params)
+	return err
+}
+
+// CreateCommunicationScript converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateCommunicationScript(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateCommunicationScript(ctx)
+	return err
+}
+
+// DeleteCommunicationScript converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCommunicationScript(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "script_id" -------------
+	var scriptId CommunicationScriptId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "script_id", ctx.Param("script_id"), &scriptId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter script_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCommunicationScript(ctx, scriptId)
+	return err
+}
+
+// GetCommunicationScript converts echo context to params.
+func (w *ServerInterfaceWrapper) GetCommunicationScript(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "script_id" -------------
+	var scriptId CommunicationScriptId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "script_id", ctx.Param("script_id"), &scriptId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter script_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetCommunicationScript(ctx, scriptId)
+	return err
+}
+
+// UpdateCommunicationScript converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateCommunicationScript(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "script_id" -------------
+	var scriptId CommunicationScriptId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "script_id", ctx.Param("script_id"), &scriptId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter script_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateCommunicationScript(ctx, scriptId)
+	return err
+}
+
+// ToggleCommunicationScriptFavorite converts echo context to params.
+func (w *ServerInterfaceWrapper) ToggleCommunicationScriptFavorite(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "script_id" -------------
+	var scriptId CommunicationScriptId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "script_id", ctx.Param("script_id"), &scriptId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter script_id: %s", err))
+	}
+
+	ctx.Set(SessionCookieScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ToggleCommunicationScriptFavorite(ctx, scriptId)
+	return err
+}
+
 // GetDashboard converts echo context to params.
 func (w *ServerInterfaceWrapper) GetDashboard(ctx echo.Context) error {
 	var err error
@@ -3369,33 +3821,6 @@ func (w *ServerInterfaceWrapper) UpdateDream(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateDream(ctx, dreamId)
-	return err
-}
-
-// ExportData converts echo context to params.
-func (w *ServerInterfaceWrapper) ExportData(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "export_type" -------------
-	var exportType ExportDataParamsExportType
-
-	err = runtime.BindStyledParameterWithOptions("simple", "export_type", ctx.Param("export_type"), &exportType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter export_type: %s", err))
-	}
-
-	ctx.Set(SessionCookieScopes, []string{})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ExportDataParams
-	// ------------- Required query parameter "format" -------------
-
-	err = runtime.BindQueryParameter("form", true, true, "format", ctx.QueryParams(), &params.Format)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter format: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ExportData(ctx, exportType, params)
 	return err
 }
 
@@ -3715,107 +4140,6 @@ func (w *ServerInterfaceWrapper) GetHealthReady(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetHealthReady(ctx)
-	return err
-}
-
-// CreateImport converts echo context to params.
-func (w *ServerInterfaceWrapper) CreateImport(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(SessionCookieScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateImport(ctx)
-	return err
-}
-
-// GetImportTemplate converts echo context to params.
-func (w *ServerInterfaceWrapper) GetImportTemplate(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "import_type" -------------
-	var importType GetImportTemplateParamsImportType
-
-	err = runtime.BindStyledParameterWithOptions("simple", "import_type", ctx.Param("import_type"), &importType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_type: %s", err))
-	}
-
-	ctx.Set(SessionCookieScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetImportTemplate(ctx, importType)
-	return err
-}
-
-// DeleteImport converts echo context to params.
-func (w *ServerInterfaceWrapper) DeleteImport(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "import_id" -------------
-	var importId ImportId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "import_id", ctx.Param("import_id"), &importId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_id: %s", err))
-	}
-
-	ctx.Set(SessionCookieScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.DeleteImport(ctx, importId)
-	return err
-}
-
-// GetImport converts echo context to params.
-func (w *ServerInterfaceWrapper) GetImport(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "import_id" -------------
-	var importId ImportId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "import_id", ctx.Param("import_id"), &importId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_id: %s", err))
-	}
-
-	ctx.Set(SessionCookieScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetImport(ctx, importId)
-	return err
-}
-
-// CommitImport converts echo context to params.
-func (w *ServerInterfaceWrapper) CommitImport(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "import_id" -------------
-	var importId ImportId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "import_id", ctx.Param("import_id"), &importId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_id: %s", err))
-	}
-
-	ctx.Set(SessionCookieScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CommitImport(ctx, importId)
-	return err
-}
-
-// ValidateImport converts echo context to params.
-func (w *ServerInterfaceWrapper) ValidateImport(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "import_id" -------------
-	var importId ImportId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "import_id", ctx.Param("import_id"), &importId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter import_id: %s", err))
-	}
-
-	ctx.Set(SessionCookieScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ValidateImport(ctx, importId)
 	return err
 }
 
@@ -4567,13 +4891,28 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/api/calendar/events/:event_id", wrapper.DeleteCalendarEvent)
 	router.GET(baseURL+"/api/calendar/events/:event_id", wrapper.GetCalendarEvent)
 	router.PUT(baseURL+"/api/calendar/events/:event_id", wrapper.UpdateCalendarEvent)
+	router.GET(baseURL+"/api/communication/friend-records", wrapper.ListCommunicationFriendRecords)
+	router.POST(baseURL+"/api/communication/friend-records", wrapper.CreateCommunicationFriendRecord)
+	router.DELETE(baseURL+"/api/communication/friend-records/:friend_record_id", wrapper.DeleteCommunicationFriendRecord)
+	router.GET(baseURL+"/api/communication/friend-records/:friend_record_id", wrapper.GetCommunicationFriendRecord)
+	router.PUT(baseURL+"/api/communication/friend-records/:friend_record_id", wrapper.UpdateCommunicationFriendRecord)
+	router.PATCH(baseURL+"/api/communication/friend-records/:friend_record_id/progress", wrapper.UpdateCommunicationFriendProgress)
+	router.GET(baseURL+"/api/communication/script-categories", wrapper.ListCommunicationScriptCategories)
+	router.POST(baseURL+"/api/communication/script-categories", wrapper.CreateCommunicationScriptCategory)
+	router.DELETE(baseURL+"/api/communication/script-categories/:category_id", wrapper.DeleteCommunicationScriptCategory)
+	router.PUT(baseURL+"/api/communication/script-categories/:category_id", wrapper.UpdateCommunicationScriptCategory)
+	router.GET(baseURL+"/api/communication/scripts", wrapper.ListCommunicationScripts)
+	router.POST(baseURL+"/api/communication/scripts", wrapper.CreateCommunicationScript)
+	router.DELETE(baseURL+"/api/communication/scripts/:script_id", wrapper.DeleteCommunicationScript)
+	router.GET(baseURL+"/api/communication/scripts/:script_id", wrapper.GetCommunicationScript)
+	router.PUT(baseURL+"/api/communication/scripts/:script_id", wrapper.UpdateCommunicationScript)
+	router.PATCH(baseURL+"/api/communication/scripts/:script_id/favorite", wrapper.ToggleCommunicationScriptFavorite)
 	router.GET(baseURL+"/api/dashboard", wrapper.GetDashboard)
 	router.GET(baseURL+"/api/dreams", wrapper.ListDreams)
 	router.POST(baseURL+"/api/dreams", wrapper.CreateDream)
 	router.DELETE(baseURL+"/api/dreams/:dream_id", wrapper.DeleteDream)
 	router.GET(baseURL+"/api/dreams/:dream_id", wrapper.GetDream)
 	router.PUT(baseURL+"/api/dreams/:dream_id", wrapper.UpdateDream)
-	router.GET(baseURL+"/api/exports/:export_type", wrapper.ExportData)
 	router.GET(baseURL+"/api/files", wrapper.ListFiles)
 	router.POST(baseURL+"/api/files", wrapper.UploadFile)
 	router.DELETE(baseURL+"/api/files/:file_id", wrapper.DeleteFile)
@@ -4596,12 +4935,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.PUT(baseURL+"/api/goals/:goal_id", wrapper.UpdateGoal)
 	router.GET(baseURL+"/api/health/live", wrapper.GetHealthLive)
 	router.GET(baseURL+"/api/health/ready", wrapper.GetHealthReady)
-	router.POST(baseURL+"/api/imports", wrapper.CreateImport)
-	router.GET(baseURL+"/api/imports/templates/:import_type", wrapper.GetImportTemplate)
-	router.DELETE(baseURL+"/api/imports/:import_id", wrapper.DeleteImport)
-	router.GET(baseURL+"/api/imports/:import_id", wrapper.GetImport)
-	router.POST(baseURL+"/api/imports/:import_id/commit", wrapper.CommitImport)
-	router.POST(baseURL+"/api/imports/:import_id/validate", wrapper.ValidateImport)
 	router.GET(baseURL+"/api/income-simulations", wrapper.ListIncomeSimulations)
 	router.POST(baseURL+"/api/income-simulations", wrapper.CreateIncomeSimulation)
 	router.POST(baseURL+"/api/income-simulations/compare", wrapper.CompareIncomeSimulations)

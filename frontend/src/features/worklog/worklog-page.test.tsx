@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, Worklog } from "@/api/client";
 import { listWorklogs, saveWorklog } from "@/api/client";
 import { businessDate, businessDateDaysAgo } from "@/lib/date";
+import { worklogQueryOptions } from "@/lib/query-options";
 import { WorklogPage } from "./worklog-page";
 
 vi.mock("@/api/client", async (importOriginal) => {
@@ -57,22 +58,58 @@ function worklog(date: string, index: number): Worklog {
   };
 }
 
-function renderPage() {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-  return render(
+function renderPage(client = new QueryClient({
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+})) {
+  return {
+    client,
+    ...render(
     <MemoryRouter>
       <QueryClientProvider client={client}>
         <WorklogPage authResponse={authResponse} />
       </QueryClientProvider>
     </MemoryRouter>,
-  );
+    ),
+  };
 }
 
 afterEach(() => vi.clearAllMocks());
 
 describe("WorklogPage", () => {
+  it("does not show default zero totals before the first response and then renders saved totals", async () => {
+    const today = businessDate(account.timezone);
+    let resolveRequest!: (value: Awaited<ReturnType<typeof listWorklogs>>) => void;
+    vi.mocked(listWorklogs).mockImplementationOnce(() => new Promise((resolve) => { resolveRequest = resolve; }));
+    renderPage();
+
+    expect(screen.getByLabelText("今日概览")).toHaveTextContent("行动—");
+    expect(screen.getByLabelText("今日概览")).not.toHaveTextContent("行动0");
+    expect(screen.getByLabelText("今日概览")).not.toHaveTextContent("0分钟");
+    expect(screen.getByLabelText("今日概览")).not.toHaveTextContent("0 PV");
+    expect(screen.queryByRole("heading", { name: "五层对话" })).not.toBeInTheDocument();
+
+    resolveRequest({ data: { items: [worklog(today, 3)] }, request_id: "request-loaded" });
+    expect(await screen.findByRole("heading", { name: "五层对话" })).toBeVisible();
+    expect(screen.getByLabelText("今日概览")).toHaveTextContent("行动3");
+  });
+
+  it("does not flash default zero totals when cached data is already available", async () => {
+    const today = businessDate(account.timezone);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    client.setQueryData(worklogQueryOptions(account.id, account.timezone).queryKey, {
+      data: { items: [worklog(today, 6)] },
+      request_id: "cached-worklog",
+    });
+
+    renderPage(client);
+
+    expect(screen.getByLabelText("今日概览")).not.toHaveTextContent("行动0");
+    expect(await screen.findByLabelText("开启对话")).toHaveValue(6);
+    expect(screen.getByLabelText("今日概览")).toHaveTextContent("行动6");
+  });
+
   it("supports compact date navigation and direct or stepped action input", async () => {
     vi.mocked(listWorklogs).mockResolvedValue({
       data: { items: [] },
@@ -100,6 +137,62 @@ describe("WorklogPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "前一天" }));
     expect(dateInput).not.toHaveValue(today);
     expect(screen.getByRole("button", { name: "今天" })).toBeEnabled();
+  });
+
+  it("reuses the range query when only the selected date changes", async () => {
+    vi.mocked(listWorklogs).mockResolvedValue({ data: { items: [] }, request_id: "request-2" });
+    renderPage();
+    const dateInput = await screen.findByLabelText("业务日期");
+    fireEvent.click(screen.getByRole("button", { name: "前一天" }));
+    await waitFor(() => expect(dateInput).not.toHaveValue(businessDate(account.timezone)));
+    expect(listWorklogs).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads an explicitly selected date outside the recent range before showing an empty form", async () => {
+    const historicalDate = businessDateDaysAgo(account.timezone, 120);
+    let resolveHistorical!: (value: Awaited<ReturnType<typeof listWorklogs>>) => void;
+    vi.mocked(listWorklogs).mockImplementation((from, to) => {
+      if (from === historicalDate && to === historicalDate) {
+        return new Promise((resolve) => { resolveHistorical = resolve; });
+      }
+      return Promise.resolve({ data: { items: [] }, request_id: "recent-range" });
+    });
+    renderPage();
+
+    const dateInput = await screen.findByLabelText("业务日期");
+    await screen.findByRole("heading", { name: "五层对话" });
+    fireEvent.change(dateInput, { target: { value: historicalDate } });
+    await waitFor(() => expect(listWorklogs).toHaveBeenCalledWith(historicalDate, historicalDate));
+    expect(screen.getByLabelText("今日概览")).toHaveTextContent("行动—");
+    expect(screen.queryByLabelText("开启对话")).not.toBeInTheDocument();
+
+    resolveHistorical({ data: { items: [worklog(historicalDate, 7)] }, request_id: "historical-date" });
+    await waitFor(() => expect(screen.getByLabelText("开启对话")).toHaveValue(7));
+    expect(screen.getByLabelText("今日概览")).toHaveTextContent("行动7");
+  });
+
+  it("does not overwrite a dirty form during a background refresh", async () => {
+    const today = businessDate(account.timezone);
+    const existing = worklog(today, 1);
+    vi.mocked(listWorklogs).mockResolvedValue({ data: { items: [existing] }, request_id: "request-2" });
+    const { client } = renderPage();
+    const actionInput = await screen.findByLabelText("开启对话");
+    fireEvent.change(actionInput, { target: { value: "9" } });
+    vi.mocked(listWorklogs).mockResolvedValueOnce({ data: { items: [worklog(today, 2)] }, request_id: "request-refresh" });
+    await act(async () => { await client.invalidateQueries({ queryKey: ["user", account.id, "worklogs"] }); });
+    expect(actionInput).toHaveValue(9);
+  });
+
+  it("keeps recent records visible when a background refresh fails", async () => {
+    const today = businessDate(account.timezone);
+    vi.mocked(listWorklogs).mockResolvedValueOnce({ data: { items: [worklog(today, 4)] }, request_id: "request-initial" });
+    const { client } = renderPage();
+    expect(await screen.findAllByRole("row")).toHaveLength(2);
+    vi.mocked(listWorklogs).mockRejectedValueOnce(new Error("refresh failed"));
+    await act(async () => { await client.invalidateQueries({ queryKey: ["user", account.id, "worklogs"] }); });
+    await waitFor(() => expect(listWorklogs).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("刷新失败，当前仍显示上次数据"));
+    expect(screen.getAllByText(today)[0]).toBeVisible();
   });
 
   it("uses matching row structure for growth and turnover sections", async () => {
@@ -130,7 +223,7 @@ describe("WorklogPage", () => {
     renderPage();
 
     expect(await screen.findByText("最近 7 条记录，点击日期即可返回编辑。")).toBeVisible();
-    expect(screen.getAllByRole("row")).toHaveLength(8);
+    expect(await screen.findAllByRole("row")).toHaveLength(8);
 
     const actionInput = screen.getByLabelText("开启对话");
     await waitFor(() => expect(actionInput).toHaveValue(1));

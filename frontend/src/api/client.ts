@@ -45,12 +45,13 @@ export type IncomeSimulationInput = components["schemas"]["IncomeSimulationInput
 export type IncomeSimulationResult = components["schemas"]["IncomeSimulationResult"];
 export type IncomeSimulation = components["schemas"]["IncomeSimulation"];
 export type IncomeSimulationRequest = components["schemas"]["IncomeSimulationRequest"];
-export type ImportJob = components["schemas"]["ImportJob"];
-export type ImportType = components["schemas"]["ImportType"];
-export type ExportType = components["parameters"]["ExportType"];
-export type ExportFormat = components["parameters"]["ExportFormat"];
 export type ReleaseResponse = components["schemas"]["ReleaseResponse"];
 export type ReleaseData = components["schemas"]["ReleaseData"];
+export type CommunicationFriendRecord = components["schemas"]["CommunicationFriendRecord"];
+export type CommunicationFriendRecordRequest = components["schemas"]["CommunicationFriendRecordRequest"];
+export type CommunicationScript = components["schemas"]["CommunicationScript"];
+export type CommunicationScriptRequest = components["schemas"]["CommunicationScriptRequest"];
+export type CommunicationScriptCategory = components["schemas"]["CommunicationScriptCategory"];
 
 export class ApiError extends Error {
   status: number;
@@ -97,16 +98,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     );
   }
   return body as T;
-}
-
-async function requestBlob(path: string): Promise<Blob> {
-  const response = await fetch(path, { credentials: "include" });
-  if (!response.ok) {
-    let body: ErrorResponse | undefined;
-    try { body = await response.json(); } catch { /* response may be a proxy error */ }
-    throw new ApiError(response.status, body?.error?.code ?? "INTERNAL_ERROR", body?.error?.message ?? "下载失败，请稍后重试");
-  }
-  return response.blob();
 }
 
 function jsonBody(value: JSONValue): RequestInit {
@@ -444,18 +435,22 @@ export function uploadFile(csrfToken: string, file: File, category: "DREAM_IMAGE
 export function deleteFile(csrfToken: string, id: string): Promise<void> { return request(`/api/files/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE")); }
 export function searchRecords(query: string, modules: string[] = [], page = 1, pageSize = 20): Promise<components["schemas"]["SearchResponse"]> { const params = new URLSearchParams({ q: query, page: String(page), page_size: String(pageSize) }); if (modules.length) params.set("modules", modules.join(",")); return request(`/api/search?${params}`); }
 
-export function downloadImportTemplate(type: ImportType): Promise<Blob> { return requestBlob(`/api/imports/templates/${encodeURIComponent(type)}`); }
-export function createImport(csrfToken: string, type: ImportType, file: File): Promise<components["schemas"]["ImportJobResponse"]> {
-  const form = new FormData();
-  form.set("type", type);
-  form.set("file", file);
-  return request("/api/imports", { method: "POST", headers: { "X-CSRF-Token": csrfToken }, body: form });
+export function listCommunicationFriendRecords(filters: { page?: number; pageSize?: number; q?: string; platform?: string; account?: string; archived?: boolean } = {}): Promise<components["schemas"]["CommunicationFriendRecordListResponse"]> {
+  const params = new URLSearchParams(); if (filters.page) params.set("page", String(filters.page)); if (filters.pageSize) params.set("page_size", String(filters.pageSize)); if (filters.q) params.set("q", filters.q); if (filters.platform) params.set("platform", filters.platform); if (filters.account) params.set("account", filters.account); if (filters.archived) params.set("archived", "true");
+  return request(`/api/communication/friend-records${params.size ? `?${params}` : ""}`);
 }
-export function getImport(id: string): Promise<components["schemas"]["ImportJobResponse"]> { return request(`/api/imports/${encodeURIComponent(id)}`); }
-export function validateImport(csrfToken: string, id: string): Promise<components["schemas"]["ImportJobResponse"]> { return request(`/api/imports/${encodeURIComponent(id)}/validate`, withCsrf(csrfToken)); }
-export function commitImport(csrfToken: string, id: string): Promise<components["schemas"]["ImportJobResponse"]> { return request(`/api/imports/${encodeURIComponent(id)}/commit`, withCsrf(csrfToken)); }
-export function deleteImport(csrfToken: string, id: string): Promise<void> { return request(`/api/imports/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE")); }
-export function exportData(type: ExportType, format: ExportFormat): Promise<Blob> { return requestBlob(`/api/exports/${encodeURIComponent(type)}?format=${encodeURIComponent(format)}`); }
+export function saveCommunicationFriendRecord(csrfToken: string, input: CommunicationFriendRecordRequest, id?: string): Promise<components["schemas"]["CommunicationFriendRecordResponse"]> { return request(id ? `/api/communication/friend-records/${encodeURIComponent(id)}` : "/api/communication/friend-records", withCsrf(csrfToken, input as unknown as JSONValue, id ? "PUT" : "POST")); }
+export function getCommunicationFriendRecord(id: string): Promise<components["schemas"]["CommunicationFriendRecordResponse"]> { return request(`/api/communication/friend-records/${encodeURIComponent(id)}`); }
+export function updateCommunicationFriendProgress(csrfToken: string, id: string, input: { add_direction?: "FORWARD" | "REVERSE"; last_applied_person?: string; note?: string }): Promise<components["schemas"]["CommunicationFriendRecordResponse"]> { return request(`/api/communication/friend-records/${encodeURIComponent(id)}/progress`, withCsrf(csrfToken, input, "PATCH")); }
+export function deleteCommunicationFriendRecord(csrfToken: string, id: string): Promise<void> { return request(`/api/communication/friend-records/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE")); }
+export function listCommunicationScriptCategories(): Promise<components["schemas"]["CommunicationScriptCategoryListResponse"]> { return request("/api/communication/script-categories"); }
+export function saveCommunicationScriptCategory(csrfToken: string, input: { name: string; sort_order?: number }, id?: string): Promise<components["schemas"]["CommunicationScriptCategoryResponse"]> { return request(id ? `/api/communication/script-categories/${encodeURIComponent(id)}` : "/api/communication/script-categories", withCsrf(csrfToken, input, id ? "PUT" : "POST")); }
+export function deleteCommunicationScriptCategory(csrfToken: string, id: string): Promise<void> { return request(`/api/communication/script-categories/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE")); }
+export function listCommunicationScripts(filters: { page?: number; pageSize?: number; q?: string; scriptType?: "STAGE" | "FAQ"; categoryId?: string; favorite?: boolean } = {}): Promise<components["schemas"]["CommunicationScriptListResponse"]> { const params = new URLSearchParams(); if (filters.page) params.set("page", String(filters.page)); if (filters.pageSize) params.set("page_size", String(filters.pageSize)); if (filters.q) params.set("q", filters.q); if (filters.scriptType) params.set("script_type", filters.scriptType); if (filters.categoryId) params.set("category_id", filters.categoryId); if (filters.favorite) params.set("favorite", "true"); return request(`/api/communication/scripts${params.size ? `?${params}` : ""}`); }
+export function saveCommunicationScript(csrfToken: string, input: CommunicationScriptRequest, id?: string): Promise<components["schemas"]["CommunicationScriptResponse"]> { return request(id ? `/api/communication/scripts/${encodeURIComponent(id)}` : "/api/communication/scripts", withCsrf(csrfToken, input as unknown as JSONValue, id ? "PUT" : "POST")); }
+export function getCommunicationScript(id: string): Promise<components["schemas"]["CommunicationScriptResponse"]> { return request(`/api/communication/scripts/${encodeURIComponent(id)}`); }
+export function deleteCommunicationScript(csrfToken: string, id: string): Promise<void> { return request(`/api/communication/scripts/${encodeURIComponent(id)}`, withCsrf(csrfToken, undefined, "DELETE")); }
+export function toggleCommunicationScriptFavorite(csrfToken: string, id: string): Promise<components["schemas"]["CommunicationScriptResponse"]> { return request(`/api/communication/scripts/${encodeURIComponent(id)}/favorite`, withCsrf(csrfToken, undefined, "PATCH")); }
 
 export function listFinanceCategories(): Promise<components["schemas"]["FinanceCategoryListResponse"]> { return request("/api/finance/categories"); }
 export function createFinanceCategory(csrfToken: string, input: FinanceCategoryRequest): Promise<components["schemas"]["FinanceCategoryResponse"]> { return request("/api/finance/categories", withCsrf(csrfToken, input as unknown as JSONValue)); }

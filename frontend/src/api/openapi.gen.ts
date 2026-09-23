@@ -1233,24 +1233,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/imports/templates/{import_type}": {
+    "/api/communication/friend-records": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Download an official XLSX import template */
-        get: operations["getImportTemplate"];
+        /** List personal friend records */
+        get: operations["listCommunicationFriendRecords"];
         put?: never;
-        post?: never;
+        /** Create a friend record */
+        post: operations["createCommunicationFriendRecord"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/imports": {
+    "/api/communication/friend-records/{friend_record_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a friend record */
+        get: operations["getCommunicationFriendRecord"];
+        /** Update a friend record */
+        put: operations["updateCommunicationFriendRecord"];
+        post?: never;
+        /** Delete a friend record */
+        delete: operations["deleteCommunicationFriendRecord"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/communication/friend-records/{friend_record_id}/progress": {
         parameters: {
             query?: never;
             header?: never;
@@ -1259,33 +1279,88 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Upload and validate an official XLSX import file */
-        post: operations["createImport"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update only latest friend record progress */
+        patch: operations["updateCommunicationFriendProgress"];
         trace?: never;
     };
-    "/api/imports/{import_id}": {
+    "/api/communication/script-categories": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get an import preview and validation result */
-        get: operations["getImport"];
+        /** List script categories */
+        get: operations["listCommunicationScriptCategories"];
         put?: never;
-        post?: never;
-        /** Discard an import job and its temporary file */
-        delete: operations["deleteImport"];
+        /** Create a script category */
+        post: operations["createCommunicationScriptCategory"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/imports/{import_id}/validate": {
+    "/api/communication/script-categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a script category */
+        put: operations["updateCommunicationScriptCategory"];
+        post?: never;
+        /** Delete a script category */
+        delete: operations["deleteCommunicationScriptCategory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/communication/scripts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List scripts */
+        get: operations["listCommunicationScripts"];
+        put?: never;
+        /** Create a script */
+        post: operations["createCommunicationScript"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/communication/scripts/{script_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a script */
+        get: operations["getCommunicationScript"];
+        /** Update a script */
+        put: operations["updateCommunicationScript"];
+        post?: never;
+        /** Delete a script */
+        delete: operations["deleteCommunicationScript"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/communication/scripts/{script_id}/favorite": {
         parameters: {
             query?: never;
             header?: never;
@@ -1294,46 +1369,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revalidate an import job before confirmation */
-        post: operations["validateImport"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/imports/{import_id}/commit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Confirm and transactionally import validated rows */
-        post: operations["commitImport"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/exports/{export_type}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export current-user structured data or a complete account ZIP */
-        get: operations["exportData"];
-        put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Toggle script favorite */
+        patch: operations["toggleCommunicationScriptFavorite"];
         trace?: never;
     };
 }
@@ -1362,40 +1403,6 @@ export interface components {
             error: components["schemas"]["ErrorBody"];
             request_id: string;
         };
-        ImportJob: {
-            /** Format: uuid */
-            id: string;
-            /** @enum {string} */
-            type: "WORKLOG" | "FINANCE" | "TEAM" | "TURNOVER";
-            /** @enum {string} */
-            status: "UPLOADED" | "VALIDATED" | "COMMITTED" | "FAILED" | "EXPIRED";
-            row_count: number;
-            valid_count: number;
-            invalid_count: number;
-            validation_summary: {
-                [key: string]: unknown;
-            };
-            warnings?: string[];
-            /** Format: date-time */
-            expires_at: string;
-            /** Format: date-time */
-            created_at: string;
-            rows: components["schemas"]["ImportPreviewRow"][];
-        };
-        ImportPreviewRow: {
-            row_number: number;
-            values: {
-                [key: string]: string;
-            };
-            errors: string[];
-            warnings: string[];
-        };
-        ImportJobResponse: {
-            data: components["schemas"]["ImportJob"];
-            request_id: string;
-        };
-        /** @enum {string} */
-        ImportType: "WORKLOG" | "FINANCE" | "TEAM" | "TURNOVER";
         Account: {
             /** Format: uuid */
             id: string;
@@ -1545,6 +1552,120 @@ export interface components {
             page: number;
             page_size: number;
             total: number;
+        };
+        CommunicationFriendRecord: {
+            /** Format: uuid */
+            id: string;
+            platform: string;
+            account_label: string;
+            group_name: string;
+            /** @enum {string} */
+            add_direction: "FORWARD" | "REVERSE";
+            last_applied_person: string;
+            application_script: string;
+            first_message: string;
+            note: string;
+            archived: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CommunicationFriendRecordRequest: {
+            platform: string;
+            account_label: string;
+            group_name: string;
+            /** @enum {string} */
+            add_direction: "FORWARD" | "REVERSE";
+            last_applied_person?: string;
+            application_script?: string;
+            first_message?: string;
+            note?: string;
+            archived?: boolean;
+        };
+        CommunicationFriendProgressRequest: {
+            /** @enum {string} */
+            add_direction?: "FORWARD" | "REVERSE";
+            last_applied_person?: string;
+            note?: string;
+        };
+        CommunicationFriendRecordListData: {
+            items: components["schemas"]["CommunicationFriendRecord"][];
+        };
+        CommunicationFriendRecordListResponse: {
+            data: components["schemas"]["CommunicationFriendRecordListData"];
+            meta: components["schemas"]["PaginationMeta"];
+            request_id: string;
+        };
+        CommunicationFriendRecordResponse: {
+            data: components["schemas"]["CommunicationFriendRecord"];
+            request_id: string;
+        };
+        CommunicationScriptCategory: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            sort_order: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CommunicationScriptCategoryRequest: {
+            name: string;
+            sort_order?: number;
+        };
+        CommunicationScriptCategoryListData: {
+            items: components["schemas"]["CommunicationScriptCategory"][];
+        };
+        CommunicationScriptCategoryListResponse: {
+            data: components["schemas"]["CommunicationScriptCategoryListData"];
+            request_id: string;
+        };
+        CommunicationScriptCategoryResponse: {
+            data: components["schemas"]["CommunicationScriptCategory"];
+            request_id: string;
+        };
+        CommunicationScript: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            category_id: string | null;
+            category_name: string;
+            title: string;
+            /** @enum {string} */
+            script_type: "STAGE" | "FAQ";
+            tags: string[];
+            paragraphs: string[];
+            note: string;
+            favorite: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CommunicationScriptRequest: {
+            /** Format: uuid */
+            category_id?: string | null;
+            title: string;
+            /** @enum {string} */
+            script_type: "STAGE" | "FAQ";
+            tags?: string[];
+            paragraphs: string[];
+            note?: string;
+            favorite?: boolean;
+        };
+        CommunicationScriptListData: {
+            items: components["schemas"]["CommunicationScript"][];
+        };
+        CommunicationScriptListResponse: {
+            data: components["schemas"]["CommunicationScriptListData"];
+            meta: components["schemas"]["PaginationMeta"];
+            request_id: string;
+        };
+        CommunicationScriptResponse: {
+            data: components["schemas"]["CommunicationScript"];
+            request_id: string;
         };
         AccountsListData: {
             items: components["schemas"]["Account"][];
@@ -2295,7 +2416,7 @@ export interface components {
             description?: string | null;
             note?: string | null;
             /** @enum {string} */
-            source: "MANUAL" | "IMPORT";
+            source: "MANUAL";
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -2315,7 +2436,7 @@ export interface components {
              * @default MANUAL
              * @enum {string}
              */
-            source: "MANUAL" | "IMPORT";
+            source: "MANUAL";
         };
         FinanceTransactionResponse: {
             data: components["schemas"]["FinanceTransaction"];
@@ -2468,6 +2589,9 @@ export interface components {
         InvitationId: string;
         Page: number;
         PageSize: number;
+        CommunicationFriendRecordId: string;
+        CommunicationScriptCategoryId: string;
+        CommunicationScriptId: string;
         BusinessDate: string;
         DateFrom: string;
         DateTo: string;
@@ -2492,10 +2616,6 @@ export interface components {
         CategoryId: string;
         TransactionId: string;
         SimulationId: string;
-        ImportId: string;
-        ImportType: "WORKLOG" | "FINANCE" | "TEAM" | "TURNOVER";
-        ExportType: "WORKLOG" | "TURNOVER" | "FINANCE" | "TEAM" | "KNOWLEDGE" | "ACCOUNT";
-        ExportFormat: "csv" | "xlsx" | "json" | "markdown" | "zip";
     };
     requestBodies: never;
     headers: never;
@@ -5085,30 +5205,35 @@ export interface operations {
             default: components["responses"]["ErrorResponse"];
         };
     };
-    getImportTemplate: {
+    listCommunicationFriendRecords: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                import_type: components["parameters"]["ImportType"];
+            query?: {
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
+                q?: string;
+                platform?: string;
+                account?: string;
+                archived?: boolean;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description XLSX template */
+            /** @description Friend records */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    "application/json": components["schemas"]["CommunicationFriendRecordListResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
         };
     };
-    createImport: {
+    createCommunicationFriendRecord: {
         parameters: {
             query?: never;
             header?: never;
@@ -5117,61 +5242,84 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
-                    type: components["schemas"]["ImportType"];
-                    /** Format: binary */
-                    file: string;
-                };
+                "application/json": components["schemas"]["CommunicationFriendRecordRequest"];
             };
         };
         responses: {
-            /** @description Import job created and validated */
+            /** @description Friend record created */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ImportJobResponse"];
+                    "application/json": components["schemas"]["CommunicationFriendRecordResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
         };
     };
-    getImport: {
+    getCommunicationFriendRecord: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                import_id: components["parameters"]["ImportId"];
+                friend_record_id: components["parameters"]["CommunicationFriendRecordId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Import job */
+            /** @description Friend record */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ImportJobResponse"];
+                    "application/json": components["schemas"]["CommunicationFriendRecordResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
         };
     };
-    deleteImport: {
+    updateCommunicationFriendRecord: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                import_id: components["parameters"]["ImportId"];
+                friend_record_id: components["parameters"]["CommunicationFriendRecordId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommunicationFriendRecordRequest"];
+            };
+        };
+        responses: {
+            /** @description Friend record updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunicationFriendRecordResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteCommunicationFriendRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                friend_record_id: components["parameters"]["CommunicationFriendRecordId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Import job discarded */
+            /** @description Friend record deleted */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -5181,72 +5329,269 @@ export interface operations {
             default: components["responses"]["ErrorResponse"];
         };
     };
-    validateImport: {
+    updateCommunicationFriendProgress: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                import_id: components["parameters"]["ImportId"];
+                friend_record_id: components["parameters"]["CommunicationFriendRecordId"];
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommunicationFriendProgressRequest"];
+            };
+        };
         responses: {
-            /** @description Validation result */
+            /** @description Progress updated */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ImportJobResponse"];
+                    "application/json": components["schemas"]["CommunicationFriendRecordResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
         };
     };
-    commitImport: {
+    listCommunicationScriptCategories: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                import_id: components["parameters"]["ImportId"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Committed import job */
+            /** @description Script categories */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ImportJobResponse"];
+                    "application/json": components["schemas"]["CommunicationScriptCategoryListResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
         };
     };
-    exportData: {
+    createCommunicationScriptCategory: {
         parameters: {
-            query: {
-                format: components["parameters"]["ExportFormat"];
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommunicationScriptCategoryRequest"];
             };
+        };
+        responses: {
+            /** @description Script category created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunicationScriptCategoryResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateCommunicationScriptCategory: {
+        parameters: {
+            query?: never;
             header?: never;
             path: {
-                export_type: components["parameters"]["ExportType"];
+                category_id: components["parameters"]["CommunicationScriptCategoryId"];
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommunicationScriptCategoryRequest"];
+            };
+        };
         responses: {
-            /** @description Export file */
+            /** @description Script category updated */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/octet-stream": string;
+                    "application/json": components["schemas"]["CommunicationScriptCategoryResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteCommunicationScriptCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: components["parameters"]["CommunicationScriptCategoryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Script category deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listCommunicationScripts: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
+                q?: string;
+                script_type?: "STAGE" | "FAQ";
+                category_id?: string;
+                favorite?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scripts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunicationScriptListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createCommunicationScript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommunicationScriptRequest"];
+            };
+        };
+        responses: {
+            /** @description Script created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunicationScriptResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getCommunicationScript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                script_id: components["parameters"]["CommunicationScriptId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Script */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunicationScriptResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateCommunicationScript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                script_id: components["parameters"]["CommunicationScriptId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommunicationScriptRequest"];
+            };
+        };
+        responses: {
+            /** @description Script updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunicationScriptResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteCommunicationScript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                script_id: components["parameters"]["CommunicationScriptId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Script deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    toggleCommunicationScriptFavorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                script_id: components["parameters"]["CommunicationScriptId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Favorite toggled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunicationScriptResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];

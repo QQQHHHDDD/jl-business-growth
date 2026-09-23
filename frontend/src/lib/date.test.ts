@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   businessDate,
+  businessDateDaysAgo,
   businessRange,
+  calendarQueryRange,
   formatDateTimeInTimezone,
   reviewPeriodEnd,
   reviewPeriodStart,
@@ -9,6 +11,16 @@ import {
 } from "./date";
 
 describe("business date ranges", () => {
+  it("keeps calendar query boundaries stable within a business month", () => {
+    const early = calendarQueryRange("Asia/Shanghai", new Date("2026-09-01T00:00:01Z"));
+    const late = calendarQueryRange("Asia/Shanghai", new Date("2026-09-30T15:59:59.999Z"));
+    expect(late).toEqual(early);
+    expect(early).toEqual({
+      from: "2026-07-31T16:00:00.000Z",
+      to: "2026-11-30T16:00:00.000Z",
+    });
+  });
+
   it("converts account timezone wall time without using the browser timezone", () => {
     expect(formatDateTimeInTimezone("2026-09-16T06:00:00Z", "Asia/Shanghai")).toBe("2026-09-16T14:00");
     expect(zonedDateTimeToISO("2026-09-16T14:00", "Asia/Shanghai")).toBe("2026-09-16T06:00:00.000Z");
@@ -98,6 +110,11 @@ describe("business date ranges", () => {
       from: "2026-03-02",
       to: "2026-03-08",
     });
+  });
+
+  it("subtracts calendar days across a DST boundary", () => {
+    expect(businessDateDaysAgo("America/New_York", 1, new Date("2026-03-09T04:30:00Z")))
+      .toBe("2026-03-08");
   });
 
   it("derives review starts and closed ends", () => {

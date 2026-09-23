@@ -6,8 +6,23 @@ export function businessDate(timezone: string, value = new Date()): string {
   }
 }
 
-export function businessDateDaysAgo(timezone: string, days: number): string {
-  return businessDate(timezone, new Date(Date.now() - days * 86400000));
+export function businessDateDaysAgo(timezone: string, days: number, value = new Date()): string {
+  return addCalendarDays(businessDate(timezone, value), -days);
+}
+
+/** Keep calendar query boundaries stable for the current business month. */
+export function calendarQueryRange(
+  timezone: string,
+  value = new Date(),
+): { from: string; to: string } {
+  const current = calendarDate(businessDate(timezone, value));
+  const from = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() - 1, 1, 12));
+  const to = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 3, 1, 12));
+  const atStartOfBusinessDay = (date: Date) => `${isoCalendarDate(date)}T00:00`;
+  return {
+    from: zonedDateTimeToISO(atStartOfBusinessDay(from), timezone),
+    to: zonedDateTimeToISO(atStartOfBusinessDay(to), timezone),
+  };
 }
 
 function zonedParts(value: Date, timezone: string) {

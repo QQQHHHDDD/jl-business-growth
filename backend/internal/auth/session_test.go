@@ -88,7 +88,7 @@ func TestSecurityMiddlewareAllowsMultipartFileUploads(t *testing.T) {
 	e := echo.New()
 	handler := SecurityMiddleware(config.Config{PublicBaseURL: "http://127.0.0.1:5173"})(func(echo.Context) error { return nil })
 
-	for _, path := range []string{"/api/files", "/api/imports"} {
+	for _, path := range []string{"/api/files"} {
 		request := httptest.NewRequest(http.MethodPost, path, nil)
 		request.Header.Set("Origin", "http://127.0.0.1:5173")
 		request.Header.Set("Content-Type", "multipart/form-data; boundary=test-boundary")

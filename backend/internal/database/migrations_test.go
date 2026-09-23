@@ -70,6 +70,44 @@ func TestPgcryptoMigrationCompatibility(t *testing.T) {
 	}
 }
 
+func TestCommunicationMigrationDefinesUserScopedContent(t *testing.T) {
+	migration := readFile(t, filepath.Join(migrationsRoot(t), "00013_communication_tools.sql"))
+	for _, table := range []string{"communication_friend_records", "communication_script_categories", "communication_scripts"} {
+		if !strings.Contains(migration, "CREATE TABLE "+table) {
+			t.Fatalf("00013 must create %s", table)
+		}
+	}
+	if !strings.Contains(migration, "REFERENCES accounts(id) ON DELETE CASCADE") {
+		t.Fatal("communication records must be removed with their account")
+	}
+	if !strings.Contains(migration, "paragraphs JSONB") || !strings.Contains(migration, "jsonb_array_length(paragraphs) > 0") {
+		t.Fatal("scripts must store at least one ordered paragraph")
+	}
+	if !strings.Contains(migration, "ON DELETE SET NULL") {
+		t.Fatal("deleting a category must retain its scripts")
+	}
+}
+
+func TestImportExportRemovalMigration(t *testing.T) {
+	migration := readFile(t, filepath.Join(migrationsRoot(t), "00014_remove_import_export.sql"))
+	for _, statement := range []string{
+		"DROP TABLE IF EXISTS import_jobs;",
+		"DROP TYPE IF EXISTS import_job_status;",
+		"DROP TYPE IF EXISTS import_job_type;",
+		"ALTER TABLE financial_transactions DROP COLUMN IF EXISTS import_fingerprint;",
+	} {
+		if !strings.Contains(migration, statement) {
+			t.Fatalf("00014 must contain %q", statement)
+		}
+	}
+	if strings.Contains(migration, "DROP TABLE IF EXISTS file_cleanup_failures") {
+		t.Fatal("00014 must preserve independent file cleanup retries")
+	}
+	if !strings.Contains(migration, "-- +goose Down\n-- Intentionally no-op:") {
+		t.Fatal("00014 must declare an explicit irreversible no-op Down migration")
+	}
+}
+
 func TestApplicationCodeDoesNotUsePgcryptoFunctions(t *testing.T) {
 	root := repositoryRoot(t)
 	pgcryptoFunction := regexp.MustCompile(`(?i)\b(?:digest|hmac|crypt|gen_salt|encrypt|decrypt)\s*\(`)
@@ -107,7 +145,7 @@ func TestApplicationCodeDoesNotUsePgcryptoFunctions(t *testing.T) {
 	}
 }
 
-func TestLatestSchemaVersionIs12(t *testing.T) {
+func TestLatestSchemaVersionIs14(t *testing.T) {
 	buildScript := readFile(t, filepath.Join(repositoryRoot(t), "scripts", "build-release.sh"))
 	if !strings.Contains(buildScript, `latest_migration="$(find "${repo_root}/backend/db/migrations"`) ||
 		!strings.Contains(buildScript, `schema_version="$((10#${BASH_REMATCH[1]}))"`) {
@@ -135,7 +173,7 @@ func TestLatestSchemaVersionIs12(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version != 12 || latest != "00012_remove_unused_pgcrypto.sql" {
-		t.Fatalf("latest schema = %d (%s), want 12 (00012_remove_unused_pgcrypto.sql)", version, latest)
+	if version != 14 || latest != "00014_remove_import_export.sql" {
+		t.Fatalf("latest schema = %d (%s), want 14 (00014_remove_import_export.sql)", version, latest)
 	}
 }
