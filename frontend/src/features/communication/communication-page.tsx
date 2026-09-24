@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowDown,
+  ArrowUp,
   Archive,
   ChevronDown,
   ChevronUp,
@@ -7,13 +9,15 @@ import {
   Edit3,
   FolderPlus,
   MessageSquareText,
+  MoreHorizontal,
   Plus,
   RotateCcw,
   Star,
   Trash2,
   Users,
 } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   deleteCommunicationFriendRecord,
@@ -52,7 +56,7 @@ import { FormLabel } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { copyText } from "@/lib/copy";
-import { errorMessage, formatDate } from "@/lib/utils";
+import { cn, errorMessage, formatDate } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Tab = "friends" | "scripts";
@@ -125,16 +129,183 @@ function DirectionBadge({
   return (
     <StatusBadge
       tone="info"
-      className="gap-1"
+      className="gap-1.5 px-2 py-1"
       aria-label={isReverse ? "逆序，向上添加" : "顺序，向下添加"}
     >
-      <span>{isReverse ? "逆序" : "顺序"}</span>
       {isReverse ? (
-        <ChevronUp size={13} aria-hidden="true" />
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-sky-100 text-sky-700">
+          <ArrowUp size={17} strokeWidth={2.7} aria-hidden="true" />
+        </span>
       ) : (
-        <ChevronDown size={13} aria-hidden="true" />
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-100 text-brand-700">
+          <ArrowDown size={17} strokeWidth={2.7} aria-hidden="true" />
+        </span>
       )}
+      <span>{isReverse ? "逆序" : "顺序"}</span>
     </StatusBadge>
+  );
+}
+
+type OverflowMenuItem = {
+  label: string;
+  icon: ReactNode;
+  onSelect: () => void;
+  danger?: boolean;
+};
+
+function OverflowMenu({ items }: { items: OverflowMenuItem[] }) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuRect = menuRef.current?.getBoundingClientRect();
+      const menuWidth = menuRect?.width ?? 144;
+      const menuHeight = menuRect?.height ?? 96;
+      const edge = 12;
+      const gap = 8;
+      const opensUpward =
+        triggerRect.bottom + gap + menuHeight > window.innerHeight &&
+        triggerRect.top - gap - menuHeight >= edge;
+      const top = opensUpward
+        ? triggerRect.top - gap - menuHeight
+        : triggerRect.bottom + gap;
+      const left = Math.min(
+        Math.max(edge, triggerRect.right - menuWidth),
+        Math.max(edge, window.innerWidth - menuWidth - edge),
+      );
+      setMenuPosition({ top, left });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) {
+        setOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const runAction = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+
+  const menu = open ? (
+    <div
+      ref={menuRef}
+      role="menu"
+      className="fixed z-[1000] min-w-28 rounded-control border border-outline/80 bg-surface p-1 text-left shadow-overlay"
+      style={
+        menuPosition
+          ? { top: menuPosition.top, left: menuPosition.left }
+          : { top: 0, left: 0, visibility: "hidden" }
+      }
+    >
+      {items.map((item) => (
+        <button
+          key={item.label}
+          type="button"
+          role="menuitem"
+          className={cn(
+            "flex w-full items-center gap-2 rounded-control px-3 py-2 text-sm",
+            item.danger
+              ? "text-rose-700 hover:bg-rose-50"
+              : "text-ink-muted hover:bg-surface-muted hover:text-ink",
+          )}
+          onClick={() => runAction(item.onSelect)}
+        >
+          {item.icon}
+          {item.label}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="grid h-9 w-9 cursor-pointer place-items-center rounded-control text-ink-muted transition hover:bg-surface-muted/75 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        aria-label="更多操作"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => {
+          setMenuPosition(null);
+          setOpen((value) => !value);
+        }}
+      >
+        <MoreHorizontal size={17} aria-hidden="true" />
+      </button>
+      {menu && typeof document !== "undefined" ? createPortal(menu, document.body) : null}
+    </>
+  );
+}
+
+function FriendRecordMenu({
+  item,
+  onEdit,
+  onArchive,
+  onDelete,
+}: {
+  item: CommunicationFriendRecord;
+  onEdit: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <OverflowMenu
+      items={[
+        { label: "编辑", icon: <Edit3 size={15} />, onSelect: onEdit },
+        {
+          label: item.archived ? "恢复" : "归档",
+          icon: item.archived ? <RotateCcw size={15} /> : <Archive size={15} />,
+          onSelect: onArchive,
+        },
+        { label: "删除", icon: <Trash2 size={15} />, onSelect: onDelete, danger: true },
+      ]}
+    />
+  );
+}
+
+function ScriptMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  return (
+    <OverflowMenu
+      items={[
+        { label: "编辑", icon: <Edit3 size={15} />, onSelect: onEdit },
+        { label: "删除", icon: <Trash2 size={15} />, onSelect: onDelete, danger: true },
+      ]}
+    />
   );
 }
 
@@ -431,6 +602,7 @@ function ScriptDialog({
   onOpenChange,
   csrfToken,
   script,
+  initialCategoryId,
   categories,
   onSaved,
 }: {
@@ -438,6 +610,7 @@ function ScriptDialog({
   onOpenChange: (open: boolean) => void;
   csrfToken: string;
   script?: CommunicationScript | null;
+  initialCategoryId?: string;
   categories: CommunicationScriptCategory[];
   onSaved: () => void;
 }) {
@@ -445,7 +618,9 @@ function ScriptDialog({
   const [type, setType] = useState<"STAGE" | "FAQ">(
     script?.script_type ?? "STAGE",
   );
-  const [categoryId, setCategoryId] = useState(script?.category_id ?? "");
+  const [categoryId, setCategoryId] = useState(
+    script?.category_id ?? initialCategoryId ?? "",
+  );
   const [tags, setTags] = useState(script?.tags.join(", ") ?? "");
   const [note, setNote] = useState(script?.note ?? "");
   const [paragraphs, setParagraphs] = useState(
@@ -535,7 +710,71 @@ function ScriptDialog({
               </Button>
             </div>
             {paragraphs.map((paragraph, index) => (
-              <div key={index} className="flex gap-2">
+              <div
+                key={index}
+                className="rounded-card border border-outline/75 bg-surface-soft/55 p-3"
+              >
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-ink-muted">
+                    第 {index + 1} 段
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="icon"
+                      size="sm"
+                      title="上移"
+                      aria-label={`上移第 ${index + 1} 段`}
+                      disabled={index === 0}
+                      onClick={() =>
+                        setParagraphs((items) =>
+                          items.map((item, itemIndex) =>
+                            itemIndex === index - 1
+                              ? items[index]
+                              : itemIndex === index
+                                ? items[index - 1]
+                                : item,
+                          ),
+                        )
+                      }
+                    >
+                      <ChevronUp size={15} />
+                    </Button>
+                    <Button
+                      variant="icon"
+                      size="sm"
+                      title="下移"
+                      aria-label={`下移第 ${index + 1} 段`}
+                      disabled={index === paragraphs.length - 1}
+                      onClick={() =>
+                        setParagraphs((items) =>
+                          items.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? items[index + 1]
+                              : itemIndex === index + 1
+                                ? items[index]
+                                : item,
+                          ),
+                        )
+                      }
+                    >
+                      <ChevronDown size={15} />
+                    </Button>
+                    <Button
+                      variant="icon"
+                      size="sm"
+                      title="删除"
+                      aria-label={`删除第 ${index + 1} 段`}
+                      disabled={paragraphs.length === 1}
+                      onClick={() =>
+                        setParagraphs((items) =>
+                          items.filter((_, itemIndex) => itemIndex !== index),
+                        )
+                      }
+                    >
+                      <Trash2 size={15} />
+                    </Button>
+                  </div>
+                </div>
                 <textarea
                   className={textareaClass}
                   value={paragraph}
@@ -543,59 +782,6 @@ function ScriptDialog({
                   placeholder={`第 ${index + 1} 段`}
                   required={index === 0}
                 />
-                <div className="flex flex-col gap-1">
-                <Button
-                  variant="icon"
-                  size="sm"
-                  title="上移"
-                  disabled={index === 0}
-                  onClick={() =>
-                    setParagraphs((items) =>
-                      items.map((item, itemIndex) =>
-                        itemIndex === index - 1
-                          ? items[index]
-                          : itemIndex === index
-                            ? items[index - 1]
-                            : item,
-                      ),
-                    )
-                  }
-                >
-                  <ChevronUp size={15} />
-                </Button>
-                <Button
-                  variant="icon"
-                  size="sm"
-                  title="下移"
-                  disabled={index === paragraphs.length - 1}
-                  onClick={() =>
-                    setParagraphs((items) =>
-                      items.map((item, itemIndex) =>
-                        itemIndex === index
-                          ? items[index + 1]
-                          : itemIndex === index + 1
-                            ? items[index]
-                            : item,
-                      ),
-                    )
-                  }
-                >
-                  <ChevronDown size={15} />
-                </Button>
-                <Button
-                  variant="icon"
-                  size="sm"
-                  title="删除"
-                  disabled={paragraphs.length === 1}
-                  onClick={() =>
-                    setParagraphs((items) =>
-                      items.filter((_, itemIndex) => itemIndex !== index),
-                    )
-                  }
-                >
-                  <Trash2 size={15} />
-                </Button>
-                </div>
               </div>
             ))}
           </div>
@@ -637,15 +823,22 @@ export function CommunicationPage({
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: Tab =
     searchParams.get("tab") === "scripts" ? "scripts" : "friends";
-  const [q, setQ] = useState("");
+  const q = searchParams.get("q") ?? "";
   const [archived, setArchived] = useState(false);
   const [friendPlatform, setFriendPlatform] = useState("");
   const [friendAccount, setFriendAccount] = useState("");
   const [friendPage, setFriendPage] = useState(1);
-  const [scriptType, setScriptType] = useState<"" | "STAGE" | "FAQ">("");
-  const [scriptCategory, setScriptCategory] = useState("");
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [scriptPage, setScriptPage] = useState(1);
+  const scriptTypeParam = searchParams.get("script_type");
+  const scriptType: "" | "STAGE" | "FAQ" =
+    scriptTypeParam === "STAGE" || scriptTypeParam === "FAQ"
+      ? scriptTypeParam
+      : "";
+  const scriptCategory = searchParams.get("category") ?? "";
+  const favoritesOnly = searchParams.get("favorite") === "true";
+  const parsedScriptPage = Number(searchParams.get("script_page") ?? "1");
+  const scriptPage = Number.isInteger(parsedScriptPage) && parsedScriptPage > 0
+    ? parsedScriptPage
+    : 1;
   const [friendDialog, setFriendDialog] = useState<
     CommunicationFriendRecord | null | undefined
   >();
@@ -654,13 +847,50 @@ export function CommunicationPage({
   const [scriptDialog, setScriptDialog] = useState<
     CommunicationScript | null | undefined
   >();
+  const [newScriptCategoryId, setNewScriptCategoryId] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     kind: "friend" | "script";
     id: string;
   } | null>(null);
   const [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
   const queryClient = useQueryClient();
   const csrf = authResponse.data.csrf_token;
+  const updateSearchParams = (updates: Record<string, string | undefined>) => {
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        Object.entries(updates).forEach(([key, value]) => {
+          if (!value) next.delete(key);
+          else next.set(key, value);
+        });
+        return next;
+      },
+      { replace: true },
+    );
+  };
+  const setScriptPage = (value: number) => {
+    updateSearchParams({ script_page: value > 1 ? String(value) : undefined });
+  };
+  const setQ = (value: string) => {
+    updateSearchParams({ q: value, script_page: undefined });
+  };
+  const setScriptType = (value: "" | "STAGE" | "FAQ") => {
+    updateSearchParams({ script_type: value, script_page: undefined });
+  };
+  const setScriptCategory = (value: string) => {
+    updateSearchParams({ category: value, script_page: undefined });
+  };
+  const setFavoritesOnly = (value: boolean) => {
+    updateSearchParams({
+      favorite: value ? "true" : undefined,
+      script_page: undefined,
+    });
+  };
   const friendsQuery = useQuery({
     queryKey: [
       "communication",
@@ -725,7 +955,6 @@ export function CommunicationPage({
   });
   const switchTab = (value: Tab) => {
     setSearchParams(value === "friends" ? {} : { tab: value });
-    setQ("");
   };
   return (
     <div className="space-y-6">
@@ -746,7 +975,14 @@ export function CommunicationPage({
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      {notice && <Notice tone="info">{notice}</Notice>}
+      {notice && (
+        <Notice
+          tone="info"
+          className="fixed left-1/2 top-[4.5rem] z-[100] w-[min(90vw,380px)] -translate-x-1/2 animate-toast-drop-in shadow-overlay"
+        >
+          {notice}
+        </Notice>
+      )}
       {tab === "friends" ? (
         <FriendTab
           query={friendsQuery}
@@ -778,7 +1014,19 @@ export function CommunicationPage({
           favoritesOnly={favoritesOnly}
           setFavoritesOnly={setFavoritesOnly}
           onPage={setScriptPage}
-          onNew={() => setScriptDialog(null)}
+          clearFilters={() =>
+            updateSearchParams({
+              q: undefined,
+              script_type: undefined,
+              category: undefined,
+              favorite: undefined,
+              script_page: undefined,
+            })
+          }
+          onNew={(categoryId) => {
+            setNewScriptCategoryId(categoryId ?? "");
+            setScriptDialog(null);
+          }}
           onEdit={setScriptDialog}
           onDelete={(id) => setDeleteTarget({ kind: "script", id })}
           csrf={csrf}
@@ -820,6 +1068,7 @@ export function CommunicationPage({
           onOpenChange={(open) => !open && setScriptDialog(undefined)}
           csrfToken={csrf}
           script={scriptDialog}
+          initialCategoryId={newScriptCategoryId}
           categories={categoriesQuery.data?.data.items ?? []}
           onSaved={() => {
             setNotice("话术已保存");
@@ -883,7 +1132,7 @@ function FriendTab({
   const copyFriendScript = async (label: string, value: string) => {
     if (!value.trim()) return;
     const copied = await copyText(value);
-    onNotice(copied ? `${label}已复制` : "复制失败，请手动选择文本复制");
+    onNotice(copied ? `${label}已复制。` : "复制失败，请手动选择文本复制。");
   };
   return (
     <Panel
@@ -945,38 +1194,41 @@ function FriendTab({
       ) : (
         <>
           <div className="hidden lg:block">
-            <table data-testid="friend-record-table" className="w-full table-fixed text-left text-sm">
+            <table data-testid="friend-record-table" className="w-full table-fixed text-center text-sm">
               <thead>
-                <tr className="border-b border-outline text-xs text-ink-faint">
-                  <th className="w-[17%] px-3 py-3">平台 / 账号</th>
-                  <th className="w-[14%] px-3 py-3">群名称 / 方向</th>
-                  <th className="w-[14%] px-3 py-3">最后申请的人</th>
-                  <th className="w-[23%] px-3 py-3">话术</th>
-                  <th className="w-[12%] px-3 py-3">更新时间</th>
-                  <th className="w-[20%] px-3 py-3">操作</th>
+                <tr className="border-b border-outline text-center text-xs text-ink-faint">
+                  <th className="w-[15%] px-3 py-3">平台 / 账号</th>
+                  <th className="w-[14%] px-3 py-3">群名称</th>
+                  <th className="w-[10%] px-3 py-3">方向</th>
+                  <th className="w-[13%] px-3 py-3">最后申请的人</th>
+                  <th className="w-[22%] px-3 py-3">话术</th>
+                  <th className="w-[9%] px-3 py-3">更新时间</th>
+                  <th className="w-[17%] px-3 py-3">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-b border-outline/70 last:border-0"
+                    className="border-b border-outline/70 text-center transition-colors hover:bg-surface-muted/35 last:border-0"
                   >
-                    <td className="break-words px-3 py-3 align-top">
+                    <td className="break-words px-3 py-3 align-middle">
                       <div className="font-semibold">{item.platform}</div>
                       <div className="text-xs text-ink-faint">
                         {item.account_label}
                       </div>
                     </td>
-                    <td className="break-words px-3 py-3 align-top">
-                      <div>{item.group_name}</div>
+                    <td className="break-words px-3 py-3 align-middle">
+                      {item.group_name}
+                    </td>
+                    <td className="px-3 py-3 align-middle">
                       <DirectionBadge direction={item.add_direction} />
                     </td>
-                    <td className="break-words px-3 py-3 align-top">
+                    <td className="break-words px-3 py-3 align-middle">
                       {item.last_applied_person || "尚未开始"}
                     </td>
-                    <td className="px-3 py-3 align-top">
-                      <div className="flex flex-wrap gap-1.5">
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex flex-wrap justify-center gap-1.5">
                         <Button
                           variant="secondary"
                           size="sm"
@@ -1009,49 +1261,28 @@ function FriendTab({
                         </Button>
                       </div>
                     </td>
-                    <td className="px-3 py-3 align-top text-ink-muted">
+                    <td className="px-3 py-3 align-middle text-ink-muted">
                       {formatDate(item.updated_at)}
                     </td>
-                    <td className="px-3 py-3 align-top">
-                      <div className="flex flex-wrap gap-1">
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onEdit(item)}
-                        >
-                          <Edit3 size={15} />
-                          查看 / 编辑
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                          className="h-8 px-2 text-xs"
                           onClick={() => onProgress(item)}
                         >
                           <RotateCcw size={14} />
                           更新进度
                         </Button>
-                        <Button
-                          variant="icon"
-                          size="sm"
-                          title={item.archived ? "恢复" : "归档"}
-                          onClick={() =>
+                        <FriendRecordMenu
+                          item={item}
+                          onEdit={() => onEdit(item)}
+                          onArchive={() =>
                             onEdit({ ...item, archived: !item.archived })
                           }
-                        >
-                          {item.archived ? (
-                            <RotateCcw size={15} />
-                          ) : (
-                            <Archive size={15} />
-                          )}
-                        </Button>
-                        <Button
-                          variant="icon"
-                          size="sm"
-                          title="删除"
-                          onClick={() => onDelete(item.id)}
-                        >
-                          <Trash2 size={15} />
-                        </Button>
+                          onDelete={() => onDelete(item.id)}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -1063,7 +1294,7 @@ function FriendTab({
             {items.map((item) => (
               <article
                 key={item.id}
-                className="rounded-control border border-outline/80 bg-surface-muted/20 p-4"
+                className="rounded-control border border-outline/80 bg-surface-muted/20 p-4 text-center transition-colors hover:bg-surface-muted/35"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -1108,31 +1339,19 @@ function FriendTab({
                     第一句话
                   </Button>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-1 border-t border-outline/70 pt-3">
-                  <Button variant="ghost" size="sm" onClick={() => onEdit(item)}>
-                    <Edit3 size={15} />
-                    查看 / 编辑
-                  </Button>
+                <div className="mt-3 flex flex-wrap justify-center gap-1 border-t border-outline/70 pt-3">
                   <Button variant="ghost" size="sm" onClick={() => onProgress(item)}>
                     <RotateCcw size={14} />
                     更新进度
                   </Button>
-                  <Button
-                    variant="icon"
-                    size="sm"
-                    title={item.archived ? "恢复" : "归档"}
-                    onClick={() => onEdit({ ...item, archived: !item.archived })}
-                  >
-                    {item.archived ? <RotateCcw size={15} /> : <Archive size={15} />}
-                  </Button>
-                  <Button
-                    variant="icon"
-                    size="sm"
-                    title="删除"
-                    onClick={() => onDelete(item.id)}
-                  >
-                    <Trash2 size={15} />
-                  </Button>
+                  <FriendRecordMenu
+                    item={item}
+                    onEdit={() => onEdit(item)}
+                    onArchive={() =>
+                      onEdit({ ...item, archived: !item.archived })
+                    }
+                    onDelete={() => onDelete(item.id)}
+                  />
                 </div>
               </article>
             ))}
@@ -1206,6 +1425,108 @@ function CategoryDialog({
   );
 }
 
+function CategoryManagerDialog({
+  open,
+  categories,
+  onOpenChange,
+  onAdd,
+  onEdit,
+  onMove,
+  onDelete,
+  loading,
+}: {
+  open: boolean;
+  categories: CommunicationScriptCategory[];
+  onOpenChange: (open: boolean) => void;
+  onAdd: () => void;
+  onEdit: (category: CommunicationScriptCategory) => void;
+  onMove: (category: CommunicationScriptCategory, direction: "up" | "down") => void;
+  onDelete: (category: CommunicationScriptCategory) => void;
+  loading: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>管理分类</DialogTitle>
+          <DialogDescription>
+            分类只用于整理自己的话术。删除分类不会删除话术，会移动到未分类。
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          {categories.length === 0 ? (
+            <p className="rounded-card border border-dashed border-outline p-4 text-sm text-ink-muted">
+              还没有自定义分类，先创建一个吧。
+            </p>
+          ) : (
+            categories.map((category, index) => (
+              <div
+                key={category.id}
+                className="flex items-center justify-between gap-3 rounded-card border border-outline/75 bg-surface-soft/55 px-3 py-2"
+              >
+                <span className="min-w-0 truncate text-sm font-semibold text-ink">
+                  {category.name}
+                </span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    title="上移"
+                    aria-label={`上移分类 ${category.name}`}
+                    disabled={loading || index === 0}
+                    onClick={() => onMove(category, "up")}
+                  >
+                    <ChevronUp size={15} />
+                  </Button>
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    title="下移"
+                    aria-label={`下移分类 ${category.name}`}
+                    disabled={loading || index === categories.length - 1}
+                    onClick={() => onMove(category, "down")}
+                  >
+                    <ChevronDown size={15} />
+                  </Button>
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    title="编辑"
+                    aria-label={`编辑分类 ${category.name}`}
+                    disabled={loading}
+                    onClick={() => onEdit(category)}
+                  >
+                    <Edit3 size={15} />
+                  </Button>
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    title="删除"
+                    aria-label={`删除分类 ${category.name}`}
+                    disabled={loading}
+                    onClick={() => onDelete(category)}
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="mt-5 flex justify-end gap-3">
+          <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)}>
+            关闭
+          </Button>
+          <Button size="sm" onClick={onAdd}>
+            <Plus size={15} />
+            新增分类
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ScriptTab({
   query,
   categories,
@@ -1218,6 +1539,7 @@ function ScriptTab({
   favoritesOnly,
   setFavoritesOnly,
   onPage,
+  clearFilters,
   onNew,
   onEdit,
   onDelete,
@@ -1235,7 +1557,8 @@ function ScriptTab({
   favoritesOnly: boolean;
   setFavoritesOnly: (value: boolean) => void;
   onPage: (value: number) => void;
-  onNew: () => void;
+  clearFilters: () => void;
+  onNew: (categoryId?: string) => void;
   onEdit: (script: CommunicationScript) => void;
   onDelete: (id: string) => void;
   csrf: string;
@@ -1246,6 +1569,7 @@ function ScriptTab({
   const hasNext = Boolean(meta && meta.page * meta.page_size < meta.total);
   const queryClient = useQueryClient();
   const [categoryEditor, setCategoryEditor] = useState<CommunicationScriptCategory | null | undefined>();
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const refreshCategories = () => {
     void queryClient.invalidateQueries({
       queryKey: ["communication", "categories"],
@@ -1291,238 +1615,288 @@ function ScriptTab({
     onSuccess: () => void query.refetch(),
   });
   const createCategory = () => {
+    setCategoryManagerOpen(false);
     setCategoryEditor(null);
   };
+  const editCategory = (category: CommunicationScriptCategory) => {
+    setCategoryManagerOpen(false);
+    setCategoryEditor(category);
+  };
+  const moveCategory = (
+    category: CommunicationScriptCategory,
+    direction: "up" | "down",
+  ) => {
+    const index = categories.findIndex((item) => item.id === category.id);
+    const neighbor = categories[index + (direction === "up" ? -1 : 1)];
+    if (!neighbor) return;
+    categoryMutation.mutate({
+      category,
+      name: category.name,
+      order:
+        direction === "up"
+          ? neighbor.sort_order - 1
+          : neighbor.sort_order + 1,
+    });
+  };
+  const deleteCategory = (category: CommunicationScriptCategory) => {
+    if (
+      window.confirm(
+        `删除分类“${category.name}”吗？其中的话术会保留并移至未分类。`,
+      )
+    ) {
+      categoryDeleteMutation.mutate(category.id);
+    }
+  };
+  const activeCategoryName = categories.find((category) => category.id === categoryId)?.name;
+  const selectedCategoryLabel = activeCategoryName ?? (categoryId ? "当前分类" : "");
+  const hasSearch = q.trim().length > 0;
+  const hasAnyFilter = hasSearch || Boolean(scriptType) || Boolean(categoryId) || favoritesOnly;
+  const emptyTitle = hasSearch || scriptType
+    ? "没有找到匹配的话术"
+    : favoritesOnly
+      ? "还没有收藏的话术"
+      : selectedCategoryLabel
+        ? `分类“${selectedCategoryLabel}”还没有话术`
+        : "还没有话术";
+  const emptyDescription = hasSearch
+    ? "可以换个关键词，或清除筛选后重新查看。"
+    : favoritesOnly
+      ? "收藏常用话术后，它们会集中显示在这里。"
+      : selectedCategoryLabel
+        ? "可以直接把新话术添加到当前分类。"
+        : "把常见问题或阶段经验整理成自己的内容。";
+  const openNewScript = () => onNew(categoryId || undefined);
   return (
     <Panel
       title="话术库"
       description="阶段话术和常见问题独立整理，正文支持多段和纯文本复制。"
       action={
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={createCategory}>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setCategoryManagerOpen(true)}
+          >
             <FolderPlus size={15} />
-            新增分类
+            管理分类
           </Button>
-          <Button size="sm" onClick={onNew}>
+          <Button size="sm" onClick={openNewScript}>
             <Plus size={15} />
             新增话术
           </Button>
         </div>
       }
     >
-      <div className="mb-5 space-y-3">
-        <input
-          className="min-h-10 w-full rounded-control border border-outline/90 bg-surface px-3 py-2 text-sm"
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="搜索标题、正文或标签"
-        />
-        <div className="flex flex-wrap gap-2">
-          <select
-            className="min-h-9 rounded-control border border-outline/90 bg-surface px-2 text-sm"
-            value={scriptType}
-            onChange={(event) =>
-              setScriptType(event.target.value as "" | "STAGE" | "FAQ")
-            }
-          >
-            <option value="">全部类型</option>
-            <option value="STAGE">阶段话术</option>
-            <option value="FAQ">常见问题</option>
-          </select>
-          <select
-            className="min-h-9 rounded-control border border-outline/90 bg-surface px-2 text-sm"
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-          >
-            <option value="">全部分类</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-          <label className="flex items-center gap-2 text-sm text-ink-muted">
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <div className="relative">
             <input
-              type="checkbox"
-              checked={favoritesOnly}
-              onChange={(event) => setFavoritesOnly(event.target.checked)}
+              className="min-h-10 w-full rounded-control border border-outline/90 bg-surface px-3 py-2 pr-10 text-sm"
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              placeholder="搜索标题、正文或标签"
+              aria-label="搜索话术"
             />
-            仅看收藏
-          </label>
-        </div>
-        {categories.length > 0 && (
-          <div className="space-y-2 rounded-card border border-outline/70 bg-surface-soft p-3">
-            <p className="text-xs font-semibold text-ink-muted">分类管理</p>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category, index) => (
-                <span
-                  key={category.id}
-                  className="inline-flex items-center gap-1 rounded-full border border-outline bg-surface px-2 py-1 text-xs"
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCategoryEditor(category);
-                    }}
-                  >
-                    {category.name}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`上移分类 ${category.name}`}
-                    disabled={index === 0}
-                    onClick={() =>
-                      categoryMutation.mutate({
-                        category,
-                        name: category.name,
-                        order: categories[index - 1].sort_order - 1,
-                      })
-                    }
-                  >
-                    <ChevronUp size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`下移分类 ${category.name}`}
-                    disabled={index === categories.length - 1}
-                    onClick={() =>
-                      categoryMutation.mutate({
-                        category,
-                        name: category.name,
-                        order: categories[index + 1].sort_order + 1,
-                      })
-                    }
-                  >
-                    <ChevronDown size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`删除分类 ${category.name}`}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `删除分类“${category.name}”吗？其中的话术会保留并移至未分类。`,
-                        )
-                      )
-                        categoryDeleteMutation.mutate(category.id);
-                    }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </span>
-              ))}
-            </div>
+            {hasSearch && (
+              <button
+                type="button"
+                aria-label="清除搜索"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-ink-faint hover:bg-surface-muted hover:text-ink"
+                onClick={() => setQ("")}
+              >
+                ×
+              </button>
+            )}
           </div>
-        )}
-      </div>
-      {query.isPending ? (
-        <LoadingState label="正在加载话术" />
-      ) : query.isError ? (
-        <ErrorState
-          message={errorMessage(query.error)}
-          onRetry={() => void query.refetch()}
-        />
-      ) : items.length === 0 ? (
-        <EmptyState
-          title="还没有话术"
-          description="把常见问题或阶段经验整理成自己的内容。"
-          action={
-            <Button size="sm" onClick={onNew}>
-              <Plus size={15} />
-              新增话术
-            </Button>
-          }
-        />
-      ) : (
-        <>
-        <div className="grid gap-3 md:grid-cols-2">
-          {items.map((item) => (
-            <article
-              key={item.id}
-              className="rounded-card border border-outline/80 bg-surface-soft p-4"
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="min-h-9 rounded-control border border-outline/90 bg-surface px-2 text-sm"
+              value={scriptType}
+              onChange={(event) =>
+                setScriptType(event.target.value as "" | "STAGE" | "FAQ")
+              }
+              aria-label="按类型筛选"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-bold text-ink">{item.title}</h3>
-                  <p className="mt-1 text-xs text-ink-faint">
-                    {item.script_type === "FAQ" ? "常见问题" : "阶段话术"} ·{" "}
-                    {item.category_name || "未分类"} · {item.paragraphs.length}{" "}
-                    段
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="收藏话术"
-                  className="text-amber-500"
-                  onClick={() => favoriteMutation.mutate(item.id)}
-                >
-                  <Star
-                    size={18}
-                    fill={item.favorite ? "currentColor" : "none"}
-                  />
-                </button>
-              </div>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-ink-muted">
-                {item.paragraphs.join("\n\n")}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {item.paragraphs.map((paragraph, index) => (
-                  <Button
-                    key={index}
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () =>
-                      onNotice(
-                        (await copyText(paragraph))
-                          ? `已复制第 ${index + 1} 段`
-                          : "复制失败，请手动选择正文复制",
-                      )
-                    }
-                  >
-                    <Copy size={13} />
-                    复制本段 {index + 1}
-                  </Button>
-                ))}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={async () =>
-                    onNotice(
-                      (await copyText(item.paragraphs.join("\n\n")))
-                        ? "已复制全部正文"
-                        : "复制失败，请手动选择正文复制",
-                    )
-                  }
-                >
-                  <Copy size={14} />
-                  复制全部
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => onEdit(item)}>
-                  <Edit3 size={14} />
-                  编辑
-                </Button>
-                <Button
-                  variant="icon"
-                  size="sm"
-                  title="删除"
-                  onClick={() => onDelete(item.id)}
-                >
-                  <Trash2 size={15} />
-                </Button>
-              </div>
-            </article>
-          ))}
-        </div>
-        <div className="mt-4 flex items-center justify-between text-sm text-ink-muted">
-          <span>{meta?.total ?? items.length} 条话术</span>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" disabled={!meta || meta.page <= 1} onClick={() => onPage((meta?.page ?? 2) - 1)}>上一页</Button>
-            <span className="px-2 py-2">第 {meta?.page ?? 1} 页</span>
-            <Button variant="secondary" size="sm" disabled={!hasNext} onClick={() => onPage((meta?.page ?? 1) + 1)}>下一页</Button>
+              <option value="">全部类型</option>
+              <option value="STAGE">阶段话术</option>
+              <option value="FAQ">常见问题</option>
+            </select>
+            <select
+              className="min-h-9 rounded-control border border-outline/90 bg-surface px-2 text-sm"
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+              aria-label="按分类筛选"
+            >
+              <option value="">全部分类</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <label className="inline-flex min-h-9 items-center gap-2 px-1 text-sm text-ink-muted">
+              <input
+                type="checkbox"
+                checked={favoritesOnly}
+                onChange={(event) => setFavoritesOnly(event.target.checked)}
+              />
+              仅看收藏
+            </label>
+            {hasAnyFilter && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                清除筛选
+              </Button>
+            )}
           </div>
         </div>
-        </>
-      )}
+        {query.isPending ? (
+            <LoadingState label="正在加载话术" />
+        ) : query.isError ? (
+            <ErrorState
+              message={errorMessage(query.error)}
+              onRetry={() => void query.refetch()}
+            />
+        ) : items.length === 0 ? (
+            <EmptyState
+              title={emptyTitle}
+              description={emptyDescription}
+              action={
+                <div className="flex flex-wrap justify-center gap-2">
+                  {hasAnyFilter && (
+                    <Button variant="secondary" size="sm" onClick={clearFilters}>
+                      清除筛选
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={openNewScript}>
+                    <Plus size={15} />
+                    {selectedCategoryLabel ? "新增到此分类" : "新增话术"}
+                  </Button>
+                </div>
+              }
+            />
+        ) : (
+            <>
+              <div className="space-y-3">
+                {items.map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-card border border-outline/80 bg-surface-soft p-4 transition-colors hover:border-brand-300 hover:bg-surface"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-bold text-ink">{item.title}</h3>
+                        <p className="mt-1 text-xs text-ink-faint">
+                          {item.script_type === "FAQ" ? "常见问题" : "阶段话术"} · {item.category_name || "未分类"} · {item.paragraphs.length} 段
+                        </p>
+                        {item.tags.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {item.tags.slice(0, 2).map((tag) => (
+                              <span key={tag} className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-800">
+                                {tag}
+                              </span>
+                            ))}
+                            {item.tags.length > 2 && (
+                              <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-ink-faint">
+                                +{item.tags.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`${item.favorite ? "取消" : "添加"}收藏 ${item.title}`}
+                        className="shrink-0 rounded-control p-1 text-amber-500 transition hover:bg-amber-50"
+                        onClick={() => favoriteMutation.mutate(item.id)}
+                      >
+                        <Star size={18} fill={item.favorite ? "currentColor" : "none"} />
+                      </button>
+                    </div>
+                    <p className="mt-3 max-h-24 overflow-hidden whitespace-pre-wrap text-sm leading-6 text-ink-muted">
+                      {item.paragraphs.join("\n\n")}
+                    </p>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-outline/60 pt-3">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        {item.paragraphs.length === 1 ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={async () =>
+                              onNotice(
+                                (await copyText(item.paragraphs[0]))
+                                  ? "已复制正文"
+                                  : "复制失败，请手动选择正文复制",
+                              )
+                            }
+                          >
+                            <Copy size={14} />
+                            复制正文
+                          </Button>
+                        ) : (
+                          item.paragraphs.map((paragraph, index) => (
+                            <Button
+                              key={index}
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () =>
+                                onNotice(
+                                  (await copyText(paragraph))
+                                    ? `已复制第 ${index + 1} 段`
+                                    : "复制失败，请手动选择正文复制",
+                                )
+                              }
+                            >
+                              <Copy size={13} />
+                              复制第 {index + 1} 段
+                            </Button>
+                          ))
+                        )}
+                        {item.paragraphs.length > 1 && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={async () =>
+                            onNotice(
+                              (await copyText(item.paragraphs.join("\n\n")))
+                                ? "已复制全部正文"
+                                : "复制失败，请手动选择正文复制",
+                            )
+                          }
+                        >
+                          <Copy size={14} />
+                          复制全部
+                        </Button>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="text-xs text-ink-faint">更新于 {formatDate(item.updated_at)}</span>
+                        <ScriptMenu onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)} />
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center justify-between text-sm text-ink-muted">
+                <span>{meta?.total ?? items.length} 条话术</span>
+                <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" disabled={!meta || meta.page <= 1} onClick={() => onPage((meta?.page ?? 2) - 1)}>上一页</Button>
+                  <span className="px-2 py-2">第 {meta?.page ?? 1} 页</span>
+                  <Button variant="secondary" size="sm" disabled={!hasNext} onClick={() => onPage((meta?.page ?? 1) + 1)}>下一页</Button>
+                </div>
+              </div>
+            </>
+          )}
+      </div>
+      <CategoryManagerDialog
+        open={categoryManagerOpen}
+        categories={categories}
+        onOpenChange={setCategoryManagerOpen}
+        onAdd={createCategory}
+        onEdit={editCategory}
+        onMove={moveCategory}
+        onDelete={deleteCategory}
+        loading={categoryMutation.isPending || categoryDeleteMutation.isPending}
+      />
       {categoryEditor !== undefined && (
         <CategoryDialog
           open

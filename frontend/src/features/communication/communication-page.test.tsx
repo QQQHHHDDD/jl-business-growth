@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, CommunicationFriendRecord } from "@/api/client";
@@ -63,6 +63,17 @@ describe("CommunicationPage", () => {
     expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(expect.stringContaining("不复制"));
   });
 
+  it("keeps the selected script category in the URL and preselects it for new scripts", async () => {
+    const category = { id: "00000000-0000-0000-0000-000000000099", name: "Buffer", sort_order: 0, created_at: "2026-09-22T00:00:00Z", updated_at: "2026-09-22T00:00:00Z" };
+    vi.mocked(listCommunicationScriptCategories).mockResolvedValue({ data: { items: [category] }, request_id: "category-list" });
+    renderPage(`/app/communication?tab=scripts&category=${category.id}`);
+    const categoryFilter = await screen.findByRole("combobox", { name: "按分类筛选" });
+    await waitFor(() => expect(categoryFilter).toHaveValue(category.id));
+    fireEvent.click(screen.getByRole("button", { name: "新增话术" }));
+    const selects = screen.getAllByRole("combobox");
+    expect(selects[selects.length - 1]).toHaveValue(category.id);
+  });
+
   it("marks required communication fields and keeps optional copy fields unmarked", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "新增记录" }));
@@ -117,6 +128,8 @@ describe("CommunicationPage", () => {
     await waitFor(() =>
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith("你好，我想认识你"),
     );
+    expect(await screen.findByRole("status")).toHaveClass("fixed", "z-[100]");
+    expect(screen.getByRole("status")).toHaveTextContent("好友申请话术已复制。");
     const firstMessageButtons = screen.getAllByRole("button", { name: "第一句话" });
     fireEvent.click(firstMessageButtons[0]);
     await waitFor(() =>
@@ -136,6 +149,45 @@ describe("CommunicationPage", () => {
     expect(await screen.findAllByLabelText("逆序，向上添加")).not.toHaveLength(0);
   });
 
+  it("keeps archive and delete inside the more-actions menu", async () => {
+    vi.mocked(listCommunicationFriendRecords).mockResolvedValue({
+      data: { items: [friendRecord] },
+      meta: { page: 1, page_size: 20, total: 1 },
+      request_id: "friend-list",
+    });
+    renderPage();
+    fireEvent.click((await screen.findAllByLabelText("更多操作"))[0]);
+    expect((await screen.findAllByRole("menuitem", { name: "编辑" })).length).toBeGreaterThan(0);
+    expect((await screen.findAllByRole("menuitem", { name: "归档" })).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("menuitem", { name: "删除" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("menu")[0]).toHaveClass("fixed", "z-[1000]");
+    expect(screen.getAllByRole("menu")[0].parentElement).toBe(document.body);
+    expect(screen.getByRole("heading", { name: "加好友记录" }).closest("section")).toHaveClass("overflow-hidden");
+  });
+
+  it("automatically dismisses the copy notice", async () => {
+    vi.mocked(listCommunicationFriendRecords).mockResolvedValue({
+      data: { items: [friendRecord] },
+      meta: { page: 1, page_size: 20, total: 1 },
+      request_id: "friend-list",
+    });
+    renderPage();
+    const applicationButton = (await screen.findAllByRole("button", { name: "申请话术" }))[0];
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(applicationButton);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByRole("status")).toHaveTextContent("好友申请话术已复制。");
+      act(() => vi.advanceTimersByTime(3000));
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps edit friend-record errors inside the same bounded layout", async () => {
     vi.mocked(listCommunicationFriendRecords).mockResolvedValue({
       data: { items: [{ id: "00000000-0000-0000-0000-000000000020", platform: "微信", account_label: "账号一", group_name: "成长群", add_direction: "FORWARD", last_applied_person: "小李", application_script: "申请话术", first_message: "你好", note: "旧备注", archived: false, created_at: "2026-09-22T00:00:00Z", updated_at: "2026-09-22T00:00:00Z" }] },
@@ -143,7 +195,8 @@ describe("CommunicationPage", () => {
       request_id: "friend-list",
     });
     renderPage();
-    fireEvent.click((await screen.findAllByRole("button", { name: "查看 / 编辑" }))[0]);
+    fireEvent.click((await screen.findAllByLabelText("更多操作"))[0]);
+    fireEvent.click((await screen.findAllByRole("menuitem", { name: "编辑" }))[0]);
     expect(screen.getByLabelText("群名称")).toHaveValue("成长群");
     fireEvent.change(screen.getByLabelText("备注"), { target: { value: "编辑长内容".repeat(200) } });
     fireEvent.click(screen.getByRole("button", { name: "保存记录" }));
@@ -164,8 +217,11 @@ describe("CommunicationPage", () => {
 
   it("keeps edit script errors inside the same bounded layout", async () => {
     renderPage("/app/communication?tab=scripts");
-    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    fireEvent.click((await screen.findAllByLabelText("更多操作"))[0]);
+    fireEvent.click((await screen.findAllByRole("menuitem", { name: "编辑" }))[0]);
     expect(screen.getByLabelText("标题")).toHaveValue("导师故事");
+    expect(screen.getByPlaceholderText("第 1 段")).toHaveClass("min-h-24", "w-full");
+    expect(screen.getByLabelText("使用备注")).toHaveClass("min-h-24", "w-full");
     fireEvent.change(screen.getByPlaceholderText("第 1 段"), { target: { value: "编辑正文".repeat(200) } });
     fireEvent.click(screen.getByRole("button", { name: "保存话术" }));
     expect(await screen.findByText("话术保存失败")).toBeVisible();
