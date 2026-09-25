@@ -88,6 +88,42 @@ func TestCommunicationMigrationDefinesUserScopedContent(t *testing.T) {
 	}
 }
 
+func TestCommunicationScriptTypesReplaceCategories(t *testing.T) {
+	migration := readFile(t, filepath.Join(migrationsRoot(t), "00015_remove_script_categories.sql"))
+	for _, statement := range []string{
+		"ALTER TABLE communication_scripts DROP COLUMN IF EXISTS category_id;",
+		"DROP TABLE IF EXISTS communication_script_categories;",
+		"DROP CONSTRAINT IF EXISTS communication_scripts_script_type_check;",
+		"ALTER COLUMN script_type DROP DEFAULT;",
+		"CHECK (length(btrim(script_type)) BETWEEN 1 AND 80)",
+	} {
+		if !strings.Contains(migration, statement) {
+			t.Fatalf("00015 must contain %q", statement)
+		}
+	}
+	if !strings.Contains(migration, "-- +goose Down\n-- Intentionally no-op:") {
+		t.Fatal("00015 must declare an explicit irreversible no-op Down migration")
+	}
+}
+
+func TestCommunicationScriptTypeRegistryMigration(t *testing.T) {
+	migration := readFile(t, filepath.Join(migrationsRoot(t), "00016_communication_script_types.sql"))
+	for _, statement := range []string{
+		"CREATE TABLE communication_script_types",
+		"REFERENCES accounts(id) ON DELETE CASCADE",
+		"UNIQUE (user_id, name)",
+		"communication_script_types_user_name_lower_idx",
+		"INSERT INTO communication_script_types (user_id, name)",
+	} {
+		if !strings.Contains(migration, statement) {
+			t.Fatalf("00016 must contain %q", statement)
+		}
+	}
+	if !strings.Contains(migration, "-- +goose Down\n-- Intentionally no-op:") {
+		t.Fatal("00016 must declare an explicit irreversible no-op Down migration")
+	}
+}
+
 func TestImportExportRemovalMigration(t *testing.T) {
 	migration := readFile(t, filepath.Join(migrationsRoot(t), "00014_remove_import_export.sql"))
 	for _, statement := range []string{
@@ -145,7 +181,7 @@ func TestApplicationCodeDoesNotUsePgcryptoFunctions(t *testing.T) {
 	}
 }
 
-func TestLatestSchemaVersionIs14(t *testing.T) {
+func TestLatestSchemaVersionIs16(t *testing.T) {
 	buildScript := readFile(t, filepath.Join(repositoryRoot(t), "scripts", "build-release.sh"))
 	if !strings.Contains(buildScript, `latest_migration="$(find "${repo_root}/backend/db/migrations"`) ||
 		!strings.Contains(buildScript, `schema_version="$((10#${BASH_REMATCH[1]}))"`) {
@@ -173,7 +209,7 @@ func TestLatestSchemaVersionIs14(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version != 14 || latest != "00014_remove_import_export.sql" {
-		t.Fatalf("latest schema = %d (%s), want 14 (00014_remove_import_export.sql)", version, latest)
+	if version != 17 || latest != "00017_remove_mail_delivery.sql" {
+		t.Fatalf("latest schema = %d (%s), want 17 (00017_remove_mail_delivery.sql)", version, latest)
 	}
 }

@@ -10,6 +10,18 @@ func TestNormalizeParagraphsKeepsOrderAndRejectsBlankOnly(t *testing.T) {
 	if err := validateScript(ScriptInput{Title: "问题", ScriptType: "FAQ", Paragraphs: []string{"第一段", "\n"}}); err == nil {
 		t.Fatal("blank paragraphs must be rejected")
 	}
+	if err := validateScript(ScriptInput{Title: "导师故事", ScriptType: "Buffer", Paragraphs: []string{"第一段"}}); err != nil {
+		t.Fatalf("custom script types must be accepted: %v", err)
+	}
+}
+
+func TestScriptTypeValidationAllowsOnlyNonBlankNames(t *testing.T) {
+	if _, err := validateScriptType("  "); err == nil {
+		t.Fatal("blank script types must be rejected")
+	}
+	if got, err := validateScriptType("  导师故事  "); err != nil || got != "导师故事" {
+		t.Fatalf("custom script type was not normalized: %q, %v", got, err)
+	}
 }
 
 func TestFriendValidationRequiresStableSourceIdentity(t *testing.T) {

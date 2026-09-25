@@ -52,9 +52,7 @@ func TestGetHealthReadyReturnsServiceUnavailableWhenDatabaseFails(t *testing.T) 
 	context := e.NewContext(httptest.NewRequest(http.MethodGet, "/api/health/ready", nil), recorder)
 	context.Response().Header().Set(echo.HeaderXRequestID, "request-2")
 	handler := New(fakePinger{err: errors.New("database unavailable")}, config.Config{
-		FileRoot:       temporaryDirectory,
-		MailMode:       "file",
-		MailOutboxRoot: temporaryDirectory,
+		FileRoot: temporaryDirectory,
 	})
 
 	if err := handler.GetHealthReady(context); err != nil {

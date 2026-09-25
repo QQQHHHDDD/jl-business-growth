@@ -28,7 +28,8 @@ export function AccountSwitcher({ authResponse }: { authResponse: AuthResponse }
     mutationFn: (accountId: string) => switchAccount(csrfToken, accountId),
     onSuccess: async (response) => {
       await queryClient.cancelQueries({ queryKey: ["user"] });
-      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] === "user" });
+      await queryClient.cancelQueries({ queryKey: ["communication"] });
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] === "user" || query.queryKey[0] === "communication" });
       queryClient.setQueryData(["auth", "me"], response);
       setNotice("已切换当前账号");
     },

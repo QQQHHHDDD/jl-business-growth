@@ -49,14 +49,10 @@ previous_web=""
 target_backend=""
 target_web=""
 manifest_schema=""
-compatible_min=""
-compatible_max=""
-runner_locked=false
 request_claimed=false
 migration_started=false
 switched=false
 installed_target=false
-restore_attempted=false
 restore_succeeded=false
 handling_error=false
 failure_message=""
@@ -425,7 +421,6 @@ validate_target_permissions() {
 }
 
 restore_previous_release() {
-    restore_attempted=true
     restore_succeeded=false
     if [[ -z "${previous_backend}" || -z "${previous_web}" || -z "${actual_schema}" ]]; then
         failure_message="更新失败，数据库状态未知，无法安全恢复旧版本，需要人工处理"
@@ -491,7 +486,11 @@ on_error() {
     set +e
     if [[ "${switched}" == "true" ]]; then
         if restore_previous_release && [[ "${restore_succeeded}" == "true" ]]; then
-            failure_message="更新失败，应用版本已恢复，但数据库 migration 未回退，需要人工检查"
+            if ! rm -rf "${target_backend}" "${target_web}"; then
+                failure_message="更新失败，应用版本已恢复，但目标 release 清理失败，需要人工处理"
+            else
+                failure_message="更新失败，应用版本已恢复，但数据库 migration 未回退，需要人工检查"
+            fi
         elif [[ -z "${failure_message}" ]]; then
             failure_message="更新失败，应用版本未能安全恢复，需要人工处理"
         fi
@@ -545,7 +544,6 @@ if ! flock -n 9; then
     echo "another updater process is running" >&2
     exit 1
 fi
-runner_locked=true
 if [[ ! -e "${request_path}" && ! -L "${request_path}" ]]; then
     exit 0
 fi
@@ -623,8 +621,7 @@ if [[ "${action}" == "update" ]]; then
     test "$(jq -er '.version' "${temp_root}/extract/release.json")" = "${target_version}"
     test "$(jq -er '.platform' "${temp_root}/extract/release.json")" = "linux-amd64"
     manifest_schema="$(jq -er '.schema_version' "${temp_root}/extract/release.json")"
-    compatible_min="$(jq -er '.compatible_schema_min' "${temp_root}/extract/release.json")"
-    compatible_max="$(jq -er '.compatible_schema_max' "${temp_root}/extract/release.json")"
+
     latest_migration="$(find "${temp_root}/extract/migrations" -maxdepth 1 -type f -name '[0-9]*_*.sql' -printf '%f\n' | sort | tail -n 1)"
     if [[ ! "${latest_migration}" =~ ^0*([0-9]+)_ ]]; then
         fail_task "Release migration schema 无法确认"
@@ -660,8 +657,7 @@ else
         fail_task "无法读取当前数据库 schema"
     fi
     [[ "${current_schema_before}" =~ ^[0-9]+$ ]]
-    compatible_min="$(jq -er '.compatible_schema_min' "${target_backend}/release.json")"
-    compatible_max="$(jq -er '.compatible_schema_max' "${target_backend}/release.json")"
+
     manifest_schema="$(jq -er '.schema_version' "${target_backend}/release.json")"
     manifest_compatible "${target_backend}/release.json" "${current_schema_before}"
 fi
@@ -707,8 +703,11 @@ previous_backend="$(readlink -f "${backend_current}")"
 previous_web="$(readlink -f "${web_current}")"
 test -n "${previous_backend}" && test -n "${previous_web}"
 ln -sfn "${target_backend}" "${backend_current}"
-ln -sfn "${target_web}" "${web_current}"
 switched=true
+if ! ln -sfn "${target_web}" "${web_current}"; then
+    failure_message="更新失败，web 链接切换失败，正在恢复旧版本"
+    fail_task "${failure_message}"
+fi
 
 write_status "restarting" "正在重启应用服务"
 systemctl restart jl-business-api.service

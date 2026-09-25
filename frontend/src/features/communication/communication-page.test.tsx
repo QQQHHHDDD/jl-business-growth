@@ -3,13 +3,15 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, AuthResponse, CommunicationFriendRecord } from "@/api/client";
-import { listCommunicationFriendRecords, listCommunicationScriptCategories, listCommunicationScripts, saveCommunicationFriendRecord, saveCommunicationScript } from "@/api/client";
+import { deleteCommunicationScriptType, listCommunicationFriendRecords, listCommunicationScriptTypes, listCommunicationScripts, saveCommunicationFriendRecord, saveCommunicationScript, saveCommunicationScriptType } from "@/api/client";
 import { CommunicationPage } from "./communication-page";
 
 vi.mock("@/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/client")>()),
   listCommunicationFriendRecords: vi.fn(),
-  listCommunicationScriptCategories: vi.fn(),
+  listCommunicationScriptTypes: vi.fn(),
+  saveCommunicationScriptType: vi.fn(),
+  deleteCommunicationScriptType: vi.fn(),
   listCommunicationScripts: vi.fn(),
   saveCommunicationFriendRecord: vi.fn(),
   saveCommunicationScript: vi.fn(),
@@ -40,11 +42,13 @@ function renderPage(entry = "/app/communication") {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(listCommunicationFriendRecords).mockResolvedValue({ data: { items: [] }, meta: { page: 1, page_size: 20, total: 0 }, request_id: "friend-list" });
-  vi.mocked(listCommunicationScriptCategories).mockResolvedValue({ data: { items: [] }, request_id: "category-list" });
-  vi.mocked(listCommunicationScripts).mockResolvedValue({ data: { items: [{ id: "00000000-0000-0000-0000-000000000010", category_id: null, category_name: "", title: "导师故事", script_type: "STAGE", tags: ["故事"], paragraphs: ["第一段", "第二段"], note: "不复制", favorite: true, created_at: "2026-09-22T00:00:00Z", updated_at: "2026-09-22T00:00:00Z" }] }, meta: { page: 1, page_size: 20, total: 1 }, request_id: "script-list" });
+  vi.mocked(listCommunicationScriptTypes).mockResolvedValue({ data: { items: [] }, request_id: "script-types" });
+  vi.mocked(listCommunicationScripts).mockResolvedValue({ data: { items: [{ id: "00000000-0000-0000-0000-000000000010", title: "导师故事", script_type: "STAGE", tags: ["故事"], paragraphs: ["第一段", "第二段"], note: "不复制", favorite: true, created_at: "2026-09-22T00:00:00Z", updated_at: "2026-09-22T00:00:00Z" }] }, meta: { page: 1, page_size: 20, total: 1 }, request_id: "script-list" });
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
   vi.mocked(saveCommunicationFriendRecord).mockRejectedValue(new Error("记录保存失败"));
   vi.mocked(saveCommunicationScript).mockRejectedValue(new Error("话术保存失败"));
+  vi.mocked(saveCommunicationScriptType).mockResolvedValue({ data: { id: "00000000-0000-0000-0000-000000000099", name: "Buffer", sort_order: 0, created_at: "2026-09-22T00:00:00Z", updated_at: "2026-09-22T00:00:00Z" }, request_id: "script-type-save" });
+  vi.mocked(deleteCommunicationScriptType).mockResolvedValue(undefined);
 });
 
 describe("CommunicationPage", () => {
@@ -63,15 +67,41 @@ describe("CommunicationPage", () => {
     expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(expect.stringContaining("不复制"));
   });
 
-  it("keeps the selected script category in the URL and preselects it for new scripts", async () => {
-    const category = { id: "00000000-0000-0000-0000-000000000099", name: "Buffer", sort_order: 0, created_at: "2026-09-22T00:00:00Z", updated_at: "2026-09-22T00:00:00Z" };
-    vi.mocked(listCommunicationScriptCategories).mockResolvedValue({ data: { items: [category] }, request_id: "category-list" });
-    renderPage(`/app/communication?tab=scripts&category=${category.id}`);
-    const categoryFilter = await screen.findByRole("combobox", { name: "按分类筛选" });
-    await waitFor(() => expect(categoryFilter).toHaveValue(category.id));
+  it("keeps a custom script type in the URL and offers it when creating a script", async () => {
+    vi.mocked(listCommunicationScriptTypes).mockResolvedValue({ data: { items: [{ id: "00000000-0000-0000-0000-000000000099", name: "Buffer", sort_order: 0, created_at: "2026-09-22T00:00:00Z", updated_at: "2026-09-22T00:00:00Z" }] }, request_id: "script-types" });
+    renderPage("/app/communication?tab=scripts&script_type=Buffer");
+    const typeFilter = await screen.findByRole("button", { name: "按类型筛选" });
+    await waitFor(() => expect(typeFilter).toHaveTextContent("Buffer"));
     fireEvent.click(screen.getByRole("button", { name: "新增话术" }));
-    const selects = screen.getAllByRole("combobox");
-    expect(selects[selects.length - 1]).toHaveValue(category.id);
+    expect(screen.getByLabelText("类型")).toHaveValue("");
+    expect(document.querySelector('#communication-script-type-options option[value="Buffer"]')).not.toBeNull();
+  });
+
+  it("opens type management from the type filter", async () => {
+    renderPage("/app/communication?tab=scripts");
+    fireEvent.click(await screen.findByRole("button", { name: "按类型筛选" }));
+    fireEvent.click(screen.getByRole("button", { name: "新增 / 管理类型" }));
+    expect(screen.getByRole("heading", { name: "管理话术类型" })).toBeVisible();
+    expect(screen.getByLabelText("新增类型")).toBeVisible();
+    expect(screen.getByText(/类型由当前账号自行维护/)).toBeVisible();
+  });
+
+  it("creates, renames, and deletes account-owned script types", async () => {
+    const type = { id: "00000000-0000-0000-0000-000000000099", name: "Buffer", sort_order: 0, created_at: "2026-09-22T00:00:00Z", updated_at: "2026-09-22T00:00:00Z" };
+    vi.mocked(listCommunicationScriptTypes).mockResolvedValue({ data: { items: [type] }, request_id: "script-types" });
+    renderPage("/app/communication?tab=scripts");
+    fireEvent.click(await screen.findByRole("button", { name: "管理类型" }));
+    fireEvent.change(screen.getByLabelText("新增类型"), { target: { value: "导师故事" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: /^新增$/ })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: /^新增$/ }));
+    await waitFor(() => expect(saveCommunicationScriptType).toHaveBeenCalledWith("csrf", { name: "导师故事" }, undefined));
+    fireEvent.change(screen.getByLabelText("编辑类型 Buffer"), { target: { value: "新Buffer" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: /^保存$/ })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: /^保存$/ }));
+    await waitFor(() => expect(saveCommunicationScriptType).toHaveBeenCalledWith("csrf", { name: "新Buffer" }, type.id));
+    fireEvent.click(screen.getByRole("button", { name: "删除类型 Buffer" }));
+    fireEvent.click(screen.getByRole("button", { name: /^删除类型$/ }));
+    await waitFor(() => expect(deleteCommunicationScriptType).toHaveBeenCalledWith("csrf", type.id));
   });
 
   it("marks required communication fields and keeps optional copy fields unmarked", async () => {
@@ -209,6 +239,7 @@ describe("CommunicationPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "新增话术" }));
     expect(screen.getByRole("dialog")).toHaveClass("overflow-hidden");
     fireEvent.change(screen.getByLabelText("标题"), { target: { value: "Buffer" } });
+    fireEvent.change(screen.getByLabelText("类型"), { target: { value: "导师故事" } });
     fireEvent.change(screen.getByPlaceholderText("第 1 段"), { target: { value: "正文".repeat(200) } });
     fireEvent.click(screen.getByRole("button", { name: "保存话术" }));
     expect(await screen.findByText("话术保存失败")).toBeVisible();

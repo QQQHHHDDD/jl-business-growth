@@ -407,7 +407,8 @@ test("covers administrator, account, and core business workflows", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "新建日程" }).click();
   await page.getByLabel("日程标题").fill(currentCalendarTitle);
-  const currentEventStart = new Date(Date.now() + 60 * 60 * 1000);
+  const currentEventStart = new Date();
+  currentEventStart.setHours(11, 0, 0, 0);
   const currentEventEnd = new Date(currentEventStart.getTime() + 60 * 60 * 1000);
   const localInput = (value: Date) => {
     const pad = (part: number) => String(part).padStart(2, "0");
@@ -416,7 +417,7 @@ test("covers administrator, account, and core business workflows", async ({
   await page.getByLabel("开始时间").fill(localInput(currentEventStart));
   await page.getByLabel("结束时间").fill(localInput(currentEventEnd));
   await page.getByRole("button", { name: "保存日程" }).click();
-  await expect(page.getByRole("status")).toContainText("日程已保存");
+  await expect(page.getByRole("status")).toContainText("日程记录已保存");
   await expect(page.getByText(currentCalendarTitle).first()).toBeVisible();
 
   await page.getByRole("button", { name: "新建日程" }).click();
@@ -425,7 +426,7 @@ test("covers administrator, account, and core business workflows", async ({
   await page.getByLabel("开始时间").fill(`${businessToday}T15:30`);
   await page.getByLabel("结束时间").fill(`${businessToday}T22:00`);
   await page.getByRole("button", { name: "保存日程" }).click();
-  await expect(page.getByRole("status")).toContainText("日程已保存");
+  await expect(page.getByRole("status")).toContainText("日程记录已保存");
   await expect(page.getByText(fixedCalendarTitle).first()).toBeVisible();
 
   await page.getByRole("button", { name: "新建日程" }).click();
@@ -435,7 +436,7 @@ test("covers administrator, account, and core business workflows", async ({
   await page.getByLabel("开始时间").fill(localInput(eventStart));
   await page.getByLabel("结束时间").fill(localInput(eventEnd));
   await page.getByRole("button", { name: "保存日程" }).click();
-  await expect(page.getByRole("status")).toContainText("日程已保存");
+  await expect(page.getByRole("status")).toContainText("日程记录已保存");
   await expect(page.getByText(nextCalendarTitle).first()).toBeVisible();
 
   const dragCalendarSelection = async (view: "Week" | "Day", title: string) => {
@@ -463,7 +464,7 @@ test("covers administrator, account, and core business workflows", async ({
     await expect(dialog.getByLabel("结束时间")).toHaveValue(/T10:30$/);
     await dialog.getByLabel("日程标题").fill(title);
     await dialog.getByRole("button", { name: "保存日程" }).click();
-    await expect(page.getByRole("status")).toContainText("日程已保存");
+    await expect(page.getByRole("status")).toContainText("日程记录已保存");
     await expect(page.getByText(title).first()).toBeVisible();
   };
 

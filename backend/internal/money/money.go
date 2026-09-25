@@ -3,6 +3,7 @@ package money
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -42,7 +43,11 @@ func Parse(value string) (Cents, error) {
 		return 0, errors.New("amount must be a non-negative decimal")
 	}
 	rational.Mul(rational, big.NewRat(100, 1))
-	return Cents(roundRat(rational)), nil
+	rounded, err := roundRat(rational)
+	if err != nil {
+		return 0, err
+	}
+	return Cents(rounded), nil
 }
 
 func FromFloat(value float64) (Cents, error) {
@@ -96,11 +101,14 @@ func Format(value Cents) string {
 	return result
 }
 
-func roundRat(value *big.Rat) int64 {
+func roundRat(value *big.Rat) (int64, error) {
 	remainder := new(big.Int)
 	quotient, remainder := new(big.Int).QuoRem(value.Num(), value.Denom(), remainder)
 	if remainder.Sign() != 0 && new(big.Int).Lsh(new(big.Int).Abs(remainder), 1).Cmp(value.Denom()) >= 0 {
 		quotient.Add(quotient, big.NewInt(1))
 	}
-	return quotient.Int64()
+	if quotient.Sign() < 0 || quotient.Cmp(big.NewInt(math.MaxInt64)) > 0 {
+		return 0, errors.New("amount exceeds supported range")
+	}
+	return quotient.Int64(), nil
 }

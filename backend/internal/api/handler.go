@@ -26,7 +26,6 @@ import (
 	"jl-business-growth/backend/internal/finance"
 	"jl-business-growth/backend/internal/invitation"
 	"jl-business-growth/backend/internal/knowledge"
-	"jl-business-growth/backend/internal/mail"
 	"jl-business-growth/backend/internal/money"
 	"jl-business-growth/backend/internal/problem"
 	releases "jl-business-growth/backend/internal/release"
@@ -64,7 +63,7 @@ func NewHandler(authService *auth.Service, adminService *admin.Service, invitati
 	if len(releaseServices) > 0 && releaseServices[0] != nil {
 		releaseService = releaseServices[0]
 	}
-	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(pool), calendar: calendar.NewService(pool, mail.NewSender(cfg)), communication: communication.NewService(pool), reviews: reviews.NewService(pool), analytics: analytics.NewService(pool), team: team.NewService(pool), knowledge: knowledge.NewService(pool), files: fileassets.NewService(pool, cfg), search: search.NewService(pool), finance: finance.NewService(pool), releases: releaseService, config: cfg}
+	return &Handler{auth: authService, admin: adminService, invitation: invitationService, daily: daily.NewService(pool), calendar: calendar.NewService(pool), communication: communication.NewService(pool), reviews: reviews.NewService(pool), analytics: analytics.NewService(pool), team: team.NewService(pool), knowledge: knowledge.NewService(pool), files: fileassets.NewService(pool, cfg), search: search.NewService(pool), finance: finance.NewService(pool), releases: releaseService, config: cfg}
 }
 
 func (h *Handler) PostAuthRegister(ctx echo.Context) error {

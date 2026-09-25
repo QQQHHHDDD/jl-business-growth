@@ -64,3 +64,14 @@ func TestParseRejectsNegativeAndInvalidValues(t *testing.T) {
 		}
 	}
 }
+
+func TestParseRejectsAmountsThatOverflowCents(t *testing.T) {
+	for _, input := range []string{"92233720368547758.08", "92233720368547758.075"} {
+		if _, err := Parse(input); err == nil {
+			t.Fatalf("Parse(%q) unexpectedly succeeded", input)
+		}
+	}
+	if value, err := Parse("92233720368547758.07"); err != nil || Format(value) != "92233720368547758.07" {
+		t.Fatalf("Parse(max cents) = %d, %v", value, err)
+	}
+}

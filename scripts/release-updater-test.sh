@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1007,SC2016,SC2251
 set -euo pipefail
 
 # Execution-level updater regression harness. It uses only temporary files and
 # stubbed database/service/network commands; it never touches systemd or a
 # production database.
+# The harness deliberately uses literal grep assertions and empty environment
+# assignments to test the production script's exact contract.
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 updater="${repo_root}/scripts/release-updater.sh"
 root="$(mktemp -d)"
@@ -21,8 +24,8 @@ mkdir -p "${bin}" "${runtime}" "${backend_releases}" "${web_releases}" "${fixtur
 
 # The API remains startable when online update is disabled and the optional
 # requests directory has not been provisioned yet.
-grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp /var/lib/jl-business-growth/mail-outbox -/var/lib/jl-business-growth/release-updater/requests' "${repo_root}/deploy/systemd/jl-business-api.service"
-grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp /var/lib/jl-business-growth/mail-outbox' "${repo_root}/deploy/systemd/jl-business-jobs.service"
+grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp -/var/lib/jl-business-growth/release-updater/requests' "${repo_root}/deploy/systemd/jl-business-api.service"
+grep -Fq 'ReadWritePaths=/var/lib/jl-business-growth/files /var/lib/jl-business-growth/tmp' "${repo_root}/deploy/systemd/jl-business-jobs.service"
 grep -Fq 'ProtectSystem=strict' "${repo_root}/deploy/systemd/jl-business-api.service"
 grep -Fq 'ProtectSystem=strict' "${repo_root}/deploy/systemd/jl-business-jobs.service"
 grep -Fq 'ReadWritePaths=/opt/jl-business-growth /var/www/jl-business-growth' "${repo_root}/deploy/systemd/jl-business-updater.service"
@@ -133,6 +136,7 @@ source_path="${*: -2:1}"
 destination="${*: -1}"
 if [[ "${source_path}" == *"/v1.0.0" && "${destination}" == "${RELEASE_BACKEND_CURRENT}" && "${RELEASE_RESTORE_BACKEND_LINK_FAIL:-false}" == true ]]; then exit 1; fi
 if [[ "${source_path}" == *"/v1.0.0" && "${destination}" == "${RELEASE_WEB_CURRENT}" && "${RELEASE_RESTORE_WEB_LINK_FAIL:-false}" == true ]]; then exit 1; fi
+if [[ "${source_path}" == *"/v1.0.1" && "${destination}" == "${RELEASE_WEB_CURRENT}" && "${RELEASE_SWITCH_WEB_LINK_FAIL:-false}" == true ]]; then exit 1; fi
 exec /usr/bin/ln "$@"
 EOF
 chmod +x "${bin}"/*
@@ -343,6 +347,17 @@ assert_successful_rollback() {
   [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
 }
 
+assert_failed_switch_restore() {
+  jq -e '.state == "failed" and (.safe_message | contains("应用版本已恢复"))' "${state}/status.json" >/dev/null
+  [[ -e "${root}/backup.called" ]] && [[ -e "${root}/backup-service.started" ]]
+  [[ -e "${root}/migration.called" ]] && [[ ! -e "${root}/binary-executed" ]]
+  [[ "$(cat "${root}/schema")" == 11 ]]
+  [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.0" ]]
+  [[ "$(readlink -f "${root}/web-current")" == "${web_releases}/v1.0.0" ]]
+  [[ ! -e "${backend_releases}/v1.0.1" ]] && [[ ! -e "${web_releases}/v1.0.1" ]]
+  [[ ! -e "${requests}/request.json" ]] && [[ ! -e "${requests}/update.lock" ]]
+}
+
 assert_rejected_rollback() {
   local expected_message="$1"
   jq -e --arg message "${expected_message}" '.state == "failed" and .safe_message == $message' "${state}/status.json" >/dev/null
@@ -422,7 +437,7 @@ pass_case 'PostgreSQL CLI command availability is checked before migration'
 
 reset_case
 request v1.0.1
-if PGHOST_OVERRIDE= PGDATABASE_OVERRIDE= PGUSER_OVERRIDE= PGSERVICE_OVERRIDE= run_case; then
+if PGHOST_OVERRIDE='' PGDATABASE_OVERRIDE='' PGUSER_OVERRIDE='' PGSERVICE_OVERRIDE='' run_case; then
   echo 'missing libpq configuration unexpectedly succeeded' >&2
   exit 1
 fi
@@ -478,6 +493,17 @@ assert_not_restored
 [[ "$(readlink -f "${root}/backend-current")" == "${backend_releases}/v1.0.0" ]]
 [[ "$(readlink -f "${root}/web-current")" == "${web_releases}/v1.0.0" ]]
 pass_case 'backup service failure leaves symlinks unchanged'
+
+make_release v1.0.1 11 11 11 target-commit
+reset_case
+request v1.0.1
+export GOOSE_SCHEMA=11 RELEASE_SWITCH_WEB_LINK_FAIL=true
+if run_case; then echo 'partial symlink switch unexpectedly succeeded' >&2; exit 1; fi
+assert_failed_switch_restore
+pass_case 'partial symlink switch restores backend and removes target release safely'
+unset RELEASE_SWITCH_WEB_LINK_FAIL GOOSE_SCHEMA
+
+make_release v1.0.1 10 10 10 target-commit
 
 unset RELEASE_BACKUP_SERVICE_FAIL
 

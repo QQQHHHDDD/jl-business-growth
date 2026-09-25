@@ -706,91 +706,6 @@ func (ns NullLearningSessionSource) Value() (driver.Value, error) {
 	return string(ns.LearningSessionSource), nil
 }
 
-type MailDeliveryMethod string
-
-const (
-	MailDeliveryMethodREQUEST MailDeliveryMethod = "REQUEST"
-	MailDeliveryMethodCANCEL  MailDeliveryMethod = "CANCEL"
-)
-
-func (e *MailDeliveryMethod) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = MailDeliveryMethod(s)
-	case string:
-		*e = MailDeliveryMethod(s)
-	default:
-		return fmt.Errorf("unsupported scan type for MailDeliveryMethod: %T", src)
-	}
-	return nil
-}
-
-type NullMailDeliveryMethod struct {
-	MailDeliveryMethod MailDeliveryMethod
-	Valid              bool // Valid is true if MailDeliveryMethod is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullMailDeliveryMethod) Scan(value interface{}) error {
-	if value == nil {
-		ns.MailDeliveryMethod, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.MailDeliveryMethod.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullMailDeliveryMethod) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.MailDeliveryMethod), nil
-}
-
-type MailDeliveryStatus string
-
-const (
-	MailDeliveryStatusPENDING MailDeliveryStatus = "PENDING"
-	MailDeliveryStatusSENT    MailDeliveryStatus = "SENT"
-	MailDeliveryStatusFAILED  MailDeliveryStatus = "FAILED"
-)
-
-func (e *MailDeliveryStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = MailDeliveryStatus(s)
-	case string:
-		*e = MailDeliveryStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for MailDeliveryStatus: %T", src)
-	}
-	return nil
-}
-
-type NullMailDeliveryStatus struct {
-	MailDeliveryStatus MailDeliveryStatus
-	Valid              bool // Valid is true if MailDeliveryStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullMailDeliveryStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.MailDeliveryStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.MailDeliveryStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullMailDeliveryStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.MailDeliveryStatus), nil
-}
-
 type ReviewType string
 
 const (
@@ -1023,7 +938,6 @@ type CommunicationFriendRecord struct {
 type CommunicationScript struct {
 	ID         pgtype.UUID
 	UserID     pgtype.UUID
-	CategoryID pgtype.UUID
 	Title      string
 	ScriptType string
 	Tags       []string
@@ -1034,7 +948,7 @@ type CommunicationScript struct {
 	UpdatedAt  pgtype.Timestamptz
 }
 
-type CommunicationScriptCategory struct {
+type CommunicationScriptType struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID
 	Name      string
@@ -1238,19 +1152,6 @@ type LearningSession struct {
 	UpdatedAt       pgtype.Timestamptz
 	KnowledgeItemID pgtype.UUID
 	Note            pgtype.Text
-}
-
-type MailDelivery struct {
-	ID                pgtype.UUID
-	CalendarEventID   pgtype.UUID
-	OccurrenceStart   pgtype.Timestamptz
-	AttendeeEmail     string
-	Method            MailDeliveryMethod
-	Status            MailDeliveryStatus
-	ProviderMessageID pgtype.Text
-	ErrorMessage      pgtype.Text
-	SentAt            pgtype.Timestamptz
-	CreatedAt         pgtype.Timestamptz
 }
 
 type Review struct {

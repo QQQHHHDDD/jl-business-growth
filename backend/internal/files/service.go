@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -61,6 +62,8 @@ var allowed = map[string]map[string]string{
 	"image/webp":      {".webp": "KNOWLEDGE_IMAGE"},
 }
 
+const orphanFileGracePeriod = time.Hour
+
 func (s *Service) Upload(ctx context.Context, userID uuid.UUID, category string, header *multipart.FileHeader) (Asset, error) {
 	if header == nil {
 		return Asset{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "file is required")
@@ -71,9 +74,12 @@ func (s *Service) Upload(ctx context.Context, userID uuid.UUID, category string,
 	if category != "DREAM_IMAGE" && category != "KNOWLEDGE_DOCUMENT" && category != "KNOWLEDGE_IMAGE" {
 		return Asset{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "file category is invalid")
 	}
-	ext := strings.ToLower(filepath.Ext(header.Filename))
-	categoryByMIME, ok := allowed[header.Header.Get("Content-Type")]
-	if !ok || categoryByMIME[ext] != category && !(category == "DREAM_IMAGE" && categoryByMIME[ext] == "KNOWLEDGE_IMAGE") {
+	originalName := filepath.Base(header.Filename)
+	ext := strings.ToLower(filepath.Ext(originalName))
+	declaredMIME, _, parseErr := mime.ParseMediaType(header.Header.Get("Content-Type"))
+	declaredMIME = strings.ToLower(strings.TrimSpace(declaredMIME))
+	categoryByMIME, ok := allowed[declaredMIME]
+	if parseErr != nil || !ok || categoryByMIME[ext] != category && !(category == "DREAM_IMAGE" && categoryByMIME[ext] == "KNOWLEDGE_IMAGE") {
 		return Asset{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "file format is not supported")
 	}
 	limit := s.documentLimit
@@ -88,6 +94,18 @@ func (s *Service) Upload(ctx context.Context, userID uuid.UUID, category string,
 		return Asset{}, err
 	}
 	defer input.Close()
+	sample := make([]byte, 512)
+	sampleSize, sampleErr := input.Read(sample)
+	if sampleErr != nil && !errors.Is(sampleErr, io.EOF) {
+		return Asset{}, sampleErr
+	}
+	detectedMIME, _, _ := mime.ParseMediaType(http.DetectContentType(sample[:sampleSize]))
+	if !contentTypeMatches(declaredMIME, detectedMIME) {
+		return Asset{}, problem.New("VALIDATION_ERROR", http.StatusBadRequest, "file content does not match its declared format")
+	}
+	if int64(sampleSize) > limit {
+		return Asset{}, problem.New("VALIDATION_ERROR", http.StatusRequestEntityTooLarge, "file exceeds the configured size limit")
+	}
 	if err := os.MkdirAll(s.root, 0o700); err != nil {
 		return Asset{}, err
 	}
@@ -98,20 +116,26 @@ func (s *Service) Upload(ctx context.Context, userID uuid.UUID, category string,
 		return Asset{}, err
 	}
 	hash := sha256.New()
-	written, copyErr := io.Copy(io.MultiWriter(output, hash), io.LimitReader(input, limit+1))
+	writer := io.MultiWriter(output, hash)
+	written, writeErr := writer.Write(sample[:sampleSize])
+	if writeErr == nil && written == sampleSize {
+		var copied int64
+		copied, writeErr = io.Copy(writer, io.LimitReader(input, limit-int64(sampleSize)+1))
+		written += int(copied)
+	}
 	closeErr := output.Close()
-	if copyErr != nil || closeErr != nil {
+	if writeErr != nil || closeErr != nil {
 		_ = os.Remove(path)
-		if copyErr != nil {
-			return Asset{}, copyErr
+		if writeErr != nil {
+			return Asset{}, writeErr
 		}
 		return Asset{}, closeErr
 	}
-	if written > limit {
+	if int64(written) > limit {
 		_ = os.Remove(path)
 		return Asset{}, problem.New("VALIDATION_ERROR", http.StatusRequestEntityTooLarge, "file exceeds the configured size limit")
 	}
-	asset := Asset{ID: uuid.New(), UserID: userID, Category: category, OriginalName: filepath.Base(header.Filename), StorageName: storageName, MIMEType: header.Header.Get("Content-Type"), SizeBytes: written, SHA256: hex.EncodeToString(hash.Sum(nil))}
+	asset := Asset{ID: uuid.New(), UserID: userID, Category: category, OriginalName: originalName, StorageName: storageName, MIMEType: declaredMIME, SizeBytes: int64(written), SHA256: hex.EncodeToString(hash.Sum(nil))}
 	err = s.pool.QueryRow(ctx, `INSERT INTO file_assets (id,user_id,category,original_name,storage_name,mime_type,size_bytes,sha256) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING created_at`, asset.ID, asset.UserID, asset.Category, asset.OriginalName, asset.StorageName, asset.MIMEType, asset.SizeBytes, asset.SHA256).Scan(&asset.CreatedAt)
 	if err != nil {
 		_ = os.Remove(path)
@@ -243,6 +267,13 @@ func (s *Service) CleanupOrphanFiles(ctx context.Context) error {
 		if entry.IsDir() {
 			continue
 		}
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			return infoErr
+		}
+		if time.Since(info.ModTime()) < orphanFileGracePeriod {
+			continue
+		}
 		if _, ok := known[entry.Name()]; ok {
 			continue
 		}
@@ -285,6 +316,13 @@ func (s *Service) RetryFileCleanup(ctx context.Context) error {
 		}
 	}
 	return rows.Err()
+}
+
+func contentTypeMatches(declared, detected string) bool {
+	if declared == "text/plain" || declared == "text/markdown" {
+		return detected == "text/plain"
+	}
+	return declared == detected
 }
 
 func (s *Service) storagePath(name string) (string, error) {

@@ -111,29 +111,31 @@ func (h *Handler) DeleteCommunicationFriendRecord(ctx echo.Context, id Communica
 	return ctx.NoContent(http.StatusNoContent)
 }
 
-func (h *Handler) ListCommunicationScriptCategories(ctx echo.Context) error {
+func (h *Handler) ListCommunicationScriptTypes(ctx echo.Context) error {
 	userID, _, err := h.dailyUser(ctx)
 	if err != nil {
 		return err
 	}
-	items, err := h.communication.ListCategories(ctx.Request().Context(), userID)
+	items, err := h.communication.ListScriptTypes(ctx.Request().Context(), userID)
 	if err != nil {
 		return err
 	}
-	out := make([]CommunicationScriptCategory, 0, len(items))
+	out := make([]CommunicationScriptType, 0, len(items))
 	for _, item := range items {
-		out = append(out, communicationCategoryDTO(item))
+		out = append(out, communicationScriptTypeDTO(item))
 	}
-	return ctx.JSON(http.StatusOK, CommunicationScriptCategoryListResponse{Data: CommunicationScriptCategoryListData{Items: out}, RequestId: requestID(ctx)})
+	return ctx.JSON(http.StatusOK, CommunicationScriptTypeListResponse{Data: CommunicationScriptTypeListData{Items: out}, RequestId: requestID(ctx)})
 }
 
-func (h *Handler) CreateCommunicationScriptCategory(ctx echo.Context) error {
-	return h.saveCommunicationScriptCategory(ctx, uuid.Nil, http.StatusCreated)
+func (h *Handler) CreateCommunicationScriptType(ctx echo.Context) error {
+	return h.saveCommunicationScriptType(ctx, uuid.Nil, http.StatusCreated)
 }
-func (h *Handler) UpdateCommunicationScriptCategory(ctx echo.Context, id CommunicationScriptCategoryId) error {
-	return h.saveCommunicationScriptCategory(ctx, uuid.UUID(id), http.StatusOK)
+
+func (h *Handler) UpdateCommunicationScriptType(ctx echo.Context, id CommunicationScriptTypeId) error {
+	return h.saveCommunicationScriptType(ctx, uuid.UUID(id), http.StatusOK)
 }
-func (h *Handler) saveCommunicationScriptCategory(ctx echo.Context, id uuid.UUID, status int) error {
+
+func (h *Handler) saveCommunicationScriptType(ctx echo.Context, id uuid.UUID, status int) error {
 	session, account, err := authSessionUser(ctx)
 	if err != nil {
 		return err
@@ -141,18 +143,18 @@ func (h *Handler) saveCommunicationScriptCategory(ctx echo.Context, id uuid.UUID
 	if err := authVerify(ctx, session); err != nil {
 		return err
 	}
-	var request CommunicationScriptCategoryRequest
+	var request CommunicationScriptTypeRequest
 	if err := ctx.Bind(&request); err != nil {
 		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
 	}
-	item, err := h.communication.SaveCategory(ctx.Request().Context(), account.ID, id, request.Name, optionalInt(request.SortOrder))
+	item, err := h.communication.SaveScriptType(ctx.Request().Context(), account.ID, id, request.Name)
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(status, CommunicationScriptCategoryResponse{Data: communicationCategoryDTO(item), RequestId: requestID(ctx)})
+	return ctx.JSON(status, CommunicationScriptTypeResponse{Data: communicationScriptTypeDTO(item), RequestId: requestID(ctx)})
 }
 
-func (h *Handler) DeleteCommunicationScriptCategory(ctx echo.Context, id CommunicationScriptCategoryId) error {
+func (h *Handler) DeleteCommunicationScriptType(ctx echo.Context, id CommunicationScriptTypeId) error {
 	session, account, err := authSessionUser(ctx)
 	if err != nil {
 		return err
@@ -160,7 +162,7 @@ func (h *Handler) DeleteCommunicationScriptCategory(ctx echo.Context, id Communi
 	if err := authVerify(ctx, session); err != nil {
 		return err
 	}
-	if err := h.communication.DeleteCategory(ctx.Request().Context(), account.ID, uuid.UUID(id)); err != nil {
+	if err := h.communication.DeleteScriptType(ctx.Request().Context(), account.ID, uuid.UUID(id)); err != nil {
 		return err
 	}
 	return ctx.NoContent(http.StatusNoContent)
@@ -182,13 +184,8 @@ func (h *Handler) ListCommunicationScripts(ctx echo.Context, params ListCommunic
 	if params.ScriptType != nil {
 		typ = string(*params.ScriptType)
 	}
-	var categoryID *uuid.UUID
-	if params.CategoryId != nil {
-		v := uuid.UUID(*params.CategoryId)
-		categoryID = &v
-	}
 	favorite := params.Favorite != nil && *params.Favorite
-	items, total, err := h.communication.ListScripts(ctx.Request().Context(), userID, page, pageSize, stringValue(params.Q), typ, categoryID, favorite)
+	items, total, err := h.communication.ListScripts(ctx.Request().Context(), userID, page, pageSize, stringValue(params.Q), typ, favorite)
 	if err != nil {
 		return err
 	}
@@ -217,16 +214,11 @@ func (h *Handler) saveCommunicationScript(ctx echo.Context, id uuid.UUID, status
 	if err := ctx.Bind(&request); err != nil {
 		return problem.New("VALIDATION_ERROR", http.StatusBadRequest, "request body is invalid")
 	}
-	var categoryID *uuid.UUID
-	if request.CategoryId != nil {
-		v := uuid.UUID(*request.CategoryId)
-		categoryID = &v
-	}
 	var tags []string
 	if request.Tags != nil {
 		tags = *request.Tags
 	}
-	item, err := h.communication.SaveScript(ctx.Request().Context(), account.ID, id, communication.ScriptInput{CategoryID: categoryID, Title: request.Title, ScriptType: string(request.ScriptType), Tags: tags, Paragraphs: request.Paragraphs, Note: stringPointerValue(request.Note), Favorite: request.Favorite})
+	item, err := h.communication.SaveScript(ctx.Request().Context(), account.ID, id, communication.ScriptInput{Title: request.Title, ScriptType: request.ScriptType, Tags: tags, Paragraphs: request.Paragraphs, Note: stringPointerValue(request.Note), Favorite: request.Favorite})
 	if err != nil {
 		return err
 	}
@@ -275,11 +267,11 @@ func (h *Handler) ToggleCommunicationScriptFavorite(ctx echo.Context, id Communi
 func communicationFriendDTO(value communication.FriendRecord) CommunicationFriendRecord {
 	return CommunicationFriendRecord{Id: value.ID, Platform: value.Platform, AccountLabel: value.AccountLabel, GroupName: value.GroupName, AddDirection: CommunicationFriendRecordAddDirection(value.AddDirection), LastAppliedPerson: value.LastAppliedPerson, ApplicationScript: value.ApplicationScript, FirstMessage: value.FirstMessage, Note: value.Note, Archived: value.Archived, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
-func communicationCategoryDTO(value communication.Category) CommunicationScriptCategory {
-	return CommunicationScriptCategory{Id: value.ID, Name: value.Name, SortOrder: value.SortOrder, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
-}
 func communicationScriptDTO(value communication.Script) CommunicationScript {
-	return CommunicationScript{Id: value.ID, CategoryId: uuidPtr(value.CategoryID), CategoryName: value.CategoryName, Title: value.Title, ScriptType: CommunicationScriptScriptType(value.ScriptType), Tags: value.Tags, Paragraphs: value.Paragraphs, Note: value.Note, Favorite: value.Favorite, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return CommunicationScript{Id: value.ID, Title: value.Title, ScriptType: value.ScriptType, Tags: value.Tags, Paragraphs: value.Paragraphs, Note: value.Note, Favorite: value.Favorite, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+}
+func communicationScriptTypeDTO(value communication.ScriptType) CommunicationScriptType {
+	return CommunicationScriptType{Id: value.ID, Name: value.Name, SortOrder: value.SortOrder, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func stringValue(value *string) string {

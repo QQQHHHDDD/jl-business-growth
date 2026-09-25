@@ -80,7 +80,6 @@ export E2E_SUPERADMIN_USERNAME="$SUPERADMIN_USERNAME"
 export E2E_SUPERADMIN_PASSWORD="$SUPERADMIN_INITIAL_PASSWORD"
 export E2E_FILE_ROOT="$TEST_ROOT/files"
 export FILE_ROOT="$E2E_FILE_ROOT"
-export MAIL_MODE=file
 export RELEASE_UPDATE_ENABLED=false
 mkdir -p "$E2E_FILE_ROOT"
 chmod 700 "$E2E_FILE_ROOT"
@@ -98,7 +97,7 @@ recreate_database() {
 assert_current_schema() {
   local schema_version
   schema_version="$(run_psql -Atqc "SELECT version_id FROM goose_db_version WHERE is_applied ORDER BY version_id DESC LIMIT 1")"
-  [[ "$schema_version" == "14" ]] || { echo "expected schema version 14, got $schema_version" >&2; exit 1; }
+  [[ "$schema_version" == "17" ]] || { echo "expected schema version 17, got $schema_version" >&2; exit 1; }
   run_psql -Atqc "SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm'" | grep -qx 1
   [[ "$(run_psql -Atqc "SELECT count(*) FROM pg_extension WHERE extname = 'pgcrypto'")" == "0" ]]
   [[ "$(run_psql -Atqc "SELECT to_regclass('public.file_cleanup_failures') IS NOT NULL")" == "t" ]]
@@ -109,6 +108,10 @@ fresh_migration() {
   run_goose up >/dev/null
   assert_current_schema
   [[ "$(run_psql -Atqc "SELECT to_regclass('public.communication_friend_records') IS NOT NULL")" == "t" ]]
+  [[ "$(run_psql -Atqc "SELECT to_regclass('public.communication_script_categories') IS NULL")" == "t" ]]
+  [[ "$(run_psql -Atqc "SELECT count(*) FROM information_schema.columns WHERE table_name='communication_scripts' AND column_name='category_id'")" == "0" ]]
+  [[ "$(run_psql -Atqc "SELECT to_regclass('public.communication_script_types') IS NOT NULL")" == "t" ]]
+  [[ "$(run_psql -Atqc "SELECT to_regclass('public.mail_deliveries') IS NULL")" == "t" ]]
   [[ "$(run_psql -Atqc "SELECT to_regclass('public.import_jobs') IS NULL")" == "t" ]]
 }
 
@@ -120,6 +123,7 @@ upgrade_migration() {
   rmdir "$TEST_ROOT/backend/db" "$TEST_ROOT/backend" 2>/dev/null || true
   recreate_database
   (cd "$ROOT_DIR/backend" && GOOSE_DRIVER=postgres GOOSE_DBSTRING="$TEST_DATABASE_URL" go run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir "$baseline/migrations" up >/dev/null)
+  run_goose up-to 13 >/dev/null
   run_psql <<'SQL'
 INSERT INTO accounts (id, username, password_hash, role)
 VALUES ('00000000-0000-0000-0000-000000000091', 'upgrade-fixture', 'fixture', 'USER');
@@ -128,9 +132,19 @@ SELECT '00000000-0000-0000-0000-000000000092', '00000000-0000-0000-0000-00000000
 FROM finance_categories AS fc WHERE fc.user_id IS NULL AND fc.type = 'EXPENSE' AND fc.name = '生活' LIMIT 1;
 SQL
   [[ "$(run_psql -Atqc "SELECT count(*) FROM financial_transactions WHERE id = '00000000-0000-0000-0000-000000000092'")" == "1" ]]
+  run_psql <<'SQL'
+INSERT INTO communication_script_categories (id, user_id, name)
+VALUES ('00000000-0000-0000-0000-000000000094', '00000000-0000-0000-0000-000000000091', '自定义阶段');
+INSERT INTO communication_scripts (id, user_id, category_id, title, script_type, paragraphs)
+VALUES ('00000000-0000-0000-0000-000000000093', '00000000-0000-0000-0000-000000000091', '00000000-0000-0000-0000-000000000094', '升级类型保留', 'STAGE', '["升级数据"]'::jsonb);
+SQL
+  run_goose up-to 15 >/dev/null
   run_goose up >/dev/null
   assert_current_schema
   [[ "$(run_psql -Atqc "SELECT count(*) FROM financial_transactions WHERE id = '00000000-0000-0000-0000-000000000092'")" == "1" ]]
+  [[ "$(run_psql -Atqc "SELECT count(*) FROM communication_script_types WHERE user_id = '00000000-0000-0000-0000-000000000091' AND name = '自定义阶段'")" == "1" ]]
+  [[ "$(run_psql -Atqc "SELECT script_type FROM communication_scripts WHERE id = '00000000-0000-0000-0000-000000000093'")" == "自定义阶段" ]]
+  [[ "$(run_psql -Atqc "SELECT to_regclass('public.communication_script_categories') IS NULL")" == "t" ]]
   [[ "$(run_psql -Atqc "SELECT to_regclass('public.import_jobs') IS NULL")" == "t" ]]
   [[ "$(run_psql -Atqc "SELECT count(*) FROM information_schema.columns WHERE table_name='financial_transactions' AND column_name='import_fingerprint'")" == "0" ]]
 }
@@ -160,8 +174,10 @@ fi
 
 if [[ "$SCOPE" == all || "$SCOPE" == e2e ]]; then
   fresh_migration
-  export E2E_BACKEND_PORT="$(choose_port 18080)"
-  export E2E_FRONTEND_PORT="$(choose_port 15173)"
+  E2E_BACKEND_PORT="$(choose_port 18080)"
+  export E2E_BACKEND_PORT
+  E2E_FRONTEND_PORT="$(choose_port 15173)"
+  export E2E_FRONTEND_PORT
   export E2E_PACKAGE_RUNNER=bun
   (cd "$ROOT_DIR/frontend" && bun run build && E2E_PRODUCTION=1 bunx playwright test)
 fi

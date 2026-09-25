@@ -180,12 +180,12 @@ describe("CalendarPage", () => {
     expect(saveCalendarEvent).not.toHaveBeenCalled();
   });
 
-  it("supports selecting multiple contacts and saving a new invitee", async () => {
+  it("supports selecting multiple contacts and saving a new contact record", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "新建日程" }));
     fireEvent.change(screen.getByLabelText("日程标题"), { target: { value: "联系人测试" } });
     fireEvent.click(screen.getByLabelText(/访客/));
-    fireEvent.change(screen.getByLabelText("新增受邀邮箱"), { target: { value: "new@example.com" } });
+    fireEvent.change(screen.getByLabelText("新增联系人邮箱"), { target: { value: "new@example.com" } });
     fireEvent.click(screen.getByLabelText("保存为常用联系人"));
     fireEvent.change(screen.getByLabelText("联系人姓名（可选）"), { target: { value: "新联系人" } });
     fireEvent.click(screen.getByRole("button", { name: "保存日程" }));

@@ -72,9 +72,7 @@ func TestAuthenticationAdminAPIIntegration(t *testing.T) {
 		CookieSecure:         false,
 		SuperadminUsername:   "test-superadmin",
 		SuperadminPassword:   "test-superadmin-password",
-		MailMode:             "file",
 		FileRoot:             fileRoot,
-		MailOutboxRoot:       fileRoot,
 		ReleaseRepository:    "QQQHHHDDD/jl-business-growth",
 		ReleaseUpdateEnabled: true,
 		ReleaseRuntimeRoot:   filepath.Join(fileRoot, "release-updater"),
@@ -421,7 +419,7 @@ func TestDailyBusinessAPIIntegration(t *testing.T) {
 	}
 
 	fileRoot := t.TempDir()
-	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", FileRoot: fileRoot}
 	authService := auth.NewService(pool, applicationConfig)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
@@ -562,7 +560,7 @@ func TestCalendarReviewsAnalyticsAPIIntegration(t *testing.T) {
 		t.Fatalf("reset isolated test database: %v", err)
 	}
 	fileRoot := t.TempDir()
-	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	applicationConfig := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", FileRoot: fileRoot}
 	authService := auth.NewService(pool, applicationConfig)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
@@ -628,14 +626,6 @@ func TestCalendarReviewsAnalyticsAPIIntegration(t *testing.T) {
 	decodeTestJSON(t, listed, &eventList)
 	if len(eventList.Data.Items) != 1 {
 		t.Fatalf("calendar list length = %d, want 1", len(eventList.Data.Items))
-	}
-	if files, err := os.ReadDir(fileRoot); err != nil || len(files) == 0 {
-		t.Fatalf("mail outbox files = %d, error = %v", len(files), err)
-	} else {
-		content, readErr := os.ReadFile(fileRoot + "/" + files[0].Name())
-		if readErr != nil || !strings.Contains(string(content), "BEGIN:VCALENDAR") || !strings.Contains(string(content), "METHOD:REQUEST") {
-			t.Fatalf("mail outbox content missing ICS request: error = %v, content = %q", readErr, content)
-		}
 	}
 	recurring := map[string]interface{}{"title": "Daily series", "timezone": "Asia/Shanghai", "start_at": start, "end_at": end, "recurrence_freq": "DAILY", "recurrence_interval": 1, "recurrence_end_type": "COUNT", "recurrence_count": 3}
 	recurringBody := postTestJSON(t, userClient, server.URL, applicationConfig.PublicBaseURL, "/api/calendar/events", recurring, userAuth.Data.CsrfToken, http.StatusCreated)
@@ -752,7 +742,7 @@ func TestTeamKnowledgeFilesSearchAPIIntegration(t *testing.T) {
 		t.Fatalf("reset isolated test database: %v", err)
 	}
 	fileRoot := t.TempDir()
-	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", FileRoot: fileRoot}
 	authService := auth.NewService(pool, cfg)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
@@ -859,7 +849,7 @@ func TestTeamKnowledgeFilesSearchAPIIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create dream image: %v", err)
 	}
-	_, _ = imagePart.Write([]byte("test image"))
+	_, _ = imagePart.Write([]byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A})
 	_ = imageWriter.Close()
 	imageRequest, err := http.NewRequest(http.MethodPost, endpointURL(server.URL, "/api/files"), &imageBody)
 	if err != nil {
@@ -969,7 +959,7 @@ func TestFinanceIncomeAPIIntegration(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO finance_categories (user_id, type, name) VALUES (NULL, 'INCOME', '其他收入'), (NULL, 'EXPENSE', '其他支出'), (NULL, 'EXPENSE', '生活'), (NULL, 'EXPENSE', '交通'), (NULL, 'EXPENSE', '学习')`); err != nil {
 		t.Fatalf("restore finance/income system categories after reset: %v", err)
 	}
-	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: t.TempDir(), MailOutboxRoot: t.TempDir()}
+	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", FileRoot: t.TempDir()}
 	authService := auth.NewService(pool, cfg)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)
@@ -1085,7 +1075,7 @@ func TestAccountLifecycleAPIIntegration(t *testing.T) {
 		t.Fatalf("restore finance system categories after reset: %v", err)
 	}
 	fileRoot := t.TempDir()
-	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", MailMode: "file", FileRoot: fileRoot, MailOutboxRoot: fileRoot}
+	cfg := config.Config{AppEnv: "test", DatabaseURL: databaseURL, PublicBaseURL: "http://127.0.0.1:5173", CookieSecure: false, SuperadminUsername: "test-superadmin", SuperadminPassword: "test-superadmin-password", FileRoot: fileRoot}
 	authService := auth.NewService(pool, cfg)
 	if err := authService.BootstrapSuperAdmin(ctx); err != nil {
 		t.Fatalf("bootstrap test super administrator: %v", err)

@@ -29,16 +29,10 @@ type Config struct {
 	CookieSecure         bool
 	SuperadminUsername   string
 	SuperadminPassword   string
-	MailMode             string
-	SMTPHost             string
-	SMTPPort             string
-	SMTPUsername         string
-	SMTPPassword         string
-	SMTPFrom             string
 	FileRoot             string
-	MailOutboxRoot       string
 	MaxDocumentUploadMB  int
 	MaxImageUploadMB     int
+	MaxRequestBodyMB     int
 	ListenAddr           string
 	ReleaseRepository    string
 	ReleaseUpdateEnabled bool
@@ -63,7 +57,6 @@ func Load() (Config, error) {
 
 	root := projectRoot()
 	fileRoot := resolvePath(root, value(fileValues, "FILE_ROOT", "./.local/files"))
-	mailOutboxRoot := filepath.Join(filepath.Dir(fileRoot), "mail-outbox")
 	documentLimit, err := positiveInt(value(fileValues, "MAX_DOCUMENT_UPLOAD_MB", "50"))
 	if err != nil {
 		return Config{}, fmt.Errorf("MAX_DOCUMENT_UPLOAD_MB: %w", err)
@@ -71,6 +64,13 @@ func Load() (Config, error) {
 	imageLimit, err := positiveInt(value(fileValues, "MAX_IMAGE_UPLOAD_MB", "10"))
 	if err != nil {
 		return Config{}, fmt.Errorf("MAX_IMAGE_UPLOAD_MB: %w", err)
+	}
+	requestBodyLimit, err := positiveInt(value(fileValues, "MAX_REQUEST_BODY_MB", "60"))
+	if err != nil {
+		return Config{}, fmt.Errorf("MAX_REQUEST_BODY_MB: %w", err)
+	}
+	if requestBodyLimit < documentLimit {
+		return Config{}, errors.New("MAX_REQUEST_BODY_MB must be at least MAX_DOCUMENT_UPLOAD_MB")
 	}
 	releaseUpdateEnabled, err := strconv.ParseBool(value(fileValues, "RELEASE_UPDATE_ENABLED", "false"))
 	if err != nil {
@@ -89,16 +89,10 @@ func Load() (Config, error) {
 		CookieSecure:         value(fileValues, "COOKIE_SECURE", "false") == "true",
 		SuperadminUsername:   value(fileValues, "SUPERADMIN_USERNAME", ""),
 		SuperadminPassword:   value(fileValues, "SUPERADMIN_INITIAL_PASSWORD", ""),
-		MailMode:             value(fileValues, "MAIL_MODE", "file"),
-		SMTPHost:             value(fileValues, "SMTP_HOST", ""),
-		SMTPPort:             value(fileValues, "SMTP_PORT", "587"),
-		SMTPUsername:         value(fileValues, "SMTP_USERNAME", ""),
-		SMTPPassword:         value(fileValues, "SMTP_PASSWORD", ""),
-		SMTPFrom:             value(fileValues, "SMTP_FROM", ""),
 		FileRoot:             fileRoot,
-		MailOutboxRoot:       mailOutboxRoot,
 		MaxDocumentUploadMB:  documentLimit,
 		MaxImageUploadMB:     imageLimit,
+		MaxRequestBodyMB:     requestBodyLimit,
 		ListenAddr:           value(fileValues, "LISTEN_ADDR", "127.0.0.1:8080"),
 		ReleaseRepository:    value(fileValues, "RELEASE_REPOSITORY", "QQQHHHDDD/jl-business-growth"),
 		ReleaseUpdateEnabled: releaseUpdateEnabled,
@@ -121,12 +115,7 @@ func (c Config) Validate() error {
 	if c.DatabaseURL == "" {
 		return errors.New("DATABASE_URL is required")
 	}
-	if c.MailMode != "file" && c.MailMode != "smtp" {
-		return errors.New("MAIL_MODE must be file or smtp")
-	}
-	if c.MailMode == "smtp" && (c.SMTPHost == "" || c.SMTPPort == "" || c.SMTPFrom == "") {
-		return errors.New("SMTP_HOST, SMTP_PORT, and SMTP_FROM are required when MAIL_MODE=smtp")
-	}
+
 	if (c.AppEnv == development || c.AppEnv == test) && c.CookieSecure {
 		return errors.New("COOKIE_SECURE must be false in development and test")
 	}
@@ -179,11 +168,7 @@ func (c Config) EnsureDirectories() error {
 	if err := os.MkdirAll(c.FileRoot, 0o700); err != nil {
 		return fmt.Errorf("create file root: %w", err)
 	}
-	if c.MailMode == "file" {
-		if err := os.MkdirAll(c.MailOutboxRoot, 0o700); err != nil {
-			return fmt.Errorf("create mail outbox: %w", err)
-		}
-	}
+
 	if c.ReleaseUpdateEnabled {
 		requestRoot := c.ReleaseRequestRoot
 		if requestRoot == "" {

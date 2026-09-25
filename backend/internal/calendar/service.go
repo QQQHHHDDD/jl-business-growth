@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net/http"
 	stdmail "net/mail"
 	"strings"
@@ -17,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jl-business-growth/backend/internal/auth"
-	"jl-business-growth/backend/internal/mail"
 	"jl-business-growth/backend/internal/problem"
 )
 
@@ -71,12 +69,11 @@ type Input struct {
 }
 
 type Service struct {
-	pool   *pgxpool.Pool
-	sender mail.Sender
+	pool *pgxpool.Pool
 }
 
-func NewService(pool *pgxpool.Pool, sender mail.Sender) *Service {
-	return &Service{pool: pool, sender: sender}
+func NewService(pool *pgxpool.Pool) *Service {
+	return &Service{pool: pool}
 }
 
 func (s *Service) ListContacts(ctx context.Context, userID uuid.UUID) ([]Contact, error) {
@@ -265,19 +262,13 @@ func (s *Service) Save(ctx context.Context, userID, id uuid.UUID, input Input) (
 	for index, weekday := range weekdays {
 		event.RecurrenceWeekdays[index] = int(weekday)
 	}
-	if len(input.Attendees) > 0 {
-		s.deliver(ctx, event, "REQUEST", nil)
-	}
 	return event, nil
 }
 
 func (s *Service) Delete(ctx context.Context, userID, id uuid.UUID) error {
-	event, err := s.Get(ctx, userID, id)
+	_, err := s.Get(ctx, userID, id)
 	if err != nil {
 		return err
-	}
-	if len(event.Attendees) > 0 {
-		s.deliver(ctx, event, "CANCEL", nil)
 	}
 	if _, err := s.pool.Exec(ctx, `DELETE FROM calendar_events WHERE id=$1 AND user_id=$2`, auth.ToPGUUID(id), auth.ToPGUUID(userID)); err != nil {
 		return err
@@ -322,9 +313,6 @@ func (s *Service) saveFuture(ctx context.Context, userID, id uuid.UUID, input In
 	}
 	created.RecurrenceWeekdays = append([]int(nil), input.RecurrenceWeekdays...)
 	created.Attendees = attendees
-	if len(attendees) > 0 {
-		s.deliver(ctx, created, "REQUEST", nil)
-	}
 	return created, nil
 }
 
@@ -341,9 +329,6 @@ func (s *Service) saveException(ctx context.Context, userID, id uuid.UUID, input
 		return Event{}, err
 	}
 	event.Title, event.Description, event.Location, event.StartAt, event.EndAt, event.OriginalOccurrenceStart, event.IsException = input.Title, input.Description, input.Location, input.StartAt, input.EndAt, input.OccurrenceStart, true
-	if len(event.Attendees) > 0 {
-		s.deliver(ctx, event, "REQUEST", input.OccurrenceStart)
-	}
 	return event, nil
 }
 
@@ -386,51 +371,6 @@ func (s *Service) attendees(ctx context.Context, id uuid.UUID) ([]Attendee, erro
 		result = append(result, item)
 	}
 	return result, rows.Err()
-}
-
-func (s *Service) deliver(ctx context.Context, event Event, method string, occurrence *time.Time) {
-	for _, attendee := range event.Attendees {
-		id := uuid.New()
-		_, err := s.pool.Exec(ctx, `INSERT INTO mail_deliveries (id,calendar_event_id,occurrence_start,attendee_email,method,status) VALUES ($1,$2,$3,$4,$5,'PENDING')`, auth.ToPGUUID(id), auth.ToPGUUID(event.ID), occurrence, attendee.Email, method)
-		if err != nil {
-			continue
-		}
-		body := ICS(event, method, occurrence)
-		provider, sendErr := s.sender.Send(ctx, mail.Message{To: attendee.Email, Subject: event.Title, Body: body, ContentType: "text/calendar; method=" + method})
-		if sendErr != nil {
-			_, _ = s.pool.Exec(ctx, `UPDATE mail_deliveries SET status='FAILED',error_message=$2 WHERE id=$1`, auth.ToPGUUID(id), sendErr.Error())
-		} else {
-			_, _ = s.pool.Exec(ctx, `UPDATE mail_deliveries SET status='SENT',provider_message_id=$2,sent_at=now() WHERE id=$1`, auth.ToPGUUID(id), provider)
-		}
-	}
-}
-
-func ICS(event Event, method string, occurrence *time.Time) string {
-	start, end := event.StartAt, event.EndAt
-	if occurrence != nil {
-		start = *occurrence
-		end = start.Add(event.EndAt.Sub(event.StartAt))
-	}
-	if event.OriginalOccurrenceStart != nil && occurrence == nil {
-		occurrence = event.OriginalOccurrenceStart
-	}
-	escape := func(value string) string {
-		return strings.NewReplacer("\\", "\\\\", ";", "\\;", ",", "\\,", "\n", "\\n").Replace(value)
-	}
-	line := func(key, value string) string { return key + ":" + value + "\r\n" }
-	result := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//JL Business Growth//Calendar//CN\r\nMETHOD:" + method + "\r\n"
-	result += line("BEGIN", "VEVENT") + line("UID", event.UID) + line("SEQUENCE", fmt.Sprint(event.Sequence)) + line("DTSTAMP", time.Now().UTC().Format("20060102T150405Z")) + line("DTSTART", start.UTC().Format("20060102T150405Z")) + line("DTEND", end.UTC().Format("20060102T150405Z")) + line("SUMMARY", escape(event.Title))
-	if occurrence != nil {
-		result += line("RECURRENCE-ID", occurrence.UTC().Format("20060102T150405Z"))
-	}
-	if event.Description != nil {
-		result += line("DESCRIPTION", escape(*event.Description))
-	}
-	if event.Location != nil {
-		result += line("LOCATION", escape(*event.Location))
-	}
-	result += line("END", "VEVENT") + "END:VCALENDAR\r\n"
-	return result
 }
 
 func validate(input Input) error {

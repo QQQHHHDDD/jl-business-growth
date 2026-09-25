@@ -174,7 +174,7 @@ specific secrets in this repository.
    directories with mode `0700` (or stricter):
 
    ```bash
-   for directory in files tmp mail-outbox; do
+   for directory in files tmp; do
      test ! -L "/var/lib/jl-business-growth/${directory}"
      sudo install -d -o jl-business -g jl-business -m 0700 \
        "/var/lib/jl-business-growth/${directory}"
