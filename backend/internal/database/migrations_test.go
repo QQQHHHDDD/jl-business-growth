@@ -124,6 +124,20 @@ func TestCommunicationScriptTypeRegistryMigration(t *testing.T) {
 	}
 }
 
+func TestCommunicationScriptTypeRegistryRejectsCaseInsensitiveCollisions(t *testing.T) {
+	migration := readFile(t, filepath.Join(migrationsRoot(t), "00016_communication_script_types.sql"))
+	for _, statement := range []string{
+		"COUNT(DISTINCT btrim(script_type)) > 1",
+		"RAISE EXCEPTION",
+		"SELECT DISTINCT user_id, btrim(script_type)",
+		"lower(btrim(scripts.script_type)) = lower(types.name)",
+	} {
+		if !strings.Contains(migration, statement) {
+			t.Fatalf("00016 must protect script type names with %q", statement)
+		}
+	}
+}
+
 func TestImportExportRemovalMigration(t *testing.T) {
 	migration := readFile(t, filepath.Join(migrationsRoot(t), "00014_remove_import_export.sql"))
 	for _, statement := range []string{

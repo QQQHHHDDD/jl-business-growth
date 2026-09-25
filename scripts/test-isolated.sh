@@ -121,6 +121,32 @@ upgrade_migration() {
   git -C "$ROOT_DIR" archive v1.1.3 backend/db/migrations | tar -x -C "$TEST_ROOT"
   mv "$TEST_ROOT/backend/db/migrations" "$baseline/migrations"
   rmdir "$TEST_ROOT/backend/db" "$TEST_ROOT/backend" 2>/dev/null || true
+
+  recreate_database
+  (cd "$ROOT_DIR/backend" && GOOSE_DRIVER=postgres GOOSE_DBSTRING="$TEST_DATABASE_URL" go run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir "$baseline/migrations" up >/dev/null)
+  run_goose up-to 13 >/dev/null
+  run_psql <<'SQL'
+INSERT INTO accounts (id, username, password_hash, role)
+VALUES ('00000000-0000-0000-0000-000000000101', 'collision-fixture', 'fixture', 'USER');
+INSERT INTO communication_script_categories (id, user_id, name)
+VALUES
+  ('00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000101', 'Warmup'),
+  ('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000101', 'warmup');
+INSERT INTO communication_scripts (id, user_id, category_id, title, script_type, paragraphs)
+VALUES
+  ('00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000102', '冲突类型一', 'STAGE', '["第一条"]'::jsonb),
+  ('00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000103', '冲突类型二', 'STAGE', '["第二条"]'::jsonb);
+SQL
+  run_goose up-to 15 >/dev/null
+  local collision_status=0
+  set +e
+  run_goose up-to 16 >"$TEST_ROOT/collision-migration.log" 2>&1
+  collision_status=$?
+  set -e
+  [[ "$collision_status" -ne 0 ]]
+  [[ "$(run_psql -Atqc "SELECT version_id FROM goose_db_version WHERE is_applied ORDER BY version_id DESC LIMIT 1")" == "15" ]]
+  [[ "$(run_psql -Atqc "SELECT to_regclass('public.communication_script_types') IS NULL")" == "t" ]]
+
   recreate_database
   (cd "$ROOT_DIR/backend" && GOOSE_DRIVER=postgres GOOSE_DBSTRING="$TEST_DATABASE_URL" go run github.com/pressly/goose/v3/cmd/goose@v3.25.0 -dir "$baseline/migrations" up >/dev/null)
   run_goose up-to 13 >/dev/null
