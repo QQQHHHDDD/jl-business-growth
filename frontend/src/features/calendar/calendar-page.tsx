@@ -118,7 +118,7 @@ function eventTooltip(event: CalendarEvent, timezone: string): string[] {
     event.all_day ? "全天" : `${timeInTimezone(event.start_at, timezone)} - ${timeInTimezone(event.end_at, timezone)}`,
     event.location_or_link ? `地点或链接：${event.location_or_link}` : "",
     event.description ? `描述：${event.description}` : "",
-    event.attendees.length ? `受邀人：${event.attendees.map((attendee) => attendee.display_name || attendee.email).join("、")}` : "",
+    event.attendees.length ? `参与联系人：${event.attendees.map((attendee) => attendee.display_name || attendee.email).join("、")}` : "",
   ].filter(Boolean);
 }
 
@@ -267,7 +267,7 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
     onSuccess: () => {
       closeEditor();
       setEditing(null);
-      setNotice("日程已保存，邀请邮件已进入当前邮件模式的投递流程。");
+      setNotice("日程记录已保存。");
       setError("");
       void queryClient.invalidateQueries({ queryKey: ["user", accountId, "calendar"] });
       void queryClient.invalidateQueries({ queryKey: ["user", accountId, "calendar-contacts"] });
@@ -379,7 +379,7 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
     <Dialog open={editorOpen} onOpenChange={(open) => !open && closeEditor()}>
       <DialogContent className="calendar-editor-dialog flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col overflow-hidden bg-surface p-0">
         <div className="shrink-0 px-6 pt-6">
-          <DialogHeader><DialogTitle>{editing ? "编辑日程" : "新建日程"}</DialogTitle><DialogDescription>填写时间、重复规则和受邀联系人。</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? "编辑日程" : "新建日程"}</DialogTitle><DialogDescription>填写时间、重复规则和参与联系人记录。</DialogDescription></DialogHeader>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
           <EventEditor form={form} editing={editing} contacts={contacts} onChange={setForm} />
@@ -400,7 +400,7 @@ export function CalendarPage({ authResponse }: { authResponse: AuthResponse }) {
       {contactEditor && <DialogContent><DialogHeader><DialogTitle>{contactEditor === "new" ? "新增联系人" : "编辑联系人"}</DialogTitle><DialogDescription>联系人仅供当前账号创建日程时使用。</DialogDescription></DialogHeader><div className="space-y-4"><Input label="姓名（可选）" value={contactForm.name} onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })} /><Input label="邮箱" type="email" required value={contactForm.email} onChange={(event) => setContactForm({ ...contactForm, email: event.target.value })} /></div><div className="mt-6 flex justify-end gap-3"><Button variant="secondary" onClick={() => setContactEditor(null)}>取消</Button><Button loading={contactMutation.isPending} disabled={!contactForm.email.trim()} onClick={() => contactMutation.mutate()}>保存联系人</Button></div></DialogContent>}
     </Dialog>
 
-    <ConfirmDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)} title="确认删除日程" description={deleteTarget ? `确定删除“${deleteTarget.title}”吗？受邀人会收到取消通知。` : ""} confirmLabel="删除" loading={deleteMutation.isPending} onConfirm={() => deleteMutation.mutate()} />
+    <ConfirmDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)} title="确认删除日程" description={deleteTarget ? `确定删除“${deleteTarget.title}”吗？` : ""} confirmLabel="删除" loading={deleteMutation.isPending} onConfirm={() => deleteMutation.mutate()} />
     <ConfirmDialog open={Boolean(contactDeleteTarget)} onOpenChange={(open) => !open && setContactDeleteTarget(null)} title="删除常用联系人" description={contactDeleteTarget ? `确定删除“${contactDeleteTarget.name || contactDeleteTarget.email}”吗？已有日程不会受到影响。` : ""} confirmLabel="删除" loading={deleteContactMutation.isPending} onConfirm={() => deleteContactMutation.mutate()} />
   </div>;
 }
@@ -436,8 +436,8 @@ function EventEditor({ form, editing, contacts, onChange }: { form: FormState; e
     {form.recurrence === "WEEKLY" && <fieldset><legend className="text-sm font-semibold text-slate-700">重复星期</legend><div className="mt-2 flex flex-wrap gap-2">{weekdayOptions.map(([value, label]) => <label key={value} className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold ${form.weekdays.includes(value) ? "border-teal-500 bg-teal-50 text-teal-800" : "border-slate-200 text-slate-600"}`}><input className="sr-only" type="checkbox" checked={form.weekdays.includes(value)} onChange={() => onChange({ ...form, weekdays: form.weekdays.includes(value) ? form.weekdays.filter((day) => day !== value) : [...form.weekdays, value] })} />{label}</label>)}</div></fieldset>}
     {recurring && <div className="grid gap-4 sm:grid-cols-2"><Select label="重复结束" value={form.endType} onChange={(value) => onChange({ ...form, endType: value as EndType })}><option value="NEVER">永不</option><option value="UNTIL">截止日期</option><option value="COUNT">重复次数</option></Select>{form.endType === "UNTIL" && <Input label="重复截止时间" type="datetime-local" value={form.recurrenceUntil} onChange={(event) => onChange({ ...form, recurrenceUntil: event.target.value })} />}{form.endType === "COUNT" && <Input label="重复次数" type="number" min={1} value={form.recurrenceCount} onChange={(event) => onChange({ ...form, recurrenceCount: Number(event.target.value) })} />}</div>}
     {editing && editing.recurrence_freq !== "NONE" && <Select label="修改范围" value={form.editScope} onChange={(value) => onChange({ ...form, editScope: value as EditScope })}>{scopeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Select>}
-    <section className="space-y-3 border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">受邀联系人（可选）</h3><Input label="搜索常用联系人" value={contactSearch} onChange={(event) => setContactSearch(event.target.value)} placeholder="输入姓名或邮箱" />{filteredContacts.length > 0 && <div className="grid gap-2 sm:grid-cols-2">{filteredContacts.map((contact) => <label key={contact.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-sm ${form.attendeeEmails.includes(contact.email) ? "border-teal-500 bg-teal-50" : "border-slate-200"}`}><input type="checkbox" checked={form.attendeeEmails.includes(contact.email)} onChange={() => toggleAttendee(contact.email)} /><span className="min-w-0"><strong className="block truncate text-slate-900">{contact.name || contact.email}</strong>{contact.name && <span className="block truncate text-xs text-slate-500">{contact.email}</span>}</span></label>)}</div>}
-      <Input label="新增受邀邮箱" type="email" list={contactListID} value={form.attendee} onChange={(event) => onChange({ ...form, attendee: event.target.value, saveContact: false, contactName: "" })} description="可与已选择的常用联系人一起邀请。" />
+    <section className="space-y-3 border-t border-slate-200 pt-5"><h3 className="text-sm font-bold text-slate-900">参与联系人记录（可选）</h3><Input label="搜索常用联系人" value={contactSearch} onChange={(event) => setContactSearch(event.target.value)} placeholder="输入姓名或邮箱" />{filteredContacts.length > 0 && <div className="grid gap-2 sm:grid-cols-2">{filteredContacts.map((contact) => <label key={contact.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-sm ${form.attendeeEmails.includes(contact.email) ? "border-teal-500 bg-teal-50" : "border-slate-200"}`}><input type="checkbox" checked={form.attendeeEmails.includes(contact.email)} onChange={() => toggleAttendee(contact.email)} /><span className="min-w-0"><strong className="block truncate text-slate-900">{contact.name || contact.email}</strong>{contact.name && <span className="block truncate text-xs text-slate-500">{contact.email}</span>}</span></label>)}</div>}
+      <Input label="新增联系人邮箱" type="email" list={contactListID} value={form.attendee} onChange={(event) => onChange({ ...form, attendee: event.target.value, saveContact: false, contactName: "" })} description="可与已选择的常用联系人一起记录。" />
       <datalist id={contactListID}>{contacts.map((contact) => <option key={contact.id} value={contact.email}>{contact.name ?? contact.email}</option>)}</datalist>
       {attendee && !savedContact && <div className="rounded-lg border border-slate-200 p-3"><label className="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.saveContact} onChange={(event) => onChange({ ...form, saveContact: event.target.checked })} />保存为常用联系人</label>{form.saveContact && <div className="mt-3"><Input label="联系人姓名（可选）" value={form.contactName} onChange={(event) => onChange({ ...form, contactName: event.target.value })} /></div>}</div>}
     </section>

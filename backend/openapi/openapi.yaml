@@ -998,7 +998,7 @@ paths:
     delete:
       operationId: deleteCalendarEvent
       tags: [calendar-reviews]
-      summary: Delete a calendar event series and send cancellation notices
+      summary: Delete a calendar event series
       security: [{ sessionCookie: [] }]
       parameters:
         - $ref: "#/components/parameters/CalendarEventId"
@@ -1997,63 +1997,63 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CommunicationFriendRecordResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
-  /api/communication/script-categories:
+  /api/communication/script-types:
     get:
-      operationId: listCommunicationScriptCategories
+      operationId: listCommunicationScriptTypes
       tags: [communication]
-      summary: List script categories
+      summary: List script types owned by the current account
       security: [{ sessionCookie: [] }]
       responses:
         "200":
-          description: Script categories
+          description: Script types
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CommunicationScriptCategoryListResponse" }
+              schema: { $ref: "#/components/schemas/CommunicationScriptTypeListResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
     post:
-      operationId: createCommunicationScriptCategory
+      operationId: createCommunicationScriptType
       tags: [communication]
-      summary: Create a script category
+      summary: Create a script type
       security: [{ sessionCookie: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CommunicationScriptCategoryRequest" }
+            schema: { $ref: "#/components/schemas/CommunicationScriptTypeRequest" }
       responses:
         "201":
-          description: Script category created
+          description: Script type created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CommunicationScriptCategoryResponse" }
+              schema: { $ref: "#/components/schemas/CommunicationScriptTypeResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
-  /api/communication/script-categories/{category_id}:
+  /api/communication/script-types/{script_type_id}:
     put:
-      operationId: updateCommunicationScriptCategory
+      operationId: updateCommunicationScriptType
       tags: [communication]
-      summary: Update a script category
+      summary: Rename a script type
       security: [{ sessionCookie: [] }]
-      parameters: [{ $ref: "#/components/parameters/CommunicationScriptCategoryId" }]
+      parameters: [{ $ref: "#/components/parameters/CommunicationScriptTypeId" }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CommunicationScriptCategoryRequest" }
+            schema: { $ref: "#/components/schemas/CommunicationScriptTypeRequest" }
       responses:
         "200":
-          description: Script category updated
+          description: Script type updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CommunicationScriptCategoryResponse" }
+              schema: { $ref: "#/components/schemas/CommunicationScriptTypeResponse" }
         default: { $ref: "#/components/responses/ErrorResponse" }
     delete:
-      operationId: deleteCommunicationScriptCategory
+      operationId: deleteCommunicationScriptType
       tags: [communication]
-      summary: Delete a script category
+      summary: Delete a script type
       security: [{ sessionCookie: [] }]
-      parameters: [{ $ref: "#/components/parameters/CommunicationScriptCategoryId" }]
+      parameters: [{ $ref: "#/components/parameters/CommunicationScriptTypeId" }]
       responses:
-        "204": { description: Script category deleted }
+        "204": { description: Script type deleted }
         default: { $ref: "#/components/responses/ErrorResponse" }
   /api/communication/scripts:
     get:
@@ -2065,8 +2065,7 @@ paths:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
         - { name: q, in: query, schema: { type: string } }
-        - { name: script_type, in: query, schema: { type: string, enum: [STAGE, FAQ] } }
-        - { name: category_id, in: query, schema: { type: string, format: uuid } }
+        - { name: script_type, in: query, schema: { type: string, maxLength: 80 } }
         - { name: favorite, in: query, schema: { type: boolean, default: false } }
       responses:
         "200":
@@ -2188,13 +2187,13 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
-    CommunicationScriptCategoryId:
-      name: category_id
+    CommunicationScriptId:
+      name: script_id
       in: path
       required: true
       schema: { type: string, format: uuid }
-    CommunicationScriptId:
-      name: script_id
+    CommunicationScriptTypeId:
+      name: script_type_id
       in: path
       required: true
       schema: { type: string, format: uuid }
@@ -2742,49 +2741,46 @@ components:
       properties:
         data: { $ref: "#/components/schemas/CommunicationFriendRecord" }
         request_id: { type: string }
-    CommunicationScriptCategory:
-      type: object
-      required: [id, name, sort_order, created_at, updated_at]
-      properties:
-        id: { type: string, format: uuid }
-        name: { type: string }
-        sort_order: { type: integer }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
-    CommunicationScriptCategoryRequest:
-      type: object
-      required: [name]
-      properties:
-        name: { type: string, minLength: 1, maxLength: 80 }
-        sort_order: { type: integer }
-    CommunicationScriptCategoryListData:
+    CommunicationScriptTypeListData:
       type: object
       required: [items]
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/CommunicationScriptCategory" }
-    CommunicationScriptCategoryListResponse:
+          items: { $ref: "#/components/schemas/CommunicationScriptType" }
+    CommunicationScriptTypeListResponse:
       type: object
       required: [data, request_id]
       properties:
-        data: { $ref: "#/components/schemas/CommunicationScriptCategoryListData" }
+        data: { $ref: "#/components/schemas/CommunicationScriptTypeListData" }
         request_id: { type: string }
-    CommunicationScriptCategoryResponse:
+    CommunicationScriptType:
+      type: object
+      required: [id, name, sort_order, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 80 }
+        sort_order: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CommunicationScriptTypeRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+    CommunicationScriptTypeResponse:
       type: object
       required: [data, request_id]
       properties:
-        data: { $ref: "#/components/schemas/CommunicationScriptCategory" }
+        data: { $ref: "#/components/schemas/CommunicationScriptType" }
         request_id: { type: string }
     CommunicationScript:
       type: object
-      required: [id, title, script_type, tags, paragraphs, note, favorite, category_id, category_name, created_at, updated_at]
+      required: [id, title, script_type, tags, paragraphs, note, favorite, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
-        category_id: { type: string, format: uuid, nullable: true }
-        category_name: { type: string }
         title: { type: string }
-        script_type: { type: string, enum: [STAGE, FAQ] }
+        script_type: { type: string, minLength: 1, maxLength: 80 }
         tags:
           type: array
           items: { type: string }
@@ -2800,9 +2796,8 @@ components:
       type: object
       required: [title, script_type, paragraphs]
       properties:
-        category_id: { type: string, format: uuid, nullable: true }
         title: { type: string, minLength: 1, maxLength: 200 }
-        script_type: { type: string, enum: [STAGE, FAQ] }
+        script_type: { type: string, minLength: 1, maxLength: 80 }
         tags:
           type: array
           items: { type: string }

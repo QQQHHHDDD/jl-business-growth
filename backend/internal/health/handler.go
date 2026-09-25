@@ -53,15 +53,6 @@ func (h *Handler) GetHealthReady(ctx echo.Context) error {
 	} else {
 		checks["files"] = api.Ready
 	}
-	if h.config.MailMode == "file" {
-		if err := accessibleDirectory(h.config.MailOutboxRoot); err != nil {
-			checks["mail_outbox"] = api.Unavailable
-			ready = false
-		} else {
-			checks["mail_outbox"] = api.Ready
-		}
-	}
-
 	if !ready {
 		return ctx.JSON(http.StatusServiceUnavailable, api.ErrorResponse{
 			Error: api.ErrorBody{

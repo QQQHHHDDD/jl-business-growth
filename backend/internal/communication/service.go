@@ -26,25 +26,23 @@ type FriendInput struct {
 	Archived                                                                                                  *bool
 }
 type ProgressInput struct{ AddDirection, LastAppliedPerson, Note string }
-type Category struct {
+type Script struct {
+	ID, UserID              uuid.UUID
+	Title, ScriptType, Note string
+	Tags, Paragraphs        []string
+	Favorite                bool
+	CreatedAt, UpdatedAt    time.Time
+}
+type ScriptInput struct {
+	Title, ScriptType, Note string
+	Tags, Paragraphs        []string
+	Favorite                *bool
+}
+type ScriptType struct {
 	ID, UserID           uuid.UUID
 	Name                 string
 	SortOrder            int
 	CreatedAt, UpdatedAt time.Time
-}
-type Script struct {
-	ID, UserID                            uuid.UUID
-	CategoryID                            *uuid.UUID
-	CategoryName, Title, ScriptType, Note string
-	Tags, Paragraphs                      []string
-	Favorite                              bool
-	CreatedAt, UpdatedAt                  time.Time
-}
-type ScriptInput struct {
-	CategoryID              *uuid.UUID
-	Title, ScriptType, Note string
-	Tags, Paragraphs        []string
-	Favorite                *bool
 }
 
 type Service struct{ pool *pgxpool.Pool }
@@ -76,7 +74,7 @@ func normalizeParagraphs(items []string) []string {
 	return out
 }
 func validateScript(in ScriptInput) error {
-	if clean(in.Title, 200) == "" || (in.ScriptType != "STAGE" && in.ScriptType != "FAQ") || len(in.Paragraphs) == 0 {
+	if clean(in.Title, 200) == "" || clean(in.ScriptType, 80) == "" || len(in.Paragraphs) == 0 {
 		return problem.New("VALIDATION_ERROR", 400, "script title, type, and at least one paragraph are required")
 	}
 	for _, paragraph := range in.Paragraphs {
@@ -161,48 +159,113 @@ func (s *Service) DeleteFriend(ctx context.Context, userID, id uuid.UUID) error 
 	return err
 }
 
-func (s *Service) ListCategories(ctx context.Context, userID uuid.UUID) ([]Category, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id,user_id,name,sort_order,created_at,updated_at FROM communication_script_categories WHERE user_id=$1 ORDER BY sort_order,name`, auth.ToPGUUID(userID))
+func validateScriptType(name string) (string, error) {
+	name = clean(name, 80)
+	if name == "" {
+		return "", problem.New("VALIDATION_ERROR", 400, "script type name is required")
+	}
+	return name, nil
+}
+
+func (s *Service) ListScriptTypes(ctx context.Context, userID uuid.UUID) ([]ScriptType, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id,user_id,name,sort_order,created_at,updated_at FROM communication_script_types WHERE user_id=$1 ORDER BY sort_order,lower(name),name`, auth.ToPGUUID(userID))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []Category{}
+	out := []ScriptType{}
 	for rows.Next() {
-		var v Category
-		if err := rows.Scan(&v.ID, &v.UserID, &v.Name, &v.SortOrder, &v.CreatedAt, &v.UpdatedAt); err != nil {
+		var value ScriptType
+		if err := rows.Scan(&value.ID, &value.UserID, &value.Name, &value.SortOrder, &value.CreatedAt, &value.UpdatedAt); err != nil {
 			return nil, err
 		}
-		out = append(out, v)
+		out = append(out, value)
 	}
 	return out, rows.Err()
 }
-func (s *Service) SaveCategory(ctx context.Context, userID, id uuid.UUID, name string, sortOrder int) (Category, error) {
-	name = clean(name, 80)
-	if name == "" {
-		return Category{}, problem.New("VALIDATION_ERROR", 400, "category name is required")
+
+func (s *Service) SaveScriptType(ctx context.Context, userID, id uuid.UUID, name string) (ScriptType, error) {
+	name, err := validateScriptType(name)
+	if err != nil {
+		return ScriptType{}, err
 	}
-	var v Category
-	var err error
+	var duplicate bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM communication_script_types WHERE user_id=$1 AND lower(name)=lower($2) AND id<>$3)`, auth.ToPGUUID(userID), name, auth.ToPGUUID(id)).Scan(&duplicate); err != nil {
+		return ScriptType{}, err
+	}
+	if duplicate {
+		return ScriptType{}, problem.New("CONFLICT", 409, "script type already exists")
+	}
 	if id == uuid.Nil {
 		id = uuid.New()
-		err = s.pool.QueryRow(ctx, `INSERT INTO communication_script_categories(id,user_id,name,sort_order) VALUES($1,$2,$3,$4) RETURNING id,user_id,name,sort_order,created_at,updated_at`, auth.ToPGUUID(id), auth.ToPGUUID(userID), name, sortOrder).Scan(&v.ID, &v.UserID, &v.Name, &v.SortOrder, &v.CreatedAt, &v.UpdatedAt)
-	} else {
-		err = s.pool.QueryRow(ctx, `UPDATE communication_script_categories SET name=$3,sort_order=$4,updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING id,user_id,name,sort_order,created_at,updated_at`, auth.ToPGUUID(id), auth.ToPGUUID(userID), name, sortOrder).Scan(&v.ID, &v.UserID, &v.Name, &v.SortOrder, &v.CreatedAt, &v.UpdatedAt)
+		var value ScriptType
+		err = s.pool.QueryRow(ctx, `INSERT INTO communication_script_types(id,user_id,name) VALUES($1,$2,$3) RETURNING id,user_id,name,sort_order,created_at,updated_at`, auth.ToPGUUID(id), auth.ToPGUUID(userID), name).Scan(&value.ID, &value.UserID, &value.Name, &value.SortOrder, &value.CreatedAt, &value.UpdatedAt)
+		return value, err
 	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return ScriptType{}, err
+	}
+	defer tx.Rollback(ctx)
+	var oldName string
+	if err := tx.QueryRow(ctx, `SELECT name FROM communication_script_types WHERE id=$1 AND user_id=$2 FOR UPDATE`, auth.ToPGUUID(id), auth.ToPGUUID(userID)).Scan(&oldName); errors.Is(err, pgx.ErrNoRows) {
+		return ScriptType{}, problem.New("NOT_FOUND", 404, "script type not found")
+	} else if err != nil {
+		return ScriptType{}, err
+	}
+	var value ScriptType
+	err = tx.QueryRow(ctx, `UPDATE communication_script_types SET name=$3,updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING id,user_id,name,sort_order,created_at,updated_at`, auth.ToPGUUID(id), auth.ToPGUUID(userID), name).Scan(&value.ID, &value.UserID, &value.Name, &value.SortOrder, &value.CreatedAt, &value.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Category{}, problem.New("NOT_FOUND", 404, "script category not found")
+		return ScriptType{}, problem.New("NOT_FOUND", 404, "script type not found")
 	}
-	return v, err
+	if err != nil {
+		return ScriptType{}, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE communication_scripts SET script_type=$3,updated_at=now() WHERE user_id=$1 AND script_type=$2`, auth.ToPGUUID(userID), oldName, name); err != nil {
+		return ScriptType{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return ScriptType{}, err
+	}
+	return value, nil
 }
-func (s *Service) DeleteCategory(ctx context.Context, userID, id uuid.UUID) error {
-	result, err := s.pool.Exec(ctx, `DELETE FROM communication_script_categories WHERE id=$1 AND user_id=$2`, auth.ToPGUUID(id), auth.ToPGUUID(userID))
+
+func (s *Service) DeleteScriptType(ctx context.Context, userID, id uuid.UUID) error {
+	var used bool
+	var name string
+	if err := s.pool.QueryRow(ctx, `SELECT name FROM communication_script_types WHERE id=$1 AND user_id=$2`, auth.ToPGUUID(id), auth.ToPGUUID(userID)).Scan(&name); errors.Is(err, pgx.ErrNoRows) {
+		return problem.New("NOT_FOUND", 404, "script type not found")
+	} else if err != nil {
+		return err
+	}
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM communication_scripts WHERE user_id=$1 AND script_type=$2)`, auth.ToPGUUID(userID), name).Scan(&used); err != nil {
+		return err
+	}
+	if used {
+		return problem.New("CONFLICT", 409, "cannot delete a type used by scripts; change those scripts first")
+	}
+	result, err := s.pool.Exec(ctx, `DELETE FROM communication_script_types WHERE id=$1 AND user_id=$2`, auth.ToPGUUID(id), auth.ToPGUUID(userID))
 	if err == nil && result.RowsAffected() == 0 {
-		return problem.New("NOT_FOUND", 404, "script category not found")
+		return problem.New("NOT_FOUND", 404, "script type not found")
 	}
 	return err
 }
-func (s *Service) ListScripts(ctx context.Context, userID uuid.UUID, page, pageSize int, q, scriptType string, categoryID *uuid.UUID, favorite bool) ([]Script, int, error) {
+
+func (s *Service) ensureScriptType(ctx context.Context, userID uuid.UUID, name string) (string, error) {
+	var canonical string
+	err := s.pool.QueryRow(ctx, `SELECT name FROM communication_script_types WHERE user_id=$1 AND lower(name)=lower($2)`, auth.ToPGUUID(userID), name).Scan(&canonical)
+	if err == nil {
+		return canonical, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
+	}
+	_, err = s.pool.Exec(ctx, `INSERT INTO communication_script_types(id,user_id,name) VALUES($1,$2,$3)`, uuid.New(), auth.ToPGUUID(userID), name)
+	return name, err
+}
+
+func (s *Service) ListScripts(ctx context.Context, userID uuid.UUID, page, pageSize int, q, scriptType string, favorite bool) ([]Script, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -217,12 +280,11 @@ func (s *Service) ListScripts(ctx context.Context, userID uuid.UUID, page, pageS
 		typ = "%" + typ + "%"
 	}
 	var total int
-	category := nullableUUID(categoryID)
-	err := s.pool.QueryRow(ctx, `SELECT count(*) FROM communication_scripts WHERE user_id=$1 AND lower(title||' '||note||' '||array_to_string(tags,' ')||' '||paragraphs::text) LIKE $2 AND script_type LIKE $3 AND ($4::uuid IS NULL OR category_id=$4) AND ($5=false OR favorite)`, auth.ToPGUUID(userID), q, typ, category, favorite).Scan(&total)
+	err := s.pool.QueryRow(ctx, `SELECT count(*) FROM communication_scripts WHERE user_id=$1 AND lower(script_type||' '||title||' '||note||' '||array_to_string(tags,' ')||' '||paragraphs::text) LIKE $2 AND script_type LIKE $3 AND ($4=false OR favorite)`, auth.ToPGUUID(userID), q, typ, favorite).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT s.id,s.user_id,s.category_id,COALESCE(c.name,''),s.title,s.script_type,s.tags,s.paragraphs,s.note,s.favorite,s.created_at,s.updated_at FROM communication_scripts s LEFT JOIN communication_script_categories c ON c.id=s.category_id AND c.user_id=s.user_id WHERE s.user_id=$1 AND lower(s.title||' '||s.note||' '||array_to_string(s.tags,' ')||' '||s.paragraphs::text) LIKE $2 AND s.script_type LIKE $3 AND ($4::uuid IS NULL OR s.category_id=$4) AND ($5=false OR s.favorite) ORDER BY s.favorite DESC,s.updated_at DESC LIMIT $6 OFFSET $7`, auth.ToPGUUID(userID), q, typ, category, favorite, pageSize, (page-1)*pageSize)
+	rows, err := s.pool.Query(ctx, `SELECT s.id,s.user_id,s.title,s.script_type,s.tags,s.paragraphs,s.note,s.favorite,s.created_at,s.updated_at FROM communication_scripts s WHERE s.user_id=$1 AND lower(s.script_type||' '||s.title||' '||s.note||' '||array_to_string(s.tags,' ')||' '||s.paragraphs::text) LIKE $2 AND s.script_type LIKE $3 AND ($4=false OR s.favorite) ORDER BY s.favorite DESC,s.updated_at DESC LIMIT $5 OFFSET $6`, auth.ToPGUUID(userID), q, typ, favorite, pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -231,7 +293,7 @@ func (s *Service) ListScripts(ctx context.Context, userID uuid.UUID, page, pageS
 	for rows.Next() {
 		var v Script
 		var raw []byte
-		if err := rows.Scan(&v.ID, &v.UserID, &v.CategoryID, &v.CategoryName, &v.Title, &v.ScriptType, &v.Tags, &raw, &v.Note, &v.Favorite, &v.CreatedAt, &v.UpdatedAt); err != nil {
+		if err := rows.Scan(&v.ID, &v.UserID, &v.Title, &v.ScriptType, &v.Tags, &raw, &v.Note, &v.Favorite, &v.CreatedAt, &v.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
 		if err := json.Unmarshal(raw, &v.Paragraphs); err != nil {
@@ -249,24 +311,21 @@ func (s *Service) SaveScript(ctx context.Context, userID, id uuid.UUID, in Scrip
 		return Script{}, err
 	}
 	in.Paragraphs = normalizeParagraphs(in.Paragraphs)
-	if in.CategoryID != nil {
-		var exists bool
-		if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM communication_script_categories WHERE id=$1 AND user_id=$2)`, auth.ToPGUUID(*in.CategoryID), auth.ToPGUUID(userID)).Scan(&exists); err != nil {
-			return Script{}, err
-		}
-		if !exists {
-			return Script{}, problem.New("NOT_FOUND", 404, "script category not found")
-		}
+	in.ScriptType = clean(in.ScriptType, 80)
+	canonicalType, err := s.ensureScriptType(ctx, userID, in.ScriptType)
+	if err != nil {
+		return Script{}, err
 	}
+	in.ScriptType = canonicalType
 	raw, _ := json.Marshal(in.Paragraphs)
 	if id == uuid.Nil {
 		id = uuid.New()
-		_, err := s.pool.Exec(ctx, `INSERT INTO communication_scripts(id,user_id,category_id,title,script_type,tags,paragraphs,note,favorite) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, auth.ToPGUUID(id), auth.ToPGUUID(userID), nullableUUID(in.CategoryID), clean(in.Title, 200), in.ScriptType, in.Tags, raw, in.Note, boolValue(in.Favorite))
+		_, err := s.pool.Exec(ctx, `INSERT INTO communication_scripts(id,user_id,title,script_type,tags,paragraphs,note,favorite) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, auth.ToPGUUID(id), auth.ToPGUUID(userID), clean(in.Title, 200), in.ScriptType, in.Tags, raw, in.Note, boolValue(in.Favorite))
 		if err != nil {
 			return Script{}, err
 		}
 	} else {
-		_, err := s.pool.Exec(ctx, `UPDATE communication_scripts SET category_id=$3,title=$4,script_type=$5,tags=$6,paragraphs=$7,note=$8,favorite=COALESCE($9,favorite),updated_at=now() WHERE id=$1 AND user_id=$2`, auth.ToPGUUID(id), auth.ToPGUUID(userID), nullableUUID(in.CategoryID), clean(in.Title, 200), in.ScriptType, in.Tags, raw, in.Note, in.Favorite)
+		_, err := s.pool.Exec(ctx, `UPDATE communication_scripts SET title=$3,script_type=$4,tags=$5,paragraphs=$6,note=$7,favorite=COALESCE($8,favorite),updated_at=now() WHERE id=$1 AND user_id=$2`, auth.ToPGUUID(id), auth.ToPGUUID(userID), clean(in.Title, 200), in.ScriptType, in.Tags, raw, in.Note, in.Favorite)
 		if err != nil {
 			return Script{}, err
 		}
@@ -274,16 +333,10 @@ func (s *Service) SaveScript(ctx context.Context, userID, id uuid.UUID, in Scrip
 	return s.findScript(ctx, userID, id)
 }
 func boolValue(v *bool) bool { return v != nil && *v }
-func nullableUUID(v *uuid.UUID) any {
-	if v == nil {
-		return nil
-	}
-	return auth.ToPGUUID(*v)
-}
 func (s *Service) findScript(ctx context.Context, userID, id uuid.UUID) (Script, error) {
 	var v Script
 	var raw []byte
-	err := s.pool.QueryRow(ctx, `SELECT s.id,s.user_id,s.category_id,COALESCE(c.name,''),s.title,s.script_type,s.tags,s.paragraphs,s.note,s.favorite,s.created_at,s.updated_at FROM communication_scripts s LEFT JOIN communication_script_categories c ON c.id=s.category_id AND c.user_id=s.user_id WHERE s.id=$1 AND s.user_id=$2`, auth.ToPGUUID(id), auth.ToPGUUID(userID)).Scan(&v.ID, &v.UserID, &v.CategoryID, &v.CategoryName, &v.Title, &v.ScriptType, &v.Tags, &raw, &v.Note, &v.Favorite, &v.CreatedAt, &v.UpdatedAt)
+	err := s.pool.QueryRow(ctx, `SELECT id,user_id,title,script_type,tags,paragraphs,note,favorite,created_at,updated_at FROM communication_scripts WHERE id=$1 AND user_id=$2`, auth.ToPGUUID(id), auth.ToPGUUID(userID)).Scan(&v.ID, &v.UserID, &v.Title, &v.ScriptType, &v.Tags, &raw, &v.Note, &v.Favorite, &v.CreatedAt, &v.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return v, problem.New("NOT_FOUND", 404, "script not found")
 	}

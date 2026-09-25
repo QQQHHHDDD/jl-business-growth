@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -76,6 +77,11 @@ func newServerWithReleaseService(databasePool *pgxpool.Pool, applicationConfig c
 	server.HTTPErrorHandler = problem.HTTPErrorHandler
 	server.Use(middleware.Recover())
 	server.Use(middleware.RequestID())
+	requestBodyLimitMB := applicationConfig.MaxRequestBodyMB
+	if requestBodyLimitMB <= 0 {
+		requestBodyLimitMB = 60
+	}
+	server.Use(middleware.BodyLimit(fmt.Sprintf("%dM", requestBodyLimitMB)))
 	server.Use(auth.SecurityHeadersMiddleware(applicationConfig))
 	server.Use(auth.SecurityMiddleware(applicationConfig))
 	server.Use(auth.AuthenticationRateLimitMiddleware())

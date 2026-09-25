@@ -662,7 +662,7 @@ export interface paths {
         /** Update an entire series, one occurrence, or an occurrence and following events */
         put: operations["updateCalendarEvent"];
         post?: never;
-        /** Delete a calendar event series and send cancellation notices */
+        /** Delete a calendar event series */
         delete: operations["deleteCalendarEvent"];
         options?: never;
         head?: never;
@@ -1287,25 +1287,25 @@ export interface paths {
         patch: operations["updateCommunicationFriendProgress"];
         trace?: never;
     };
-    "/api/communication/script-categories": {
+    "/api/communication/script-types": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List script categories */
-        get: operations["listCommunicationScriptCategories"];
+        /** List script types owned by the current account */
+        get: operations["listCommunicationScriptTypes"];
         put?: never;
-        /** Create a script category */
-        post: operations["createCommunicationScriptCategory"];
+        /** Create a script type */
+        post: operations["createCommunicationScriptType"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/communication/script-categories/{category_id}": {
+    "/api/communication/script-types/{script_type_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1313,11 +1313,11 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Update a script category */
-        put: operations["updateCommunicationScriptCategory"];
+        /** Rename a script type */
+        put: operations["updateCommunicationScriptType"];
         post?: never;
-        /** Delete a script category */
-        delete: operations["deleteCommunicationScriptCategory"];
+        /** Delete a script type */
+        delete: operations["deleteCommunicationScriptType"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1601,7 +1601,14 @@ export interface components {
             data: components["schemas"]["CommunicationFriendRecord"];
             request_id: string;
         };
-        CommunicationScriptCategory: {
+        CommunicationScriptTypeListData: {
+            items: components["schemas"]["CommunicationScriptType"][];
+        };
+        CommunicationScriptTypeListResponse: {
+            data: components["schemas"]["CommunicationScriptTypeListData"];
+            request_id: string;
+        };
+        CommunicationScriptType: {
             /** Format: uuid */
             id: string;
             name: string;
@@ -1611,30 +1618,18 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
-        CommunicationScriptCategoryRequest: {
+        CommunicationScriptTypeRequest: {
             name: string;
-            sort_order?: number;
         };
-        CommunicationScriptCategoryListData: {
-            items: components["schemas"]["CommunicationScriptCategory"][];
-        };
-        CommunicationScriptCategoryListResponse: {
-            data: components["schemas"]["CommunicationScriptCategoryListData"];
-            request_id: string;
-        };
-        CommunicationScriptCategoryResponse: {
-            data: components["schemas"]["CommunicationScriptCategory"];
+        CommunicationScriptTypeResponse: {
+            data: components["schemas"]["CommunicationScriptType"];
             request_id: string;
         };
         CommunicationScript: {
             /** Format: uuid */
             id: string;
-            /** Format: uuid */
-            category_id: string | null;
-            category_name: string;
             title: string;
-            /** @enum {string} */
-            script_type: "STAGE" | "FAQ";
+            script_type: string;
             tags: string[];
             paragraphs: string[];
             note: string;
@@ -1645,11 +1640,8 @@ export interface components {
             updated_at: string;
         };
         CommunicationScriptRequest: {
-            /** Format: uuid */
-            category_id?: string | null;
             title: string;
-            /** @enum {string} */
-            script_type: "STAGE" | "FAQ";
+            script_type: string;
             tags?: string[];
             paragraphs: string[];
             note?: string;
@@ -2590,8 +2582,8 @@ export interface components {
         Page: number;
         PageSize: number;
         CommunicationFriendRecordId: string;
-        CommunicationScriptCategoryId: string;
         CommunicationScriptId: string;
+        CommunicationScriptTypeId: string;
         BusinessDate: string;
         DateFrom: string;
         DateTo: string;
@@ -5356,7 +5348,7 @@ export interface operations {
             default: components["responses"]["ErrorResponse"];
         };
     };
-    listCommunicationScriptCategories: {
+    listCommunicationScriptTypes: {
         parameters: {
             query?: never;
             header?: never;
@@ -5365,19 +5357,19 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Script categories */
+            /** @description Script types */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunicationScriptCategoryListResponse"];
+                    "application/json": components["schemas"]["CommunicationScriptTypeListResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
         };
     };
-    createCommunicationScriptCategory: {
+    createCommunicationScriptType: {
         parameters: {
             query?: never;
             header?: never;
@@ -5386,61 +5378,61 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CommunicationScriptCategoryRequest"];
+                "application/json": components["schemas"]["CommunicationScriptTypeRequest"];
             };
         };
         responses: {
-            /** @description Script category created */
+            /** @description Script type created */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunicationScriptCategoryResponse"];
+                    "application/json": components["schemas"]["CommunicationScriptTypeResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
         };
     };
-    updateCommunicationScriptCategory: {
+    updateCommunicationScriptType: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                category_id: components["parameters"]["CommunicationScriptCategoryId"];
+                script_type_id: components["parameters"]["CommunicationScriptTypeId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CommunicationScriptCategoryRequest"];
+                "application/json": components["schemas"]["CommunicationScriptTypeRequest"];
             };
         };
         responses: {
-            /** @description Script category updated */
+            /** @description Script type updated */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunicationScriptCategoryResponse"];
+                    "application/json": components["schemas"]["CommunicationScriptTypeResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
         };
     };
-    deleteCommunicationScriptCategory: {
+    deleteCommunicationScriptType: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                category_id: components["parameters"]["CommunicationScriptCategoryId"];
+                script_type_id: components["parameters"]["CommunicationScriptTypeId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Script category deleted */
+            /** @description Script type deleted */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -5456,8 +5448,7 @@ export interface operations {
                 page?: components["parameters"]["Page"];
                 page_size?: components["parameters"]["PageSize"];
                 q?: string;
-                script_type?: "STAGE" | "FAQ";
-                category_id?: string;
+                script_type?: string;
                 favorite?: boolean;
             };
             header?: never;

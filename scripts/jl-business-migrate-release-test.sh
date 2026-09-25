@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1003,SC2016,SC2251
 set -euo pipefail
 
+# These assertions intentionally search for literal shell snippets and use
+# negative grep checks to protect the production helper's contract.
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 helper="${repo_root}/scripts/jl-business-migrate-release"
 makefile="${repo_root}/Makefile"

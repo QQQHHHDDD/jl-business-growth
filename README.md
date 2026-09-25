@@ -22,7 +22,7 @@ Do not use a production database, production credentials, or production files in
 Copy `.env.example` to `.env.development.local`, configure a development-only database, then run:
 
 ```bash
-mkdir -p .local/files .local/tmp .local/mail-outbox
+mkdir -p .local/files .local/tmp
 npm --prefix frontend install
 make generate
 set -a; source .env.development.local; set +a
@@ -50,8 +50,8 @@ make release VERSION=v1.2.3  # local immutable Linux artifact and checksum
 
 Health endpoints: `GET /api/health/live` and `GET /api/health/ready`.
 
-The current schema is migration version 14, ending at
-`00014_remove_import_export.sql`. PostgreSQL's `pg_trgm` extension remains
+The current schema is migration version 17, ending at
+`00017_remove_mail_delivery.sql`. PostgreSQL's `pg_trgm` extension remains
 required for similarity search. PostgreSQL 13 and newer provide
 `gen_random_uuid()` in core, so the application does not require `pgcrypto` or
 an OpenSSL-enabled PostgreSQL build. V1 business money fields use decimal
@@ -62,6 +62,12 @@ V1 API acceptance.
 The legacy import/export API and UI are not part of the current product. The
 schema-14 migration removes their job table and finance deduplication metadata;
 file attachments and account/file cleanup remain supported independently.
+
+Communication scripts use account-owned user-defined types. Fresh databases
+start with no types; existing script types are preserved during the schema-16
+upgrade. Types can be added, renamed, and deleted from the communication tool.
+Calendar events and contacts are record-only; mail delivery and calendar
+invitation sending are not part of the product.
 
 ## Build and release version
 

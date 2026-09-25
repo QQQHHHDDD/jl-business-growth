@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -27,7 +26,6 @@ import (
 	"jl-business-growth/backend/internal/auth"
 	"jl-business-growth/backend/internal/calendar"
 	"jl-business-growth/backend/internal/config"
-	"jl-business-growth/backend/internal/mail"
 )
 
 // comprehensiveTestHarness keeps comprehensive tests isolated from development data and
@@ -102,9 +100,7 @@ func newComprehensiveTestHarness(t *testing.T) *comprehensiveTestHarness {
 		CookieSecure:        false,
 		SuperadminUsername:  superadminUsername,
 		SuperadminPassword:  superadminPassword,
-		MailMode:            "file",
 		FileRoot:            fileRoot,
-		MailOutboxRoot:      fileRoot,
 		MaxDocumentUploadMB: 1,
 		MaxImageUploadMB:    1,
 	}
@@ -222,12 +218,6 @@ func TestSecurityIsolationIntegration(t *testing.T) {
 	}, userBAuth.Data.CsrfToken, http.StatusForbidden)
 }
 
-type failingSender struct{}
-
-func (failingSender) Send(context.Context, mail.Message) (string, error) {
-	return "", errors.New("controlled mail transport failure")
-}
-
 func TestFaultHandlingIntegration(t *testing.T) {
 	h := newComprehensiveTestHarness(t)
 	superClient, superAuth := comprehensiveSuperAdmin(t, h)
@@ -241,8 +231,8 @@ func TestFaultHandlingIntegration(t *testing.T) {
 	}, userAuth.Data.CsrfToken, http.StatusBadRequest)
 
 	eventStart := time.Date(2026, time.September, 16, 9, 0, 0, 0, time.UTC)
-	_, err := calendar.NewService(h.pool, failingSender{}).Save(h.ctx, uuid.UUID(userAuth.Data.Account.Id), uuid.Nil, calendar.Input{
-		Title:              "comprehensive test mail failure",
+	_, err := calendar.NewService(h.pool).Save(h.ctx, uuid.UUID(userAuth.Data.Account.Id), uuid.Nil, calendar.Input{
+		Title:              "comprehensive schedule record",
 		Timezone:           "Asia/Shanghai",
 		StartAt:            eventStart,
 		EndAt:              eventStart.Add(time.Hour),
@@ -252,14 +242,14 @@ func TestFaultHandlingIntegration(t *testing.T) {
 		Attendees:          []calendar.Attendee{{Email: "fault@example.com"}},
 	})
 	if err != nil {
-		t.Fatalf("save calendar event with a failing mail sender: %v", err)
+		t.Fatalf("save calendar record: %v", err)
 	}
-	var deliveryStatus, deliveryError string
-	if err := h.pool.QueryRow(h.ctx, `SELECT status::text,COALESCE(error_message,'') FROM mail_deliveries ORDER BY created_at DESC LIMIT 1`).Scan(&deliveryStatus, &deliveryError); err != nil {
-		t.Fatalf("read controlled failed mail delivery: %v", err)
+	var attendeeCount int
+	if err := h.pool.QueryRow(h.ctx, `SELECT count(*) FROM calendar_attendees WHERE email='fault@example.com'`).Scan(&attendeeCount); err != nil {
+		t.Fatalf("read calendar attendee record: %v", err)
 	}
-	if deliveryStatus != "FAILED" || !strings.Contains(deliveryError, "controlled mail transport failure") {
-		t.Fatalf("mail failure delivery = status %q, error %q", deliveryStatus, deliveryError)
+	if attendeeCount != 1 {
+		t.Fatalf("calendar attendee records = %d, want 1", attendeeCount)
 	}
 
 	h.restart()

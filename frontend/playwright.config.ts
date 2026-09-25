@@ -22,7 +22,7 @@ const backendEnvironment: Record<string, string> = testMode
       SUPERADMIN_USERNAME: process.env.E2E_SUPERADMIN_USERNAME ?? "",
       SUPERADMIN_INITIAL_PASSWORD: process.env.E2E_SUPERADMIN_PASSWORD ?? "",
       FILE_ROOT: process.env.E2E_FILE_ROOT ?? "/tmp/jl-business-growth-e2e-files",
-      MAIL_MODE: "file",
+
     }
   : inheritedEnvironment;
 

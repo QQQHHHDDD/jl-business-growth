@@ -94,18 +94,6 @@ const (
 	REVERSE CommunicationFriendRecordRequestAddDirection = "REVERSE"
 )
 
-// Defines values for CommunicationScriptScriptType.
-const (
-	CommunicationScriptScriptTypeFAQ   CommunicationScriptScriptType = "FAQ"
-	CommunicationScriptScriptTypeSTAGE CommunicationScriptScriptType = "STAGE"
-)
-
-// Defines values for CommunicationScriptRequestScriptType.
-const (
-	CommunicationScriptRequestScriptTypeFAQ   CommunicationScriptRequestScriptType = "FAQ"
-	CommunicationScriptRequestScriptTypeSTAGE CommunicationScriptRequestScriptType = "STAGE"
-)
-
 // Defines values for FileAssetCategory.
 const (
 	FileAssetCategoryDREAMIMAGE        FileAssetCategory = "DREAM_IMAGE"
@@ -448,12 +436,6 @@ const (
 	Week  GetWorklogAnalyticsParamsGranularity = "week"
 )
 
-// Defines values for ListCommunicationScriptsParamsScriptType.
-const (
-	FAQ   ListCommunicationScriptsParamsScriptType = "FAQ"
-	STAGE ListCommunicationScriptsParamsScriptType = "STAGE"
-)
-
 // Defines values for UploadFileMultipartBodyCategory.
 const (
 	UploadFileMultipartBodyCategoryDREAMIMAGE        UploadFileMultipartBodyCategory = "DREAM_IMAGE"
@@ -767,52 +749,15 @@ type CommunicationFriendRecordResponse struct {
 
 // CommunicationScript defines model for CommunicationScript.
 type CommunicationScript struct {
-	CategoryId   *openapi_types.UUID           `json:"category_id"`
-	CategoryName string                        `json:"category_name"`
-	CreatedAt    time.Time                     `json:"created_at"`
-	Favorite     bool                          `json:"favorite"`
-	Id           openapi_types.UUID            `json:"id"`
-	Note         string                        `json:"note"`
-	Paragraphs   []string                      `json:"paragraphs"`
-	ScriptType   CommunicationScriptScriptType `json:"script_type"`
-	Tags         []string                      `json:"tags"`
-	Title        string                        `json:"title"`
-	UpdatedAt    time.Time                     `json:"updated_at"`
-}
-
-// CommunicationScriptScriptType defines model for CommunicationScript.ScriptType.
-type CommunicationScriptScriptType string
-
-// CommunicationScriptCategory defines model for CommunicationScriptCategory.
-type CommunicationScriptCategory struct {
-	CreatedAt time.Time          `json:"created_at"`
-	Id        openapi_types.UUID `json:"id"`
-	Name      string             `json:"name"`
-	SortOrder int                `json:"sort_order"`
-	UpdatedAt time.Time          `json:"updated_at"`
-}
-
-// CommunicationScriptCategoryListData defines model for CommunicationScriptCategoryListData.
-type CommunicationScriptCategoryListData struct {
-	Items []CommunicationScriptCategory `json:"items"`
-}
-
-// CommunicationScriptCategoryListResponse defines model for CommunicationScriptCategoryListResponse.
-type CommunicationScriptCategoryListResponse struct {
-	Data      CommunicationScriptCategoryListData `json:"data"`
-	RequestId string                              `json:"request_id"`
-}
-
-// CommunicationScriptCategoryRequest defines model for CommunicationScriptCategoryRequest.
-type CommunicationScriptCategoryRequest struct {
-	Name      string `json:"name"`
-	SortOrder *int   `json:"sort_order,omitempty"`
-}
-
-// CommunicationScriptCategoryResponse defines model for CommunicationScriptCategoryResponse.
-type CommunicationScriptCategoryResponse struct {
-	Data      CommunicationScriptCategory `json:"data"`
-	RequestId string                      `json:"request_id"`
+	CreatedAt  time.Time          `json:"created_at"`
+	Favorite   bool               `json:"favorite"`
+	Id         openapi_types.UUID `json:"id"`
+	Note       string             `json:"note"`
+	Paragraphs []string           `json:"paragraphs"`
+	ScriptType string             `json:"script_type"`
+	Tags       []string           `json:"tags"`
+	Title      string             `json:"title"`
+	UpdatedAt  time.Time          `json:"updated_at"`
 }
 
 // CommunicationScriptListData defines model for CommunicationScriptListData.
@@ -829,22 +774,49 @@ type CommunicationScriptListResponse struct {
 
 // CommunicationScriptRequest defines model for CommunicationScriptRequest.
 type CommunicationScriptRequest struct {
-	CategoryId *openapi_types.UUID                  `json:"category_id"`
-	Favorite   *bool                                `json:"favorite,omitempty"`
-	Note       *string                              `json:"note,omitempty"`
-	Paragraphs []string                             `json:"paragraphs"`
-	ScriptType CommunicationScriptRequestScriptType `json:"script_type"`
-	Tags       *[]string                            `json:"tags,omitempty"`
-	Title      string                               `json:"title"`
+	Favorite   *bool     `json:"favorite,omitempty"`
+	Note       *string   `json:"note,omitempty"`
+	Paragraphs []string  `json:"paragraphs"`
+	ScriptType string    `json:"script_type"`
+	Tags       *[]string `json:"tags,omitempty"`
+	Title      string    `json:"title"`
 }
-
-// CommunicationScriptRequestScriptType defines model for CommunicationScriptRequest.ScriptType.
-type CommunicationScriptRequestScriptType string
 
 // CommunicationScriptResponse defines model for CommunicationScriptResponse.
 type CommunicationScriptResponse struct {
 	Data      CommunicationScript `json:"data"`
 	RequestId string              `json:"request_id"`
+}
+
+// CommunicationScriptType defines model for CommunicationScriptType.
+type CommunicationScriptType struct {
+	CreatedAt time.Time          `json:"created_at"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	SortOrder int                `json:"sort_order"`
+	UpdatedAt time.Time          `json:"updated_at"`
+}
+
+// CommunicationScriptTypeListData defines model for CommunicationScriptTypeListData.
+type CommunicationScriptTypeListData struct {
+	Items []CommunicationScriptType `json:"items"`
+}
+
+// CommunicationScriptTypeListResponse defines model for CommunicationScriptTypeListResponse.
+type CommunicationScriptTypeListResponse struct {
+	Data      CommunicationScriptTypeListData `json:"data"`
+	RequestId string                          `json:"request_id"`
+}
+
+// CommunicationScriptTypeRequest defines model for CommunicationScriptTypeRequest.
+type CommunicationScriptTypeRequest struct {
+	Name string `json:"name"`
+}
+
+// CommunicationScriptTypeResponse defines model for CommunicationScriptTypeResponse.
+type CommunicationScriptTypeResponse struct {
+	Data      CommunicationScriptType `json:"data"`
+	RequestId string                  `json:"request_id"`
 }
 
 // CreateAdminRequest defines model for CreateAdminRequest.
@@ -1916,11 +1888,11 @@ type CategoryId = openapi_types.UUID
 // CommunicationFriendRecordId defines model for CommunicationFriendRecordId.
 type CommunicationFriendRecordId = openapi_types.UUID
 
-// CommunicationScriptCategoryId defines model for CommunicationScriptCategoryId.
-type CommunicationScriptCategoryId = openapi_types.UUID
-
 // CommunicationScriptId defines model for CommunicationScriptId.
 type CommunicationScriptId = openapi_types.UUID
+
+// CommunicationScriptTypeId defines model for CommunicationScriptTypeId.
+type CommunicationScriptTypeId = openapi_types.UUID
 
 // DateFrom defines model for DateFrom.
 type DateFrom = openapi_types.Date
@@ -2050,16 +2022,12 @@ type ListCommunicationFriendRecordsParams struct {
 
 // ListCommunicationScriptsParams defines parameters for ListCommunicationScripts.
 type ListCommunicationScriptsParams struct {
-	Page       *Page                                     `form:"page,omitempty" json:"page,omitempty"`
-	PageSize   *PageSize                                 `form:"page_size,omitempty" json:"page_size,omitempty"`
-	Q          *string                                   `form:"q,omitempty" json:"q,omitempty"`
-	ScriptType *ListCommunicationScriptsParamsScriptType `form:"script_type,omitempty" json:"script_type,omitempty"`
-	CategoryId *openapi_types.UUID                       `form:"category_id,omitempty" json:"category_id,omitempty"`
-	Favorite   *bool                                     `form:"favorite,omitempty" json:"favorite,omitempty"`
+	Page       *Page     `form:"page,omitempty" json:"page,omitempty"`
+	PageSize   *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Q          *string   `form:"q,omitempty" json:"q,omitempty"`
+	ScriptType *string   `form:"script_type,omitempty" json:"script_type,omitempty"`
+	Favorite   *bool     `form:"favorite,omitempty" json:"favorite,omitempty"`
 }
-
-// ListCommunicationScriptsParamsScriptType defines parameters for ListCommunicationScripts.
-type ListCommunicationScriptsParamsScriptType string
 
 // GetDashboardParams defines parameters for GetDashboard.
 type GetDashboardParams struct {
@@ -2202,11 +2170,11 @@ type UpdateCommunicationFriendRecordJSONRequestBody = CommunicationFriendRecordR
 // UpdateCommunicationFriendProgressJSONRequestBody defines body for UpdateCommunicationFriendProgress for application/json ContentType.
 type UpdateCommunicationFriendProgressJSONRequestBody = CommunicationFriendProgressRequest
 
-// CreateCommunicationScriptCategoryJSONRequestBody defines body for CreateCommunicationScriptCategory for application/json ContentType.
-type CreateCommunicationScriptCategoryJSONRequestBody = CommunicationScriptCategoryRequest
+// CreateCommunicationScriptTypeJSONRequestBody defines body for CreateCommunicationScriptType for application/json ContentType.
+type CreateCommunicationScriptTypeJSONRequestBody = CommunicationScriptTypeRequest
 
-// UpdateCommunicationScriptCategoryJSONRequestBody defines body for UpdateCommunicationScriptCategory for application/json ContentType.
-type UpdateCommunicationScriptCategoryJSONRequestBody = CommunicationScriptCategoryRequest
+// UpdateCommunicationScriptTypeJSONRequestBody defines body for UpdateCommunicationScriptType for application/json ContentType.
+type UpdateCommunicationScriptTypeJSONRequestBody = CommunicationScriptTypeRequest
 
 // CreateCommunicationScriptJSONRequestBody defines body for CreateCommunicationScript for application/json ContentType.
 type CreateCommunicationScriptJSONRequestBody = CommunicationScriptRequest
@@ -2411,7 +2379,7 @@ type ServerInterface interface {
 	// Create a one-time or recurring calendar event
 	// (POST /api/calendar/events)
 	CreateCalendarEvent(ctx echo.Context) error
-	// Delete a calendar event series and send cancellation notices
+	// Delete a calendar event series
 	// (DELETE /api/calendar/events/{event_id})
 	DeleteCalendarEvent(ctx echo.Context, eventId CalendarEventId) error
 	// Get a calendar event series
@@ -2438,18 +2406,18 @@ type ServerInterface interface {
 	// Update only latest friend record progress
 	// (PATCH /api/communication/friend-records/{friend_record_id}/progress)
 	UpdateCommunicationFriendProgress(ctx echo.Context, friendRecordId CommunicationFriendRecordId) error
-	// List script categories
-	// (GET /api/communication/script-categories)
-	ListCommunicationScriptCategories(ctx echo.Context) error
-	// Create a script category
-	// (POST /api/communication/script-categories)
-	CreateCommunicationScriptCategory(ctx echo.Context) error
-	// Delete a script category
-	// (DELETE /api/communication/script-categories/{category_id})
-	DeleteCommunicationScriptCategory(ctx echo.Context, categoryId CommunicationScriptCategoryId) error
-	// Update a script category
-	// (PUT /api/communication/script-categories/{category_id})
-	UpdateCommunicationScriptCategory(ctx echo.Context, categoryId CommunicationScriptCategoryId) error
+	// List script types owned by the current account
+	// (GET /api/communication/script-types)
+	ListCommunicationScriptTypes(ctx echo.Context) error
+	// Create a script type
+	// (POST /api/communication/script-types)
+	CreateCommunicationScriptType(ctx echo.Context) error
+	// Delete a script type
+	// (DELETE /api/communication/script-types/{script_type_id})
+	DeleteCommunicationScriptType(ctx echo.Context, scriptTypeId CommunicationScriptTypeId) error
+	// Rename a script type
+	// (PUT /api/communication/script-types/{script_type_id})
+	UpdateCommunicationScriptType(ctx echo.Context, scriptTypeId CommunicationScriptTypeId) error
 	// List scripts
 	// (GET /api/communication/scripts)
 	ListCommunicationScripts(ctx echo.Context, params ListCommunicationScriptsParams) error
@@ -3532,61 +3500,61 @@ func (w *ServerInterfaceWrapper) UpdateCommunicationFriendProgress(ctx echo.Cont
 	return err
 }
 
-// ListCommunicationScriptCategories converts echo context to params.
-func (w *ServerInterfaceWrapper) ListCommunicationScriptCategories(ctx echo.Context) error {
+// ListCommunicationScriptTypes converts echo context to params.
+func (w *ServerInterfaceWrapper) ListCommunicationScriptTypes(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(SessionCookieScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListCommunicationScriptCategories(ctx)
+	err = w.Handler.ListCommunicationScriptTypes(ctx)
 	return err
 }
 
-// CreateCommunicationScriptCategory converts echo context to params.
-func (w *ServerInterfaceWrapper) CreateCommunicationScriptCategory(ctx echo.Context) error {
+// CreateCommunicationScriptType converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateCommunicationScriptType(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(SessionCookieScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateCommunicationScriptCategory(ctx)
+	err = w.Handler.CreateCommunicationScriptType(ctx)
 	return err
 }
 
-// DeleteCommunicationScriptCategory converts echo context to params.
-func (w *ServerInterfaceWrapper) DeleteCommunicationScriptCategory(ctx echo.Context) error {
+// DeleteCommunicationScriptType converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCommunicationScriptType(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "category_id" -------------
-	var categoryId CommunicationScriptCategoryId
+	// ------------- Path parameter "script_type_id" -------------
+	var scriptTypeId CommunicationScriptTypeId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "category_id", ctx.Param("category_id"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "script_type_id", ctx.Param("script_type_id"), &scriptTypeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter category_id: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter script_type_id: %s", err))
 	}
 
 	ctx.Set(SessionCookieScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.DeleteCommunicationScriptCategory(ctx, categoryId)
+	err = w.Handler.DeleteCommunicationScriptType(ctx, scriptTypeId)
 	return err
 }
 
-// UpdateCommunicationScriptCategory converts echo context to params.
-func (w *ServerInterfaceWrapper) UpdateCommunicationScriptCategory(ctx echo.Context) error {
+// UpdateCommunicationScriptType converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateCommunicationScriptType(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "category_id" -------------
-	var categoryId CommunicationScriptCategoryId
+	// ------------- Path parameter "script_type_id" -------------
+	var scriptTypeId CommunicationScriptTypeId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "category_id", ctx.Param("category_id"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "script_type_id", ctx.Param("script_type_id"), &scriptTypeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter category_id: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter script_type_id: %s", err))
 	}
 
 	ctx.Set(SessionCookieScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateCommunicationScriptCategory(ctx, categoryId)
+	err = w.Handler.UpdateCommunicationScriptType(ctx, scriptTypeId)
 	return err
 }
 
@@ -3624,13 +3592,6 @@ func (w *ServerInterfaceWrapper) ListCommunicationScripts(ctx echo.Context) erro
 	err = runtime.BindQueryParameter("form", true, false, "script_type", ctx.QueryParams(), &params.ScriptType)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter script_type: %s", err))
-	}
-
-	// ------------- Optional query parameter "category_id" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "category_id", ctx.QueryParams(), &params.CategoryId)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter category_id: %s", err))
 	}
 
 	// ------------- Optional query parameter "favorite" -------------
@@ -4897,10 +4858,10 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/api/communication/friend-records/:friend_record_id", wrapper.GetCommunicationFriendRecord)
 	router.PUT(baseURL+"/api/communication/friend-records/:friend_record_id", wrapper.UpdateCommunicationFriendRecord)
 	router.PATCH(baseURL+"/api/communication/friend-records/:friend_record_id/progress", wrapper.UpdateCommunicationFriendProgress)
-	router.GET(baseURL+"/api/communication/script-categories", wrapper.ListCommunicationScriptCategories)
-	router.POST(baseURL+"/api/communication/script-categories", wrapper.CreateCommunicationScriptCategory)
-	router.DELETE(baseURL+"/api/communication/script-categories/:category_id", wrapper.DeleteCommunicationScriptCategory)
-	router.PUT(baseURL+"/api/communication/script-categories/:category_id", wrapper.UpdateCommunicationScriptCategory)
+	router.GET(baseURL+"/api/communication/script-types", wrapper.ListCommunicationScriptTypes)
+	router.POST(baseURL+"/api/communication/script-types", wrapper.CreateCommunicationScriptType)
+	router.DELETE(baseURL+"/api/communication/script-types/:script_type_id", wrapper.DeleteCommunicationScriptType)
+	router.PUT(baseURL+"/api/communication/script-types/:script_type_id", wrapper.UpdateCommunicationScriptType)
 	router.GET(baseURL+"/api/communication/scripts", wrapper.ListCommunicationScripts)
 	router.POST(baseURL+"/api/communication/scripts", wrapper.CreateCommunicationScript)
 	router.DELETE(baseURL+"/api/communication/scripts/:script_id", wrapper.DeleteCommunicationScript)
